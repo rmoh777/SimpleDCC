@@ -1,0 +1,13 @@
+name = "simple-docketcc"
+compatibility_date = "2024-03-08"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "simple-docketcc-db"
+database_id = "e5bfcb56-11ad-4288-a74c-3749f2ddfd1b"
+
+[env.production]
+[[env.production.d1_databases]]
+binding = "DB"
+database_name = "simple-docketcc-db"
+database_id = "e5bfcb56-11ad-4288-a74c-3749f2ddfd1b" 
