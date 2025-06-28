@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "vite dev",
     "dev:pages": "npm run build && wrangler pages dev .svelte-kit/cloudflare --d1 DB=e5bfcb56-11ad-4288-a74c-3749f2ddfd1b",
+    "dev:cf": "wrangler dev --d1 DB=e5bfcb56-11ad-4288-a74c-3749f2ddfd1b",
     "dev:watch": "npm run build -- --watch",
     "build": "vite build",
     "preview": "vite preview",
