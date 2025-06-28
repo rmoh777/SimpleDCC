@@ -20,13 +20,14 @@ export async function POST({ request, platform }) {
       }, { status: 400 });
     }
 
-    const db = platform.env.DB;
-    if (!db) {
+    if (!platform?.env?.DB) {
       return json({
         success: false,
         message: 'Database not available'
       }, { status: 500 });
     }
+
+    const db = platform.env.DB;
 
     // Insert subscription
     await db.prepare(`
@@ -42,7 +43,7 @@ export async function POST({ request, platform }) {
   } catch (error) {
     console.error('Subscribe API error:', error);
     
-    if (error.message.includes('UNIQUE constraint')) {
+    if (error instanceof Error && error.message.includes('UNIQUE constraint')) {
       return json({ 
         success: false, 
         message: 'Already subscribed to this docket' 
@@ -51,7 +52,7 @@ export async function POST({ request, platform }) {
     
     return json({ 
       success: false, 
-      message: 'Failed to subscribe: ' + error.message 
+      message: 'Failed to subscribe: ' + (error instanceof Error ? error.message : 'Unknown error')
     }, { status: 500 });
   }
 }
@@ -67,14 +68,14 @@ export async function DELETE({ request, platform }) {
       }, { status: 400 });
     }
 
-    const db = platform.env.DB;
-    if (!db) {
+    if (!platform?.env?.DB) {
       return json({
         success: false,
         message: 'Database not available'
       }, { status: 500 });
     }
 
+    const db = platform.env.DB;
     const result = await db.prepare('DELETE FROM subscriptions WHERE id = ?').bind(id).run();
 
     if (result.changes === 0) {
@@ -93,7 +94,7 @@ export async function DELETE({ request, platform }) {
     console.error('Delete subscription error:', error);
     return json({ 
       success: false, 
-      message: 'Failed to remove subscription: ' + error.message 
+      message: 'Failed to remove subscription: ' + (error instanceof Error ? error.message : 'Unknown error')
     }, { status: 500 });
   }
 } 
