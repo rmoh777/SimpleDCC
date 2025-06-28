@@ -13,9 +13,12 @@ export const POST: RequestHandler = async ({ request, platform }) => {
       return json({ error: 'Email and docket number are required' }, { status: 400 });
     }
 
+    // Normalize email to lowercase for consistent lookup
+    const normalizedEmail = email.toLowerCase();
+
     const result = await platform.env.DB
       .prepare('DELETE FROM subscriptions WHERE email = ? AND docket_number = ?')
-      .bind(email, docket_number)
+      .bind(normalizedEmail, docket_number)
       .run();
 
     if (result.success && result.meta.changes > 0) {
