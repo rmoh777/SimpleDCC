@@ -41,20 +41,6 @@
         filings delivered to your inbox. Never miss important telecommunications policy 
         updates again.
       </p>
-      <div class="hero-stats">
-        <div class="stat">
-          <div class="stat-number">1,500+</div>
-          <div class="stat-label">Active Subscriptions</div>
-        </div>
-        <div class="stat">
-          <div class="stat-number">24hrs</div>
-          <div class="stat-label">Average Notification Speed</div>
-        </div>
-        <div class="stat">
-          <div class="stat-number">98%</div>
-          <div class="stat-label">Accuracy Rate</div>
-        </div>
-      </div>
     </div>
   </section>
 
@@ -295,29 +281,6 @@
     margin-right: auto;
   }
 
-  .hero-stats {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-    gap: 32px;
-    max-width: 500px;
-    margin: 0 auto;
-  }
-
-  .stat {
-    text-align: center;
-  }
-
-  .stat-number {
-    font-size: 28px;
-    font-weight: 700;
-    margin-bottom: 4px;
-  }
-
-  .stat-label {
-    font-size: 14px;
-    opacity: 0.8;
-  }
-
   /* Main Content */
   .main-content {
     flex: 1;
@@ -544,11 +507,6 @@
 
     .hero {
       padding: 60px 16px 40px;
-    }
-
-    .hero-stats {
-      grid-template-columns: 1fr;
-      gap: 24px;
     }
 
     .main-content {
