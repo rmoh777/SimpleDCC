@@ -87,20 +87,7 @@
     }
   }
 
-  function formatDocketInput(event: Event): void {
-    const target = event.target as HTMLInputElement;
-    let value = target.value.replace(/\D/g, ''); // Remove non-digits
-    
-    // Format as X-X to XXX-XXX (add dash after 1-3 digits)
-    if (value.length > 1) {
-      // Find the best split point for the dash
-      const firstPart = value.slice(0, Math.min(3, Math.ceil(value.length / 2)));
-      const secondPart = value.slice(firstPart.length, firstPart.length + 3);
-      value = firstPart + (secondPart ? '-' + secondPart : '');
-    }
-    
-    docketNumber = value;
-  }
+
 </script>
 
 <div class="subscribe-form">
@@ -133,8 +120,7 @@
         id="docket"
         type="text"
         bind:value={docketNumber}
-        on:input={formatDocketInput}
-        placeholder="11-42"
+        placeholder="XX-XXX"
         maxlength="7"
         class="form-input"
         class:error={!!docketError}
@@ -144,7 +130,7 @@
       {#if docketError}
         <span class="error-text">{docketError}</span>
       {:else}
-        <span class="help-text">Enter format: X-X to XXX-XXX (e.g., 11-42, 23-456)</span>
+        <span class="help-text">Enter with dash: X-X to XXX-XXX (e.g., 11-42, 23-456)</span>
       {/if}
     </div>
 
