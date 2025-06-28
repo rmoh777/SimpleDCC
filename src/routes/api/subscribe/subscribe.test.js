@@ -17,24 +17,46 @@ function createMockD1() {
             if (exists) {
               throw new Error('UNIQUE constraint failed');
             }
+            const newId = data.length + 1;
             data.push({ 
-              id: data.length + 1, 
+              id: newId, 
               email, 
               docket_number, 
               created_at
             });
-            return { success: true, changes: 1 };
+            return { 
+              success: true, 
+              meta: { 
+                changes: 1, 
+                last_row_id: newId 
+              } 
+            };
           }
           if (sql.includes('DELETE')) {
             const [id] = args;
             const index = data.findIndex(item => item.id === id);
             if (index > -1) {
               data.splice(index, 1);
-              return { success: true, changes: 1 };
+              return { 
+                success: true, 
+                meta: { changes: 1 } 
+              };
             }
-            return { success: true, changes: 0 };
+            return { 
+              success: true, 
+              meta: { changes: 0 } 
+            };
           }
           return { success: true };
+        },
+        first: async () => {
+          if (sql.includes('SELECT') && sql.includes('WHERE email = ? AND docket_number = ?')) {
+            const [email, docket_number] = args;
+            return data.find(item => 
+              item.email === email && item.docket_number === docket_number
+            ) || null;
+          }
+          return null;
         }
       })
     })
@@ -87,7 +109,7 @@ describe('Subscribe API - POST', () => {
     const result = await response.json();
 
     expect(result.success).toBe(false);
-    expect(result.message).toContain('Invalid email address');
+    expect(result.message).toContain('Email and docket number are required');
   });
 
   it('should reject invalid docket number format', async () => {
