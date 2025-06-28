@@ -64,6 +64,20 @@ export const POST: RequestHandler = async ({ request, platform }) => {
       .run();
 
     if (result.success) {
+      // Send welcome email (don't fail subscription if email fails)
+      try {
+        const { sendWelcomeEmail } = await import('$lib/email');
+        const emailResult = await sendWelcomeEmail(email, docket_number, platform.env);
+        if (emailResult.success) {
+          console.log('Welcome email sent successfully');
+        } else {
+          console.error('Welcome email failed:', emailResult.error);
+        }
+      } catch (emailError) {
+        console.error('Failed to send welcome email:', emailError);
+        // Continue anyway - don't break subscription if email fails
+      }
+
       return json({ 
         success: true,
         message: `Successfully subscribed to docket ${docket_number}`,
