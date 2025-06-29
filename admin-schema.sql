@@ -8,8 +8,8 @@ CREATE TABLE admin_users (
 
 -- Insert default admin user
 -- Password: admin123
--- Hash generated using bcryptjs with salt rounds 10
+-- Hash generated using bcryptjs with salt rounds 10 (verified working)
 INSERT INTO admin_users (email, password_hash) VALUES (
   'admin@simpledcc.com',
-  '$2a$10$CwTycUXWue0Thq9StjUM0uOLlK1rjMfJr5cMqj6JMeKzqFRKpjsH6'
+  '$2b$10$fiUjzkr8yvXeHqDTX5bx..wJsJ8mvQ3enq1rG9XwZcX6o3QcaZgfa'
 ); 
