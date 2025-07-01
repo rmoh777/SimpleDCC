@@ -1,0 +1,108 @@
+# Cursor Rules for SimpleDCC Project
+
+## Git Workflow Rules
+### Branch Creation Protocol
+- ALWAYS start new branches from the latest remote master/main
+- NEVER create branches from feature branches or outdated local master
+- Before creating any new branch, ALWAYS:
+  1. `git checkout master`
+  2. `git pull origin master` 
+  3. Then create the new branch: `git checkout -b feature/branch-name`
+
+### Branch Naming Convention
+- Use descriptive names: `feature/`, `fix/`, `chore/`
+- Keep branch names short but clear
+- Examples: `feature/remove-hero-stats`, `fix/email-validation`, `chore/update-deps`
+
+### Commit Guidelines
+- Make atomic commits (one logical change per commit)
+- Write clear commit messages describing WHAT and WHY
+- Before committing, verify only intended changes are included
+
+### Pull Request Workflow
+- Always create PRs to merge back to master
+
+## SvelteKit CSS Import Rules
+
+### CSS Import Guidelines
+1. **NEVER** use `<link rel="stylesheet" href="/src/lib/...">` in `app.html`
+2. **ALWAYS** use SvelteKit imports: `import '$lib/styles/filename.css'` in Svelte components
+3. **Global CSS** should be imported in `src/routes/+layout.svelte` for app-wide availability
+4. **Component-specific CSS** should be imported at the component level
+
+### Why This Matters
+- Direct file paths in `app.html` break in production builds (Cloudflare, Vercel, etc.)
+- SvelteKit's module resolution ensures CSS is properly bundled
+- Prevents "missing styles" issues in deployment
+
+### Correct Patterns
+```svelte
+<!-- ✅ CORRECT: In layout or component -->
+<script>
+  import '$lib/styles/globals.css';
+</script>
+
+<!-- ❌ WRONG: In app.html -->
+<link rel="stylesheet" href="/src/lib/styles/globals.css">
+```
+
+### File Structure for CSS
+- `src/routes/+layout.svelte` - Global app styles
+- `src/lib/components/ComponentName.svelte` - Component-specific imports
+- `src/lib/styles/` - All CSS files using `$lib` imports
+
+## Gemini API Architecture Rules
+
+### Security Rules
+1. Never expose API keys in frontend code
+2. Always use environment variables for API keys
+3. Implement serverless functions for API calls
+4. Use proper error handling and rate limiting
+
+### Code Structure Rules
+1. Keep API calls in serverless functions under `/api` directory
+2. Use consistent naming convention: `api/[service-name].js`
+3. Implement proper request validation
+4. Use TypeScript for better type safety (if applicable)
+
+### API Integration Rules
+1. Always use the latest stable version of `@google/generative-ai`
+2. Implement proper error handling for API responses
+3. Use appropriate temperature and token settings
+4. Cache responses when appropriate
+
+### Deployment Rules
+1. Set up environment variables in deployment platform (e.g., Vercel)
+2. Test API endpoints in development environment
+3. Monitor API usage and costs
+4. Implement proper logging for debugging
+
+### Frontend Integration Rules
+1. Use fetch or axios for API calls
+2. Implement proper loading states
+3. Handle API errors gracefully
+4. Cache responses when appropriate
+
+### Testing Rules
+1. Test API endpoints with various inputs
+2. Test error handling scenarios
+3. Test rate limiting
+4. Test response parsing
+
+### Documentation Rules
+1. Document API endpoints
+2. Document environment variables
+3. Document error codes
+4. Keep README up to date
+
+### Performance Rules
+1. Implement proper caching
+2. Use appropriate batch sizes
+3. Monitor response times
+4. Optimize token usage
+
+### Maintenance Rules
+1. Regular dependency updates
+2. Monitor API changes
+3. Regular security audits
+4. Performance monitoring 
