@@ -1,3 +1,11 @@
+-
+IMPORTANT NOTES FOR CURSOR:
+
+DO NOT run git commands until testing is complete
+MUST test admin routes still work without new layout
+ENSURE test routes get minimal layout for clean testing
+Verify responsive behavior on mobile screens
+-
 # Phase 1: Setup (always safe)
 git checkout master && git pull origin master && git checkout -b [BRANCH_NAME]
 
