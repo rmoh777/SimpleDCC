@@ -103,7 +103,7 @@
     <!-- Features Grid -->
     <div class="features-grid">
       {#each features as feature, index}
-        <div class="feature-card-wrapper" class:popular-feature={feature.popular}>
+        <div class="feature-card-wrapper" class:popular={feature.popular}>
           <Card 
             variant="feature" 
             hover 
@@ -404,4 +404,4 @@
       text-align: center;
     }
   }
-</style> 
+</style>
