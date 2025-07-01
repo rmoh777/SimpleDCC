@@ -40,14 +40,14 @@
           </div>
           
           <div class="nav-links">
-            <a href="/" class="nav-link" class:active={$page.url.pathname === '/'}>
-              Dashboard
+            <a href="/about" class="nav-link" class:active={$page.url.pathname === '/about'}>
+              About
+            </a>
+            <a href="/manage" class="nav-link" class:active={$page.url.pathname === '/manage'}>
+              My Subscriptions
             </a>
             <a href="/pricing" class="nav-link" class:active={$page.url.pathname === '/pricing'}>
               Pricing
-            </a>
-            <a href="/about" class="nav-link" class:active={$page.url.pathname === '/about'}>
-              About
             </a>
           </div>
         </nav>
