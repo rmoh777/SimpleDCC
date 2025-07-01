@@ -1,0 +1,970 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DocketCC - FCC Docket Monitoring Service</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+            background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+            color: #1f2937;
+            min-height: 100vh;
+        }
+
+        /* Government header with modern twist */
+        .gov-banner {
+            background: #0f172a;
+            color: white;
+            padding: 0.5rem 0;
+            font-size: 0.85rem;
+            text-align: center;
+            border-bottom: 1px solid #334155;
+        }
+
+        .gov-banner .flag {
+            display: inline-block;
+            margin-right: 0.5rem;
+        }
+
+        .header {
+            background: rgba(255,255,255,0.98);
+            backdrop-filter: blur(20px);
+            padding: 1rem 0;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            border-bottom: 4px solid #10b981;
+        }
+
+        .nav {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .logo-section {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        /* Updated logo with emerald accent */
+        .logo-graphic {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .logo-graphic .icon {
+            width: 36px;
+            height: 36px;
+            background: linear-gradient(135deg, #10b981, #059669);
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.3rem;
+            box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
+        }
+
+        .logo-graphic .text {
+            font-size: 1.6rem;
+            font-weight: 800;
+            color: #0f172a;
+            letter-spacing: -0.5px;
+        }
+
+        .logo-graphic .text .cc {
+            color: #10b981;
+        }
+
+        .nav-links {
+            display: flex;
+            gap: 2rem;
+            list-style: none;
+        }
+
+        .nav-links a {
+            color: #374151;
+            text-decoration: none;
+            font-weight: 600;
+            padding: 0.75rem 1.5rem;
+            border-radius: 12px;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .nav-links a:hover {
+            background: #0f172a;
+            color: white;
+            transform: translateY(-2px);
+            box-shadow: 0 10px 25px rgba(15, 23, 42, 0.3);
+        }
+
+        /* Hero section with government authority + modern design */
+        .hero {
+            padding: 6rem 2rem;
+            max-width: 1200px;
+            margin: 0 auto;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 4rem;
+            align-items: center;
+            min-height: 80vh;
+        }
+
+        .hero-content h1 {
+            font-size: 3.5rem;
+            font-weight: 900;
+            color: white;
+            line-height: 1.1;
+            margin-bottom: 1.5rem;
+            text-shadow: 0 4px 8px rgba(0,0,0,0.3);
+        }
+
+        .hero-content .highlight {
+            color: #10b981;
+            text-shadow: 0 0 20px rgba(16, 185, 129, 0.5);
+        }
+
+        .hero-content .subtitle {
+            font-size: 1.3rem;
+            color: rgba(255,255,255,0.9);
+            margin-bottom: 2rem;
+            line-height: 1.6;
+        }
+
+        .hero-content .authority {
+            background: rgba(255,255,255,0.1);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255,255,255,0.2);
+            border-radius: 16px;
+            padding: 1.5rem;
+            margin-bottom: 2rem;
+            border-left: 4px solid #10b981;
+        }
+
+        .hero-content .authority h3 {
+            color: #10b981;
+            font-size: 1.1rem;
+            margin-bottom: 0.5rem;
+            font-weight: 700;
+        }
+
+        .hero-content .authority p {
+            color: rgba(255,255,255,0.8);
+            font-size: 0.95rem;
+            margin: 0;
+        }
+
+        /* Modern government form card */
+        .search-card {
+            background: rgba(255,255,255,0.98);
+            backdrop-filter: blur(20px);
+            border-radius: 24px;
+            padding: 3rem;
+            box-shadow: 0 40px 80px rgba(0,0,0,0.2);
+            border: 1px solid rgba(255,255,255,0.3);
+            position: relative;
+        }
+
+        .search-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: linear-gradient(90deg, #0f172a, #1e293b, #10b981);
+            border-radius: 24px 24px 0 0;
+        }
+
+        .search-card h2 {
+            font-size: 1.8rem;
+            font-weight: 700;
+            color: #0f172a;
+            margin-bottom: 0.5rem;
+        }
+
+        .search-card .subtitle {
+            color: #6b7280;
+            margin-bottom: 2rem;
+            font-size: 1rem;
+        }
+
+        .form-group {
+            margin-bottom: 2rem;
+        }
+
+        .form-label {
+            display: block;
+            font-weight: 600;
+            color: #374151;
+            margin-bottom: 0.75rem;
+            font-size: 1rem;
+        }
+
+        .form-help {
+            font-size: 0.9rem;
+            color: #6b7280;
+            margin-bottom: 0.75rem;
+        }
+
+        .search-container {
+            position: relative;
+        }
+
+        .search-input {
+            width: 100%;
+            padding: 1.25rem 4rem 1.25rem 1.5rem;
+            font-size: 1.1rem;
+            border: 2px solid #e5e7eb;
+            border-radius: 16px;
+            outline: none;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            background: #f9fafb;
+            font-weight: 500;
+        }
+
+        .search-input:focus {
+            border-color: #10b981;
+            background: white;
+            box-shadow: 0 0 0 4px rgba(16, 185, 129, 0.1), 0 10px 25px rgba(0,0,0,0.1);
+            transform: translateY(-2px);
+        }
+
+        .search-icon {
+            position: absolute;
+            right: 1.5rem;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 24px;
+            height: 24px;
+            background: #0f172a;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 0.9rem;
+            transition: all 0.3s;
+        }
+
+        .search-input:focus + .search-icon {
+            background: #10b981;
+            transform: translateY(-50%) scale(1.1);
+        }
+
+        .suggestions {
+            position: absolute;
+            top: 100%;
+            left: 0;
+            right: 0;
+            background: white;
+            border: 1px solid #e5e7eb;
+            border-radius: 16px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.15);
+            z-index: 10;
+            max-height: 300px;
+            overflow-y: auto;
+            display: none;
+            margin-top: 0.5rem;
+        }
+
+        .suggestion-item {
+            padding: 1rem 1.5rem;
+            border-bottom: 1px solid #f3f4f6;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .suggestion-item:hover {
+            background: linear-gradient(135deg, #0f172a, #1e293b);
+            color: white;
+            transform: translateX(4px);
+        }
+
+        .suggestion-item:hover .docket-number {
+            color: #10b981;
+        }
+
+        .suggestion-item:hover .docket-name {
+            color: rgba(255,255,255,0.9);
+        }
+
+        .docket-number {
+            font-weight: 700;
+            color: #0f172a;
+            font-size: 1.1rem;
+            transition: color 0.2s;
+        }
+
+        .docket-name {
+            font-size: 0.9rem;
+            color: #6b7280;
+            margin-top: 0.25rem;
+            transition: color 0.2s;
+        }
+
+        /* Preview card with government styling */
+        .preview-card {
+            background: linear-gradient(135deg, #0f172a, #1e293b);
+            color: white;
+            border-radius: 16px;
+            padding: 2rem;
+            margin-bottom: 2rem;
+            display: none;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .preview-card::before {
+            content: '✓ DOCKET MONITORING ACTIVATED';
+            position: absolute;
+            top: -1px;
+            left: -1px;
+            right: -1px;
+            background: #10b981;
+            color: #0f172a;
+            padding: 0.5rem;
+            font-weight: 700;
+            font-size: 0.8rem;
+            text-align: center;
+            border-radius: 16px 16px 0 0;
+        }
+
+        .preview-card.show {
+            display: block;
+            animation: slideUp 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        @keyframes slideUp {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .preview-header {
+            margin: 1rem 0 1.5rem;
+        }
+
+        .preview-header h3 {
+            font-size: 1.3rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .benefits {
+            display: grid;
+            gap: 1rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .benefit {
+            display: flex;
+            align-items: center;
+            font-size: 1rem;
+            font-weight: 500;
+        }
+
+        .benefit-icon {
+            margin-right: 0.75rem;
+            font-size: 1.2rem;
+            color: #10b981;
+        }
+
+        /* Email section */
+        .email-section {
+            display: none;
+        }
+
+        .email-section.show {
+            display: block;
+            animation: slideUp 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .email-input {
+            width: 100%;
+            padding: 1.25rem 1.5rem;
+            font-size: 1.1rem;
+            border: 2px solid #e5e7eb;
+            border-radius: 16px;
+            outline: none;
+            margin-bottom: 1.5rem;
+            transition: all 0.3s;
+            font-weight: 500;
+        }
+
+        .email-input:focus {
+            border-color: #10b981;
+            box-shadow: 0 0 0 4px rgba(16, 185, 129, 0.1);
+        }
+
+        /* Government-style buttons */
+        .btn-primary {
+            background: linear-gradient(135deg, #10b981, #059669);
+            color: white;
+            border: none;
+            padding: 1.25rem 2.5rem;
+            font-size: 1.1rem;
+            font-weight: 700;
+            border-radius: 16px;
+            cursor: pointer;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            width: 100%;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .btn-primary::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+            transition: left 0.5s;
+        }
+
+        .btn-primary:hover::before {
+            left: 100%;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 20px 40px rgba(16, 185, 129, 0.4);
+        }
+
+        .btn-secondary {
+            background: transparent;
+            color: #0f172a;
+            border: 2px solid #0f172a;
+            padding: 1rem 2rem;
+            font-size: 1rem;
+            font-weight: 600;
+            border-radius: 16px;
+            cursor: pointer;
+            transition: all 0.3s;
+            margin-top: 1rem;
+            width: 100%;
+        }
+
+        .btn-secondary:hover {
+            background: #0f172a;
+            color: white;
+            transform: translateY(-2px);
+            box-shadow: 0 10px 25px rgba(15, 23, 42, 0.3);
+        }
+
+        /* NEW FEATURES SECTION */
+        .features-section {
+            background: white;
+            padding: 6rem 2rem;
+        }
+
+        .features-container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .features-header {
+            text-align: center;
+            margin-bottom: 4rem;
+        }
+
+        .features-header h2 {
+            font-size: 3rem;
+            font-weight: 900;
+            color: #0f172a;
+            margin-bottom: 1rem;
+        }
+
+        .features-header .highlight {
+            color: #10b981;
+        }
+
+        .features-header p {
+            font-size: 1.2rem;
+            color: #6b7280;
+            max-width: 600px;
+            margin: 0 auto;
+        }
+
+        .features-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 3rem;
+            margin-bottom: 4rem;
+        }
+
+        .feature-card {
+            background: #f8fafc;
+            border-radius: 20px;
+            padding: 2.5rem;
+            border: 2px solid #e5e7eb;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .feature-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: linear-gradient(90deg, #10b981, #059669);
+        }
+
+        .feature-card:hover {
+            transform: translateY(-8px);
+            box-shadow: 0 25px 50px rgba(0,0,0,0.15);
+            border-color: #10b981;
+        }
+
+        .feature-icon {
+            width: 60px;
+            height: 60px;
+            background: linear-gradient(135deg, #10b981, #059669);
+            border-radius: 16px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.8rem;
+            margin-bottom: 1.5rem;
+            box-shadow: 0 8px 20px rgba(16, 185, 129, 0.3);
+        }
+
+        .feature-card h3 {
+            font-size: 1.4rem;
+            font-weight: 700;
+            color: #0f172a;
+            margin-bottom: 1rem;
+        }
+
+        .feature-card p {
+            color: #6b7280;
+            line-height: 1.6;
+            margin-bottom: 1.5rem;
+        }
+
+        .feature-list {
+            list-style: none;
+            padding: 0;
+        }
+
+        .feature-list li {
+            display: flex;
+            align-items: center;
+            color: #374151;
+            margin-bottom: 0.75rem;
+            font-weight: 500;
+        }
+
+        .feature-list li::before {
+            content: '✓';
+            color: #10b981;
+            font-weight: 700;
+            margin-right: 0.75rem;
+            font-size: 1.1rem;
+        }
+
+        /* Footer */
+        .footer {
+            background: #0f172a;
+            color: white;
+            padding: 4rem 2rem 2rem;
+        }
+
+        .footer-container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .footer-grid {
+            display: grid;
+            grid-template-columns: 2fr 1fr 1fr 1fr;
+            gap: 3rem;
+            margin-bottom: 3rem;
+        }
+
+        .footer-brand h3 {
+            color: #10b981;
+            font-size: 1.5rem;
+            font-weight: 800;
+            margin-bottom: 1rem;
+        }
+
+        .footer-brand p {
+            color: rgba(255,255,255,0.8);
+            line-height: 1.6;
+            margin-bottom: 1.5rem;
+        }
+
+        .footer-section h4 {
+            color: white;
+            font-weight: 700;
+            margin-bottom: 1rem;
+            font-size: 1.1rem;
+        }
+
+        .footer-section a {
+            color: rgba(255,255,255,0.7);
+            text-decoration: none;
+            display: block;
+            margin-bottom: 0.5rem;
+            transition: color 0.3s;
+        }
+
+        .footer-section a:hover {
+            color: #10b981;
+        }
+
+        .footer-bottom {
+            border-top: 1px solid #334155;
+            padding-top: 2rem;
+            text-align: center;
+            color: rgba(255,255,255,0.6);
+        }
+
+        /* Mobile responsive */
+        @media (max-width: 768px) {
+            .hero {
+                grid-template-columns: 1fr;
+                gap: 3rem;
+                padding: 3rem 1rem;
+            }
+
+            .hero-content h1 {
+                font-size: 2.5rem;
+            }
+
+            .search-card {
+                padding: 2rem 1.5rem;
+            }
+
+            .nav {
+                padding: 0 1rem;
+            }
+
+            .logo-graphic .text {
+                font-size: 1.4rem;
+            }
+
+            .logo-graphic .icon {
+                width: 32px;
+                height: 32px;
+                font-size: 1.1rem;
+            }
+
+            .nav-links {
+                gap: 1rem;
+            }
+
+            .nav-links a {
+                padding: 0.5rem 1rem;
+                font-size: 0.9rem;
+            }
+
+            .features-section {
+                padding: 4rem 1rem;
+            }
+
+            .features-header h2 {
+                font-size: 2.2rem;
+            }
+
+            .features-grid {
+                grid-template-columns: 1fr;
+                gap: 2rem;
+            }
+
+            .footer-grid {
+                grid-template-columns: 1fr;
+                gap: 2rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Service Banner -->
+    <div class="gov-banner">
+        <span class="flag">📡</span>
+        Independent FCC docket monitoring and intelligence service
+    </div>
+
+    <!-- Header -->
+    <header class="header">
+        <nav class="nav">
+            <div class="logo-section">
+                <div class="logo-graphic">
+                    <div class="icon">📡</div>
+                    <div class="text">Docket<span class="cc">CC</span></div>
+                </div>
+            </div>
+            <ul class="nav-links">
+                <li><a href="#">About</a></li>
+                <li><a href="#">My Subscriptions</a></li>
+                <li><a href="#">Pricing</a></li>
+            </ul>
+        </nav>
+    </header>
+
+    <!-- Hero Section -->
+    <section class="hero">
+        <div class="hero-content">
+            <h1>F<span class="highlight">CC</span> Docket Intelligence</h1>
+            <p class="subtitle">
+                Independent monitoring service for Federal Communications Commission proceedings. 
+                Stay informed with automated alerts and AI-powered analysis of FCC filings.
+            </p>
+            
+            <div class="authority">
+                <h3>Professional Monitoring Service</h3>
+                <p>
+                    Access real-time FCC filing notifications with enterprise-grade reliability 
+                    and advanced security standards.
+                </p>
+            </div>
+        </div>
+
+        <div class="search-card">
+            <h2>Begin Monitoring</h2>
+            <p class="subtitle">Enter an FCC proceeding number to start receiving intelligence</p>
+            
+            <div class="form-group">
+                <label class="form-label" for="docketSearch">FCC Proceeding Number</label>
+                <div class="form-help">Format: XX-XXX (e.g., 02-6, 21-450)</div>
+                
+                <div class="search-container">
+                    <input 
+                        type="text" 
+                        class="search-input" 
+                        placeholder="Enter proceeding number"
+                        id="docketSearch"
+                    />
+                    <div class="search-icon">⚡</div>
+                    
+                    <!-- Suggestions Dropdown -->
+                    <div class="suggestions" id="suggestions">
+                        <div class="suggestion-item" data-docket="02-6" data-name="Schools and Libraries Universal Service Support Mechanism">
+                            <div class="docket-number">02-6</div>
+                            <div class="docket-name">Schools and Libraries Universal Service Support</div>
+                        </div>
+                        <div class="suggestion-item" data-docket="21-450" data-name="Affordable Connectivity Program">
+                            <div class="docket-number">21-450</div>
+                            <div class="docket-name">Affordable Connectivity Program</div>
+                        </div>
+                        <div class="suggestion-item" data-docket="11-42" data-name="Connect America Fund/Universal Service Reform">
+                            <div class="docket-number">11-42</div>
+                            <div class="docket-name">Connect America Fund/Universal Service Reform</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Preview Card -->
+            <div class="preview-card" id="previewCard">
+                <div class="preview-header">
+                    <h3 id="selectedDocket">Proceeding 02-6</h3>
+                    <div id="selectedName" style="opacity: 0.9; font-weight: 500;">Schools and Libraries Universal Service Support Mechanism</div>
+                </div>
+                
+                <div class="benefits">
+                    <div class="benefit">
+                        <span class="benefit-icon">🔔</span>
+                        Real-time filing alerts
+                    </div>
+                    <div class="benefit">
+                        <span class="benefit-icon">📊</span>
+                        AI-powered summaries
+                    </div>
+                    <div class="benefit">
+                        <span class="benefit-icon">🔒</span>
+                        Enterprise-grade secure delivery
+                    </div>
+                </div>
+            </div>
+
+            <!-- Email Section -->
+            <div class="email-section" id="emailSection">
+                <div class="form-group">
+                    <label class="form-label" for="emailInput">Official Email Address</label>
+                    <input 
+                        type="email" 
+                        class="email-input" 
+                        placeholder="your.email@organization.gov"
+                        id="emailInput"
+                    />
+                </div>
+                <button class="btn-primary" onclick="subscribe()">
+                    <span>Activate Docket Monitoring</span>
+                </button>
+            </div>
+
+            <!-- Initial Call to Action -->
+            <div id="initialCTA">
+                <button class="btn-secondary" onclick="showEmailCapture()">
+                    Select Proceeding Number Above
+                </button>
+            </div>
+        </div>
+    </section>
+
+    <!-- NEW FEATURES SECTION -->
+    <section class="features-section">
+        <div class="features-container">
+            <div class="features-header">
+                <h2>Professional <span class="highlight">Intelligence</span> Platform</h2>
+                <p>Trusted by legal professionals, regulatory experts, and enterprise teams to stay ahead of FCC developments that impact their business.</p>
+            </div>
+
+            <div class="features-grid">
+                <div class="feature-card">
+                    <div class="feature-icon">⚡</div>
+                    <h3>Real-Time Monitoring</h3>
+                    <p>Automated surveillance of FCC proceedings with instant notifications when new filings, comments, or orders are published.</p>
+                    <ul class="feature-list">
+                        <li>24/7 automated monitoring</li>
+                        <li>Instant email alerts</li>
+                        <li>Customizable notification frequency</li>
+                        <li>Multi-docket tracking</li>
+                    </ul>
+                </div>
+
+                <div class="feature-card">
+                    <div class="feature-icon">🤖</div>
+                    <h3>AI-Powered Analysis</h3>
+                    <p>Advanced natural language processing transforms complex regulatory documents into clear, actionable intelligence.</p>
+                    <ul class="feature-list">
+                        <li>Executive summaries</li>
+                        <li>Key stakeholder identification</li>
+                        <li>Impact assessment</li>
+                        <li>Deadline tracking</li>
+                    </ul>
+                </div>
+
+                <div class="feature-card">
+                    <div class="feature-icon">🔒</div>
+                    <h3>Enterprise Security</h3>
+                    <p>Bank-grade security infrastructure ensures your monitoring activities and data remain completely confidential.</p>
+                    <ul class="feature-list">
+                        <li>End-to-end encryption</li>
+                        <li>SOC 2 compliance</li>
+                        <li>GDPR compliant</li>
+                        <li>Private data handling</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <div class="footer-container">
+            <div class="footer-grid">
+                <div class="footer-brand">
+                    <h3>DocketCC</h3>
+                    <p>Professional FCC docket monitoring and intelligence service trusted by legal professionals, regulatory experts, and enterprise teams nationwide.</p>
+                    <p style="color: #10b981; font-weight: 600;">Stay ahead of regulatory changes that impact your business.</p>
+                </div>
+                
+                <div class="footer-section">
+                    <h4>Product</h4>
+                    <a href="#">Features</a>
+                    <a href="#">Pricing</a>
+                    <a href="#">API Access</a>
+                    <a href="#">Enterprise</a>
+                    <a href="#">Security</a>
+                </div>
+                
+                <div class="footer-section">
+                    <h4>Resources</h4>
+                    <a href="#">Documentation</a>
+                    <a href="#">FCC Guide</a>
+                    <a href="#">Best Practices</a>
+                    <a href="#">Case Studies</a>
+                    <a href="#">Blog</a>
+                </div>
+                
+                <div class="footer-section">
+                    <h4>Support</h4>
+                    <a href="#">Help Center</a>
+                    <a href="#">Contact Support</a>
+                    <a href="#">System Status</a>
+                    <a href="#">Privacy Policy</a>
+                    <a href="#">Terms of Service</a>
+                </div>
+            </div>
+            
+            <div class="footer-bottom">
+                <p>&copy; 2024 DocketCC. Professional regulatory intelligence service. Not affiliated with the Federal Communications Commission.</p>
+            </div>
+        </div>
+    </footer>
+
+    <script>
+        // Basic interactivity for demo
+        const searchInput = document.getElementById('docketSearch');
+        const suggestions = document.getElementById('suggestions');
+        const previewCard = document.getElementById('previewCard');
+        const emailSection = document.getElementById('emailSection');
+        const initialCTA = document.getElementById('initialCTA');
+
+        searchInput.addEventListener('input', function() {
+            if (this.value.length > 0) {
+                suggestions.style.display = 'block';
+            } else {
+                suggestions.style.display = 'none';
+                previewCard.classList.remove('show');
+                emailSection.classList.remove('show');
+                initialCTA.style.display = 'block';
+            }
+        });
+
+        document.querySelectorAll('.suggestion-item').forEach(item => {
+            item.addEventListener('click', function() {
+                const docket = this.dataset.docket;
+                const name = this.dataset.name;
+                
+                searchInput.value = docket;
+                suggestions.style.display = 'none';
+                
+                document.getElementById('selectedDocket').textContent = `Proceeding ${docket}`;
+                document.getElementById('selectedName').textContent = name;
+                
+                previewCard.classList.add('show');
+                emailSection.classList.add('show');
+                initialCTA.style.display = 'none';
+            });
+        });
+
+        function showEmailCapture() {
+            alert('Please select a proceeding number first by typing in the search box above.');
+        }
+
+        function subscribe() {
+            const email = document.getElementById('emailInput').value;
+            const docket = searchInput.value;
+            
+            if (!email || !docket) {
+                alert('Please enter both an email address and select a docket number.');
+                return;
+            }
+            
+            alert(`Thank you! You will receive monitoring alerts for Proceeding ${docket} at ${email}`);
+        }
+
+        // Hide suggestions when clicking outside
+        document.addEventListener('click', function(e) {
+            if (!e.target.closest('.search-container')) {
+                suggestions.style.display = 'none';
+            }
+        });
+    </script>
