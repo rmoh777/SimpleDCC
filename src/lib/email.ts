@@ -13,145 +13,291 @@ function createWelcomeEmail(data: WelcomeEmailData) {
       <meta name="viewport" content="width=device-width, initial-scale=1.0">
       <title>Welcome to DocketCC</title>
       <style>
-        body { 
-          font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif; 
-          line-height: 1.6; 
-          color: #333; 
+        * { 
           margin: 0; 
           padding: 0; 
-          background-color: #f8f9fa;
+          box-sizing: border-box; 
         }
-        .container { 
+        
+        body { 
+          font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+          line-height: 1.6; 
+          color: #1f2937; 
+          margin: 0; 
+          padding: 0; 
+          background-color: #f8fafc;
+        }
+        
+        .email-container { 
           max-width: 600px; 
           margin: 0 auto; 
-          background-color: white;
-          box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+          background-color: #f8fafc;
+          padding: 20px;
         }
+        
         .header { 
-          background: linear-gradient(135deg, #007cba 0%, #005a8a 100%);
-          color: white; 
+          background: white;
+          border-radius: 16px;
           padding: 40px 30px; 
           text-align: center; 
+          margin-bottom: 20px;
+          box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
         }
+        
+        .logo {
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          gap: 12px;
+          margin-bottom: 20px;
+        }
+        
+        .logo-icon {
+          width: 48px;
+          height: 48px;
+          background: linear-gradient(135deg, #10b981, #059669);
+          border-radius: 12px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          font-size: 24px;
+          box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
+        }
+        
+        .logo-text {
+          font-size: 2rem;
+          font-weight: 800;
+          color: #0f172a;
+          letter-spacing: -0.5px;
+        }
+        
+        .logo-text .cc {
+          color: #10b981;
+        }
+        
         .header h1 {
+          margin: 0 0 8px 0;
+          font-size: 1.8rem;
+          font-weight: 700;
+          color: #0f172a;
+        }
+        
+        .header p {
+          color: #6b7280;
+          font-size: 1rem;
           margin: 0;
-          font-size: 28px;
+        }
+        
+        .card { 
+          background: white;
+          border-radius: 16px;
+          padding: 30px; 
+          margin-bottom: 20px;
+          box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+        }
+        
+        .card h2 {
+          color: #0f172a;
+          margin: 0 0 20px 0;
+          font-size: 1.5rem;
           font-weight: 700;
         }
-        .header p {
-          margin: 10px 0 0 0;
-          opacity: 0.9;
-          font-size: 16px;
+        
+        .status-badge {
+          display: inline-block;
+          background: linear-gradient(135deg, #10b981, #059669);
+          color: white;
+          padding: 12px 24px;
+          border-radius: 12px;
+          font-weight: 600;
+          font-size: 1rem;
+          margin: 20px 0;
+          box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
         }
-        .content { 
-          padding: 40px 30px; 
+        
+        .docket-highlight {
+          background: #f0fdf4;
+          padding: 20px;
+          border-radius: 12px;
+          margin: 25px 0;
+          border: 2px solid #10b981;
+          text-align: center;
         }
-        .content h2 {
-          color: #333;
-          margin-top: 0;
-          margin-bottom: 20px;
-          font-size: 24px;
+        
+        .docket-highlight strong {
+          color: #059669;
+          font-size: 1.1rem;
+          font-weight: 700;
         }
-        .docket-box { 
-          background: #f8f9fa; 
+        
+        .feature-list { 
+          background: #f8fafc; 
           padding: 25px; 
-          border-left: 4px solid #007cba; 
+          border-left: 4px solid #10b981; 
           margin: 25px 0; 
-          border-radius: 0 8px 8px 0;
+          border-radius: 0 12px 12px 0;
         }
-        .docket-box h3 {
-          margin-top: 0;
-          color: #007cba;
-          font-size: 18px;
+        
+        .feature-list h3 {
+          margin: 0 0 15px 0;
+          color: #059669;
+          font-size: 1.2rem;
+          font-weight: 700;
         }
-        .docket-box ul {
+        
+        .feature-list ul {
           margin: 15px 0;
           padding-left: 20px;
         }
-        .docket-box li {
-          margin-bottom: 8px;
+        
+        .feature-list li {
+          margin-bottom: 12px;
+          color: #374151;
         }
-        .docket-highlight {
+        
+        .feature-list li strong {
+          color: #0f172a;
+        }
+        
+        .commitment-box {
+          background: #0f172a;
+          color: white;
+          padding: 25px;
+          border-radius: 12px;
+          margin: 25px 0;
+        }
+        
+        .commitment-box p {
+          margin: 0;
+          font-size: 1rem;
+          line-height: 1.6;
+        }
+        
+        .commitment-box strong {
+          color: #10b981;
+        }
+        
+        .footer-card { 
           background: white;
-          padding: 15px;
-          border-radius: 6px;
-          margin: 20px 0;
-          border: 2px solid #007cba;
-          text-align: center;
-        }
-        .docket-highlight strong {
-          color: #007cba;
-          font-size: 18px;
-        }
-        .footer { 
-          background: #f8f9fa;
+          border-radius: 16px;
           padding: 30px; 
           text-align: center; 
-          border-top: 1px solid #dee2e6;
+          box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
         }
-        .button { 
+        
+        .footer-card h3 {
+          color: #0f172a;
+          font-size: 1.3rem;
+          font-weight: 700;
+          margin: 0 0 15px 0;
+        }
+        
+        .unsubscribe-button { 
           display: inline-block; 
-          padding: 12px 24px; 
-          background-color: #dc3545; 
+          padding: 14px 28px; 
+          background: linear-gradient(135deg, #ef4444, #dc2626);
           color: white; 
           text-decoration: none; 
-          border-radius: 6px; 
-          font-weight: 500;
-          margin: 15px 0;
+          border-radius: 12px; 
+          font-weight: 600;
+          font-size: 1rem;
+          margin: 20px 0;
+          box-shadow: 0 4px 12px rgba(239, 68, 68, 0.3);
+          transition: all 0.2s ease;
         }
-        .button:hover {
-          background-color: #c82333;
+        
+        .unsubscribe-button:hover {
+          background: linear-gradient(135deg, #dc2626, #b91c1c);
+          transform: translateY(-1px);
         }
+        
         .disclaimer {
-          font-size: 12px; 
-          color: #6c757d;
+          font-size: 0.8rem; 
+          color: #6b7280;
           margin-top: 25px;
-          line-height: 1.4;
+          line-height: 1.5;
+          padding-top: 20px;
+          border-top: 1px solid #e5e7eb;
         }
+        
+        .text-center {
+          text-align: center;
+        }
+        
+        .text-emerald {
+          color: #10b981;
+        }
+        
+        .font-semibold {
+          font-weight: 600;
+        }
+        
         @media (max-width: 600px) {
-          .container { margin: 0; }
-          .header, .content, .footer { padding: 20px; }
+          .email-container { 
+            padding: 10px; 
+          }
+          .header, .card, .footer-card { 
+            padding: 20px; 
+          }
+          .logo-text {
+            font-size: 1.6rem;
+          }
+          .logo-icon {
+            width: 40px;
+            height: 40px;
+            font-size: 20px;
+          }
         }
       </style>
     </head>
     <body>
-      <div class="container">
+      <div class="email-container">
         <div class="header">
-          <h1>🎉 Welcome to DocketCC!</h1>
-          <p>Your FCC docket monitoring service</p>
+          <div class="logo">
+            <div class="logo-icon">📡</div>
+            <div class="logo-text">Docket<span class="cc">CC</span></div>
+          </div>
+          <h1>Welcome to Professional FCC Intelligence</h1>
+          <p>Your independent docket monitoring service is now active</p>
         </div>
         
-        <div class="content">
-          <h2>Subscription Confirmed</h2>
-          <p>Thank you for subscribing! You're now monitoring FCC docket activity and will receive timely notifications.</p>
-          
-          <div class="docket-highlight">
-            <strong>Monitoring Docket: ${data.docketNumber}</strong>
+        <div class="card">
+          <div class="text-center">
+            <div class="status-badge">✅ Subscription Confirmed</div>
           </div>
           
-          <div class="docket-box">
-            <h3>What happens next?</h3>
+          <p>Thank you for subscribing to DocketCC! You're now part of our professional intelligence network monitoring FCC proceedings with enterprise-grade reliability.</p>
+          
+          <div class="docket-highlight">
+            <strong>📋 Now Monitoring: FCC Docket ${data.docketNumber}</strong>
+          </div>
+          
+          <div class="feature-list">
+            <h3>🚀 What happens next?</h3>
             <ul>
-              <li><strong>We monitor</strong> FCC Docket ${data.docketNumber} 24/7 for new filings and updates</li>
-              <li><strong>You get notified</strong> via email when something important happens</li>
-              <li><strong>Direct links</strong> to all new documents and filings are included</li>
-              <li><strong>Easy management</strong> - you can unsubscribe at any time</li>
+              <li><strong>24/7 Automated Monitoring</strong> - We track FCC Docket ${data.docketNumber} around the clock for new filings and updates</li>
+              <li><strong>Instant Email Alerts</strong> - Get notified immediately when something important happens</li>
+              <li><strong>Direct Document Links</strong> - Quick access to all new filings and official documents</li>
+              <li><strong>Professional Intelligence</strong> - Clear, actionable information formatted for regulatory professionals</li>
             </ul>
           </div>
           
-          <p><strong>Our commitment:</strong> We only send notifications when there are actual updates to your subscribed dockets. No spam, no unnecessary emails, just the regulatory information you need.</p>
+          <div class="commitment-box">
+            <p><strong>Our Professional Commitment:</strong> We only send notifications when there are actual regulatory developments. No spam, no unnecessary emails - just the critical FCC intelligence you need to stay ahead of regulatory changes that impact your business.</p>
+          </div>
           
-          <p>Questions about DocketCC? Visit our website or reply to this email.</p>
+          <p>Questions about DocketCC? Visit our website at <strong class="text-emerald">docketcc.com</strong> or reply to this email for support.</p>
         </div>
         
-        <div class="footer">
-          <p><strong>Managing your subscription</strong></p>
-          <p>You can unsubscribe from this specific docket at any time:</p>
-          <a href="${data.unsubscribeUrl}" class="button">Unsubscribe from Docket ${data.docketNumber}</a>
+        <div class="footer-card">
+          <h3>🔧 Manage Your Intelligence Subscription</h3>
+          <p>You have complete control over your docket monitoring preferences. You can unsubscribe from this specific docket monitoring at any time:</p>
+          <a href="${data.unsubscribeUrl}" class="unsubscribe-button">Unsubscribe from Docket ${data.docketNumber}</a>
           
           <div class="disclaimer">
-            This is an automated message from DocketCC (docketcc.com).<br>
-            DocketCC is an independent service and is not affiliated with the Federal Communications Commission.
+            This is an automated message from DocketCC Professional Intelligence Service.<br>
+            <strong>🇺🇸 An independent FCC docket monitoring service</strong> - Not affiliated with the Federal Communications Commission.<br>
+            Trusted by legal professionals, regulatory experts, and enterprise teams nationwide.
           </div>
         </div>
       </div>
@@ -160,30 +306,33 @@ function createWelcomeEmail(data: WelcomeEmailData) {
   `;
 
   const text = `
-Welcome to DocketCC!
-Your FCC docket monitoring service
+📡 DocketCC - Professional FCC Intelligence
 
-SUBSCRIPTION CONFIRMED
+WELCOME TO PROFESSIONAL FCC INTELLIGENCE
+Your independent docket monitoring service is now active
 
-Thank you for subscribing! You're now monitoring FCC docket activity and will receive timely notifications.
+✅ SUBSCRIPTION CONFIRMED
 
-MONITORING DOCKET: ${data.docketNumber}
+Thank you for subscribing to DocketCC! You're now part of our professional intelligence network monitoring FCC proceedings with enterprise-grade reliability.
 
-What happens next?
-- We monitor FCC Docket ${data.docketNumber} 24/7 for new filings and updates
-- You get notified via email when something important happens  
-- Direct links to all new documents and filings are included
-- Easy management - you can unsubscribe at any time
+📋 NOW MONITORING: FCC DOCKET ${data.docketNumber}
 
-Our commitment: We only send notifications when there are actual updates to your subscribed dockets. No spam, no unnecessary emails, just the regulatory information you need.
+🚀 WHAT HAPPENS NEXT?
+• 24/7 Automated Monitoring - We track FCC Docket ${data.docketNumber} around the clock for new filings and updates
+• Instant Email Alerts - Get notified immediately when something important happens  
+• Direct Document Links - Quick access to all new filings and official documents
+• Professional Intelligence - Clear, actionable information formatted for regulatory professionals
 
-Questions about DocketCC? Visit our website or reply to this email.
+OUR PROFESSIONAL COMMITMENT: We only send notifications when there are actual regulatory developments. No spam, no unnecessary emails - just the critical FCC intelligence you need to stay ahead of regulatory changes that impact your business.
 
-MANAGING YOUR SUBSCRIPTION
-You can unsubscribe from this specific docket at any time: ${data.unsubscribeUrl}
+Questions about DocketCC? Visit our website at docketcc.com or reply to this email for support.
 
-This is an automated message from DocketCC (docketcc.com).
-DocketCC is an independent service and is not affiliated with the Federal Communications Commission.
+🔧 MANAGE YOUR INTELLIGENCE SUBSCRIPTION
+You have complete control over your docket monitoring preferences. You can unsubscribe from this specific docket monitoring at any time: ${data.unsubscribeUrl}
+
+This is an automated message from DocketCC Professional Intelligence Service.
+🇺🇸 An independent FCC docket monitoring service - Not affiliated with the Federal Communications Commission.
+Trusted by legal professionals, regulatory experts, and enterprise teams nationwide.
   `.trim();
 
   return {
