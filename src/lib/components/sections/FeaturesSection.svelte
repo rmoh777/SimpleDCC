@@ -103,16 +103,16 @@
     <!-- Features Grid -->
     <div class="features-grid">
       {#each features as feature, index}
-        <div class="feature-card-wrapper" class:popular={feature.popular}>
-          <Card 
-            variant="feature" 
-            hover 
-            padding="lg"
-            on:click={() => handleFeatureClick(index)}
-          >
-            {#if feature.popular}
-              <div class="popular-badge">Most Popular</div>
-            {/if}
+        <Card 
+          variant="feature" 
+          hover 
+          padding="lg"
+          class={feature.popular ? 'popular-feature' : ''}
+          on:click={() => handleFeatureClick(index)}
+        >
+          {#if feature.popular}
+            <div class="popular-badge">Most Popular</div>
+          {/if}
           
           <div class="feature-content">
             <div class="feature-icon" role="img" aria-label={feature.title}>
@@ -144,7 +144,6 @@
             {/if}
           </div>
         </Card>
-        </div>
       {/each}
     </div>
     
@@ -214,38 +213,16 @@
   .features-grid {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
-    gap: var(--spacing-xl);
-    margin-bottom: var(--spacing-3xl);
     gap: var(--spacing-lg);
     margin-bottom: var(--spacing-2xl);
   }
   
-  .feature-card-wrapper {
+  .popular-feature {
     position: relative;
-    width: 100%;
-    height: 100%;
-  }
-  
-  .feature-card-wrapper.popular-feature {
-    position: relative;
-  }
-  
-  .feature-card-wrapper :global(.card) {
-    height: 100%;
   }
   
   .popular-badge {
     position: absolute;
-    top: -8px;
-    right: -8px;
-    background: linear-gradient(135deg, var(--color-primary), var(--color-primary-hover));
-    color: white;
-    padding: var(--spacing-xs) var(--spacing-sm);
-    border-radius: var(--border-radius);
-    font-size: var(--font-size-xs);
-    font-weight: var(--font-weight-bold);
-    z-index: 10;
-    box-shadow: var(--shadow-md);
     top: -1px;
     right: var(--spacing-md);
     background: var(--color-primary);
@@ -254,24 +231,17 @@
     border-radius: 0 0 var(--border-radius) var(--border-radius);
     font-size: var(--font-size-xs);
     font-weight: var(--font-weight-semibold);
-    z-index: 20;
+    z-index: 10;
   }
   
   .feature-content {
     text-align: center;
-    height: 100%;
-    display: flex;
-    flex-direction: column;
     position: relative;
   }
   
   .feature-icon {
     font-size: 3rem;
     margin-bottom: var(--spacing-md);
-    height: 4rem;
-    display: flex;
-    align-items: center;
-    justify-content: center;
     display: block;
   }
   
@@ -286,15 +256,6 @@
     color: var(--color-text-secondary);
     line-height: 1.6;
     margin-bottom: var(--spacing-md);
-    flex-grow: 1;
-  }
-  
-  .feature-details {
-    background: var(--color-background);
-    padding: var(--spacing-md);
-    border-radius: var(--border-radius);
-    margin-top: var(--spacing-md);
-    text-align: left;
   }
   
   .feature-details {
@@ -306,11 +267,6 @@
   
   .feature-details h4 {
     font-size: var(--font-size-sm);
-    font-weight: var(--font-weight-bold);
-    color: var(--color-secondary);
-    margin-bottom: var(--spacing-xs);
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
     font-weight: var(--font-weight-semibold);
     color: var(--color-primary);
     margin-bottom: var(--spacing-sm);
@@ -319,14 +275,6 @@
   .feature-list {
     list-style: none;
     padding: 0;
-    margin: 0 0 var(--spacing-sm) 0;
-  }
-  
-  .feature-list li {
-    padding: var(--spacing-xs) 0;
-    color: var(--color-text-secondary);
-    position: relative;
-    padding-left: var(--spacing-md);
     margin: 0;
   }
   
@@ -340,20 +288,6 @@
   
   .feature-list li::before {
     content: '✓';
-    position: absolute;
-    left: 0;
-    color: var(--color-primary);
-    font-weight: var(--font-weight-bold);
-  }
-  
-  .expand-button {
-    background: var(--color-primary);
-    color: white;
-    border: none;
-    padding: var(--spacing-xs) var(--spacing-md);
-    border-radius: var(--border-radius);
-    font-size: var(--font-size-sm);
-    font-weight: var(--font-weight-semibold);
     color: var(--color-primary);
     font-weight: var(--font-weight-bold);
     margin-right: var(--spacing-xs);
@@ -373,14 +307,6 @@
     display: flex;
     align-items: center;
     gap: var(--spacing-xs);
-    margin-top: auto;
-    align-self: center;
-  }
-  
-  .expand-button:hover {
-    background: var(--color-primary-hover);
-    transform: translateY(-2px);
-    box-shadow: var(--shadow-md);
     margin: 0 auto;
   }
   
@@ -421,11 +347,6 @@
   
   .trust-icon {
     font-size: 2rem;
-    min-width: 3rem;
-    height: 3rem;
-    display: flex;
-    align-items: center;
-    justify-content: center;
     flex-shrink: 0;
   }
   
@@ -434,10 +355,6 @@
   }
   
   .trust-content h4 {
-    font-size: var(--font-size-lg);
-    font-weight: var(--font-weight-bold);
-    color: var(--color-secondary);
-    margin-bottom: var(--spacing-xs);
     font-size: var(--font-size-base);
     font-weight: var(--font-weight-semibold);
     color: var(--color-secondary);
@@ -450,15 +367,6 @@
     margin: 0;
   }
   
-  /* Responsive Design */
-  @media (max-width: 768px) {
-    .features-header h2 {
-      font-size: 2.5rem;
-    }
-    
-    .features-grid {
-      grid-template-columns: 1fr;
-      gap: var(--spacing-lg);
   /* Responsive */
   @media (max-width: 768px) {
     .features-grid {
