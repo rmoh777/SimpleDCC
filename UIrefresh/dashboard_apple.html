@@ -1,0 +1,767 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DocketCC - Dashboard</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+            background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+            color: #1f2937;
+            min-height: 100vh;
+            -webkit-font-smoothing: antialiased;
+        }
+
+        /* Government header */
+        .gov-banner {
+            background: rgba(15, 23, 42, 0.95);
+            backdrop-filter: blur(20px);
+            color: white;
+            padding: 0.5rem 0;
+            font-size: 0.85rem;
+            text-align: center;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+        }
+
+        .header {
+            background: rgba(255,255,255,0.95);
+            backdrop-filter: blur(40px);
+            padding: 1rem 0;
+            box-shadow: 0 1px 20px rgba(0,0,0,0.1);
+            border-bottom: 1px solid rgba(16, 185, 129, 0.2);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        .nav {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .logo-graphic {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+
+        .logo-graphic .icon {
+            width: 40px;
+            height: 40px;
+            background: linear-gradient(145deg, #10b981, #059669);
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.4rem;
+            box-shadow: 0 4px 20px rgba(16, 185, 129, 0.25);
+        }
+
+        .logo-graphic .text {
+            font-size: 1.75rem;
+            font-weight: 700;
+            color: #0f172a;
+            letter-spacing: -0.75px;
+        }
+
+        .logo-graphic .text .cc {
+            color: #10b981;
+        }
+
+        .nav-links {
+            display: flex;
+            gap: 0.5rem;
+            list-style: none;
+        }
+
+        .nav-links a {
+            color: #374151;
+            text-decoration: none;
+            font-weight: 500;
+            padding: 0.75rem 1.25rem;
+            border-radius: 12px;
+            transition: all 0.25s ease;
+            font-size: 0.95rem;
+        }
+
+        .nav-links a:hover {
+            background: rgba(15, 23, 42, 0.08);
+            color: #0f172a;
+        }
+
+        .nav-links a.active {
+            background: rgba(16, 185, 129, 0.12);
+            color: #059669;
+            font-weight: 600;
+        }
+
+        /* Apple-style Dashboard Layout */
+        .dashboard-container {
+            max-width: 1100px;
+            margin: 0 auto;
+            padding: 2.5rem 1.5rem;
+        }
+
+        .dashboard-header {
+            text-align: center;
+            margin-bottom: 3rem;
+        }
+
+        .dashboard-header h1 {
+            font-size: 2.75rem;
+            font-weight: 700;
+            color: white;
+            margin-bottom: 0.75rem;
+            letter-spacing: -1px;
+        }
+
+        .dashboard-header .highlight {
+            background: linear-gradient(135deg, #10b981, #059669);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .dashboard-header p {
+            color: rgba(255,255,255,0.8);
+            font-size: 1.1rem;
+            font-weight: 400;
+        }
+
+        /* Apple Card Grid */
+        .dashboard-grid {
+            display: grid;
+            grid-template-columns: repeat(12, 1fr);
+            gap: 1.5rem;
+        }
+
+        .dashboard-card {
+            background: rgba(255,255,255,0.98);
+            backdrop-filter: blur(40px);
+            border-radius: 20px;
+            padding: 1.75rem;
+            box-shadow: 0 8px 40px rgba(0,0,0,0.12);
+            border: 1px solid rgba(255,255,255,0.2);
+            transition: all 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .dashboard-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 3px;
+            background: linear-gradient(90deg, #10b981, #059669);
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+
+        .dashboard-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 20px 60px rgba(0,0,0,0.15);
+        }
+
+        .dashboard-card:hover::before {
+            opacity: 1;
+        }
+
+        .email-card { grid-column: span 6; }
+        .plan-card { grid-column: span 6; }
+        .subscriptions-card { grid-column: span 12; }
+        .filings-card { grid-column: span 12; }
+
+        .card-header {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .card-icon {
+            width: 44px;
+            height: 44px;
+            background: linear-gradient(145deg, #f8fafc, #e2e8f0);
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.3rem;
+            box-shadow: inset 0 1px 0 rgba(255,255,255,0.3), 0 2px 8px rgba(0,0,0,0.1);
+        }
+
+        .card-title {
+            font-size: 1.25rem;
+            font-weight: 600;
+            color: #0f172a;
+            letter-spacing: -0.25px;
+        }
+
+        /* Email Verification - Apple Style */
+        .verification-status {
+            background: linear-gradient(145deg, #f0fdf4, #dcfce7);
+            border: 1px solid rgba(16, 185, 129, 0.2);
+            border-radius: 16px;
+            padding: 1.25rem;
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            margin-bottom: 1rem;
+        }
+
+        .verification-status.pending {
+            background: linear-gradient(145deg, #fffbeb, #fef3c7);
+            border-color: rgba(245, 158, 11, 0.2);
+        }
+
+        .status-icon {
+            width: 28px;
+            height: 28px;
+            border-radius: 50%;
+            background: #10b981;
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.8rem;
+            font-weight: 600;
+            box-shadow: 0 2px 8px rgba(16, 185, 129, 0.3);
+        }
+
+        .pending .status-icon {
+            background: #f59e0b;
+            box-shadow: 0 2px 8px rgba(245, 158, 11, 0.3);
+        }
+
+        .status-text {
+            flex: 1;
+        }
+
+        .status-title {
+            font-weight: 600;
+            color: #059669;
+            margin-bottom: 0.25rem;
+        }
+
+        .pending .status-title {
+            color: #d97706;
+        }
+
+        .status-email {
+            font-size: 0.9rem;
+            color: #374151;
+            font-weight: 500;
+        }
+
+        .resend-button {
+            background: rgba(16, 185, 129, 0.1);
+            color: #059669;
+            border: 1px solid rgba(16, 185, 129, 0.2);
+            padding: 0.5rem 1rem;
+            border-radius: 10px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            font-size: 0.9rem;
+        }
+
+        .resend-button:hover {
+            background: rgba(16, 185, 129, 0.15);
+        }
+
+        /* Plan Card - Apple Style */
+        .plan-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            background: linear-gradient(145deg, #e0e7ff, #c7d2fe);
+            color: #4338ca;
+            padding: 0.6rem 1.2rem;
+            border-radius: 12px;
+            font-weight: 600;
+            margin-bottom: 1rem;
+            font-size: 0.9rem;
+        }
+
+        .plan-badge.pro {
+            background: linear-gradient(145deg, #d1fae5, #a7f3d0);
+            color: #059669;
+        }
+
+        .plan-features {
+            color: #6b7280;
+            margin-bottom: 1.5rem;
+            line-height: 1.6;
+        }
+
+        .upgrade-button {
+            background: linear-gradient(145deg, #10b981, #059669);
+            color: white;
+            border: none;
+            padding: 0.875rem 1.5rem;
+            border-radius: 12px;
+            font-weight: 600;
+            cursor: pointer;
+            width: 100%;
+            transition: all 0.2s ease;
+            box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
+        }
+
+        .upgrade-button:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 6px 16px rgba(16, 185, 129, 0.4);
+        }
+
+        .upgrade-subtitle {
+            font-size: 0.8rem;
+            color: #9ca3af;
+            text-align: center;
+            margin-top: 0.5rem;
+        }
+
+        /* Subscription Item - Apple Style */
+        .subscription-item {
+            background: linear-gradient(145deg, #f8fafc, #f1f5f9);
+            border: 1px solid rgba(148, 163, 184, 0.2);
+            border-radius: 16px;
+            padding: 1.5rem;
+            margin-bottom: 1rem;
+            transition: all 0.2s ease;
+        }
+
+        .subscription-item:hover {
+            background: linear-gradient(145deg, #f1f5f9, #e2e8f0);
+        }
+
+        .docket-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 1rem;
+        }
+
+        .docket-info {
+            flex: 1;
+        }
+
+        .docket-number {
+            font-weight: 700;
+            color: #10b981;
+            font-size: 1rem;
+            margin-bottom: 0.25rem;
+        }
+
+        .docket-title {
+            color: #374151;
+            font-size: 0.95rem;
+            line-height: 1.4;
+            margin-bottom: 0.5rem;
+        }
+
+        .docket-status {
+            font-size: 0.8rem;
+            color: #059669;
+            font-weight: 500;
+        }
+
+        .subscription-controls {
+            display: flex;
+            gap: 0.75rem;
+            align-items: center;
+        }
+
+        .frequency-select {
+            padding: 0.5rem 0.75rem;
+            border: 1px solid #d1d5db;
+            border-radius: 8px;
+            background: white;
+            font-size: 0.9rem;
+            font-weight: 500;
+            cursor: pointer;
+        }
+
+        .unsubscribe-btn {
+            background: #ef4444;
+            color: white;
+            border: none;
+            padding: 0.5rem 1rem;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+            font-size: 0.85rem;
+            transition: background 0.2s ease;
+        }
+
+        .unsubscribe-btn:hover {
+            background: #dc2626;
+        }
+
+        /* Add Docket Section */
+        .add-docket-section {
+            text-align: center;
+            padding: 2rem;
+            background: linear-gradient(145deg, #f8fafc, #f1f5f9);
+            border: 2px dashed #cbd5e1;
+            border-radius: 16px;
+            margin-top: 1rem;
+        }
+
+        .add-docket-icon {
+            font-size: 2.5rem;
+            margin-bottom: 1rem;
+            opacity: 0.7;
+        }
+
+        .add-docket-title {
+            font-weight: 600;
+            color: #374151;
+            margin-bottom: 0.5rem;
+        }
+
+        .add-docket-subtitle {
+            font-size: 0.9rem;
+            color: #6b7280;
+            margin-bottom: 1.5rem;
+        }
+
+        .add-docket-btn {
+            background: #10b981;
+            color: white;
+            border: none;
+            padding: 0.75rem 1.5rem;
+            border-radius: 12px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .add-docket-btn:hover {
+            background: #059669;
+            transform: translateY(-1px);
+        }
+
+        /* Filing Item - Apple Style */
+        .filing-item {
+            background: linear-gradient(145deg, #f8fafc, #f1f5f9);
+            border: 1px solid rgba(148, 163, 184, 0.15);
+            border-radius: 12px;
+            padding: 1.25rem;
+            margin-bottom: 1rem;
+            transition: all 0.2s ease;
+        }
+
+        .filing-item:hover {
+            background: linear-gradient(145deg, #f1f5f9, #e2e8f0);
+            transform: translateX(2px);
+        }
+
+        .filing-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 0.75rem;
+        }
+
+        .filing-docket {
+            font-weight: 700;
+            color: #10b981;
+            font-size: 0.85rem;
+        }
+
+        .filing-date {
+            color: #9ca3af;
+            font-size: 0.8rem;
+            font-weight: 500;
+        }
+
+        .filing-title {
+            font-weight: 600;
+            color: #0f172a;
+            margin-bottom: 0.5rem;
+            line-height: 1.4;
+            font-size: 0.95rem;
+        }
+
+        .filing-summary {
+            color: #6b7280;
+            font-size: 0.85rem;
+            line-height: 1.5;
+            margin-bottom: 0.75rem;
+        }
+
+        .view-filing-btn {
+            background: rgba(16, 185, 129, 0.1);
+            color: #059669;
+            border: 1px solid rgba(16, 185, 129, 0.2);
+            padding: 0.5rem 1rem;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            font-size: 0.85rem;
+        }
+
+        .view-filing-btn:hover {
+            background: rgba(16, 185, 129, 0.15);
+        }
+
+        .view-all-link {
+            text-align: center;
+            margin-top: 1.5rem;
+        }
+
+        .view-all-btn {
+            background: transparent;
+            color: #10b981;
+            border: 2px solid rgba(16, 185, 129, 0.3);
+            padding: 0.75rem 1.5rem;
+            border-radius: 12px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .view-all-btn:hover {
+            background: rgba(16, 185, 129, 0.1);
+            border-color: rgba(16, 185, 129, 0.5);
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .dashboard-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .email-card, .plan-card {
+                grid-column: span 1;
+            }
+
+            .dashboard-container {
+                padding: 2rem 1rem;
+            }
+
+            .nav {
+                padding: 0 1rem;
+            }
+
+            .nav-links {
+                gap: 0.25rem;
+            }
+
+            .nav-links a {
+                padding: 0.5rem 0.75rem;
+                font-size: 0.9rem;
+            }
+
+            .dashboard-header h1 {
+                font-size: 2.25rem;
+            }
+
+            .subscription-controls {
+                flex-direction: column;
+                align-items: stretch;
+            }
+
+            .docket-header {
+                flex-direction: column;
+                gap: 1rem;
+            }
+
+            .filing-header {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 0.25rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Service Banner -->
+    <div class="gov-banner">
+        <span>📡</span> Independent FCC docket monitoring and intelligence service
+    </div>
+
+    <!-- Header -->
+    <header class="header">
+        <nav class="nav">
+            <div class="logo-graphic">
+                <div class="icon">📡</div>
+                <div class="text">Docket<span class="cc">CC</span></div>
+            </div>
+            <ul class="nav-links">
+                <li><a href="#">About</a></li>
+                <li><a href="#" class="active">Dashboard</a></li>
+                <li><a href="#">Pricing</a></li>
+            </ul>
+        </nav>
+    </header>
+
+    <!-- Dashboard Container -->
+    <div class="dashboard-container">
+        <!-- Header -->
+        <div class="dashboard-header">
+            <h1>Your <span class="highlight">Intelligence</span> Dashboard</h1>
+            <p>Monitor, analyze, and stay informed about FCC proceedings</p>
+        </div>
+
+        <!-- Dashboard Grid -->
+        <div class="dashboard-grid">
+            <!-- Email Verification Card -->
+            <div class="dashboard-card email-card">
+                <div class="card-header">
+                    <div class="card-icon">✉️</div>
+                    <h2 class="card-title">Email Verification</h2>
+                </div>
+
+                <div class="verification-status">
+                    <div class="status-icon">✓</div>
+                    <div class="status-text">
+                        <div class="status-title">Email Verified</div>
+                        <div class="status-email">user@company.com</div>
+                    </div>
+                </div>
+
+                <!-- Alternative pending state -->
+                <!--
+                <div class="verification-status pending">
+                    <div class="status-icon">!</div>
+                    <div class="status-text">
+                        <div class="status-title">Verification Pending</div>
+                        <div class="status-email">Check your email for verification link</div>
+                    </div>
+                    <button class="resend-button">Resend</button>
+                </div>
+                -->
+
+                <p style="color: #9ca3af; font-size: 0.9rem; margin-top: 0.75rem;">
+                    All docket notifications will be delivered to your verified email address.
+                </p>
+            </div>
+
+            <!-- Pricing Level Card -->
+            <div class="dashboard-card plan-card">
+                <div class="card-header">
+                    <div class="card-icon">⭐</div>
+                    <h2 class="card-title">Subscription Plan</h2>
+                </div>
+
+                <div class="plan-badge">
+                    <span>🆓</span>
+                    <span>Free Plan</span>
+                </div>
+
+                <div class="plan-features">
+                    <strong>Current features:</strong><br>
+                    • 1 docket subscription<br>
+                    • Basic email notifications<br>
+                    • Standard support
+                </div>
+
+                <button class="upgrade-button">
+                    Upgrade to Pro — $2.99/month
+                </button>
+
+                <div class="upgrade-subtitle">
+                    Unlock unlimited dockets + AI summaries
+                </div>
+            </div>
+
+            <!-- Docket Subscriptions Card -->
+            <div class="dashboard-card subscriptions-card">
+                <div class="card-header">
+                    <div class="card-icon">📊</div>
+                    <h2 class="card-title">Docket Subscriptions</h2>
+                </div>
+
+                <div class="subscription-item">
+                    <div class="docket-header">
+                        <div class="docket-info">
+                            <div class="docket-number">FCC 24-120</div>
+                            <div class="docket-title">Wireless Emergency Alerts Enhancement Proposals</div>
+                            <div class="docket-status">✓ Active • Last filing: 2 days ago</div>
+                        </div>
+                        <div class="subscription-controls">
+                            <select class="frequency-select">
+                                <option>Daily</option>
+                                <option>Weekly</option>
+                                <option>Immediate</option>
+                            </select>
+                            <button class="unsubscribe-btn">Unsubscribe</button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="add-docket-section">
+                    <div class="add-docket-icon">📡</div>
+                    <div class="add-docket-title">Track More Dockets</div>
+                    <div class="add-docket-subtitle">Monitor additional FCC proceedings (Pro plan required for unlimited)</div>
+                    <button class="add-docket-btn">+ Add New Docket</button>
+                </div>
+            </div>
+
+            <!-- Recent Filings Card -->
+            <div class="dashboard-card filings-card">
+                <div class="card-header">
+                    <div class="card-icon">📄</div>
+                    <h2 class="card-title">Recent Filings Sent</h2>
+                </div>
+
+                <div class="filing-item">
+                    <div class="filing-header">
+                        <div class="filing-docket">FCC 24-120</div>
+                        <div class="filing-date">Dec 28, 2024</div>
+                    </div>
+                    <div class="filing-title">
+                        Comments from National Association of Broadcasters on Emergency Alert System Enhancements
+                    </div>
+                    <div class="filing-summary">
+                        NAB submitted comments supporting proposed enhancements to wireless emergency alerts, emphasizing the need for improved geo-targeting capabilities and multi-language support.
+                    </div>
+                    <button class="view-filing-btn">View Full Filing</button>
+                </div>
+
+                <div class="filing-item">
+                    <div class="filing-header">
+                        <div class="filing-docket">FCC 24-120</div>
+                        <div class="filing-date">Dec 26, 2024</div>
+                    </div>
+                    <div class="filing-title">
+                        Reply Comments from Consumer Technology Association
+                    </div>
+                    <div class="filing-summary">
+                        CTA responded to initial comments, proposing technical standards for next-generation emergency alert delivery systems and highlighting cybersecurity considerations.
+                    </div>
+                    <button class="view-filing-btn">View Full Filing</button>
+                </div>
+
+                <div class="filing-item">
+                    <div class="filing-header">
+                        <div class="filing-docket">FCC 24-120</div>
+                        <div class="filing-date">Dec 24, 2024</div>
+                    </div>
+                    <div class="filing-title">
+                        Ex Parte Notice from Wireless Infrastructure Association
+                    </div>
+                    <div class="filing-summary">
+                        WIA filed ex parte notice following meeting with Commission staff regarding infrastructure requirements for enhanced emergency alert systems.
+                    </div>
+                    <button class="view-filing-btn">View Full Filing</button>
+                </div>
+
+                <div class="view-all-link">
+                    <button class="view-all-btn">View All Filing History</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+</html>
