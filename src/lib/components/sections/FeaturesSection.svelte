@@ -103,16 +103,16 @@
     <!-- Features Grid -->
     <div class="features-grid">
       {#each features as feature, index}
-        <div class="feature-card-wrapper" class:popular-feature={feature.popular}>
-          <Card 
-            variant="feature" 
-            hover 
-            padding="lg"
-            on:click={() => handleFeatureClick(index)}
-          >
-            {#if feature.popular}
-              <div class="popular-badge">Most Popular</div>
-            {/if}
+        <Card 
+          variant="feature" 
+          hover 
+          padding="lg"
+          class={feature.popular ? 'popular-feature' : ''}
+          on:click={() => handleFeatureClick(index)}
+        >
+          {#if feature.popular}
+            <div class="popular-badge">Most Popular</div>
+          {/if}
           
           <div class="feature-content">
             <div class="feature-icon" role="img" aria-label={feature.title}>
@@ -144,7 +144,6 @@
             {/if}
           </div>
         </Card>
-        </div>
       {/each}
     </div>
     
@@ -218,18 +217,8 @@
     margin-bottom: var(--spacing-2xl);
   }
   
-  .feature-card-wrapper {
+  .popular-feature {
     position: relative;
-    width: 100%;
-    height: 100%;
-  }
-  
-  .feature-card-wrapper.popular-feature {
-    position: relative;
-  }
-  
-  .feature-card-wrapper :global(.card) {
-    height: 100%;
   }
   
   .popular-badge {
@@ -242,7 +231,7 @@
     border-radius: 0 0 var(--border-radius) var(--border-radius);
     font-size: var(--font-size-xs);
     font-weight: var(--font-weight-semibold);
-    z-index: 20;
+    z-index: 10;
   }
   
   .feature-content {
@@ -401,4 +390,4 @@
       text-align: center;
     }
   }
-</style> 
+</style>
