@@ -1,316 +1,186 @@
 <script lang="ts">
-  import SubscribeForm from '$lib/components/SubscribeForm.svelte';
-  import ManageSubscriptions from '$lib/components/ManageSubscriptions.svelte';
-
-  let activeTab: 'subscribe' | 'manage' = 'subscribe';
-
-  function setActiveTab(tab: 'subscribe' | 'manage'): void {
-    activeTab = tab;
-  }
+  import HeroSection from '$lib/components/sections/HeroSection.svelte';
+  import FeaturesSection from '$lib/components/sections/FeaturesSection.svelte';
 </script>
 
 <svelte:head>
-  <title>DocketCC - Monitor FCC Filings with AI Intelligence</title>
-  <meta name="description" content="Stay ahead of regulatory changes. Get AI-powered summaries of FCC docket filings delivered to your inbox. Never miss important telecommunications policy updates again." />
+  <title>DocketCC - Professional FCC Docket Monitoring & AI Intelligence</title>
+  <meta name="description" content="Professional FCC docket monitoring service with AI-powered summaries. Trusted by legal professionals, regulatory experts, and enterprise teams. Get instant notifications and regulatory intelligence." />
+  <meta name="keywords" content="FCC docket monitoring, regulatory intelligence, telecommunications policy, legal compliance, government filings" />
+  
+  <!-- Open Graph / Social Media -->
+  <meta property="og:type" content="website" />
+  <meta property="og:title" content="DocketCC - Professional FCC Docket Monitoring" />
+  <meta property="og:description" content="Professional FCC docket monitoring service with AI-powered summaries. Trusted by legal professionals and enterprise teams." />
+  <meta property="og:url" content="https://docketcc.com" />
+  
+  <!-- Professional/Business focused meta tags -->
+  <meta name="robots" content="index, follow" />
+  <meta name="author" content="DocketCC" />
+  <link rel="canonical" href="https://docketcc.com" />
 </svelte:head>
 
 <!-- Hero Section -->
-<section class="hero">
-  <div class="container">
-    <div class="hero-content">
-      <h1 class="hero-title">
-        Monitor FCC Filings with <span class="highlight">AI Intelligence</span>
-      </h1>
-      <p class="hero-subtitle">
-        Stay ahead of regulatory changes. Get AI-powered summaries of FCC docket 
-        filings delivered to your inbox. Never miss important telecommunications policy 
-        updates again.
-      </p>
-    </div>
-  </div>
-</section>
-
-<!-- Main Content -->
-<div class="page-content">
-  <div class="container">
-    <!-- Tab Navigation -->
-    <div class="tab-navigation">
-      <button 
-        class="tab-button" 
-        class:active={activeTab === 'subscribe'}
-        on:click={() => setActiveTab('subscribe')}
-      >
-        <svg class="tab-icon" viewBox="0 0 20 20" fill="currentColor">
-          <path fill-rule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clip-rule="evenodd" />
-        </svg>
-        Add Subscription
-      </button>
-      <button 
-        class="tab-button" 
-        class:active={activeTab === 'manage'}
-        on:click={() => setActiveTab('manage')}
-      >
-        <svg class="tab-icon" viewBox="0 0 20 20" fill="currentColor">
-          <path fill-rule="evenodd" d="M11.49 3.17c-.38-1.56-2.6-1.56-2.98 0a1.532 1.532 0 01-2.286.948c-1.372-.836-2.942.734-2.106 2.106.54.886.061 2.042-.947 2.287-1.561.379-1.561 2.6 0 2.978a1.532 1.532 0 01.947 2.287c-.836 1.372.734 2.942 2.106 2.106a1.532 1.532 0 012.287.947c.379 1.561 2.6 1.561 2.978 0a1.533 1.533 0 012.287-.947c1.372.836 2.942-.734 2.106-2.106a1.533 1.533 0 01.947-2.287c1.561-.379 1.561-2.6 0-2.978a1.532 1.532 0 01-.947-2.287c.836-1.372-.734-2.942-2.106-2.106a1.532 1.532 0 01-2.287-.947zM10 13a3 3 0 100-6 3 3 0 000 6z" clip-rule="evenodd" />
-        </svg>
-        Manage Subscriptions
-      </button>
-    </div>
-
-    <!-- Content Areas -->
-    <div class="content-area">
-      {#if activeTab === 'subscribe'}
-        <div class="content-section">
-          <SubscribeForm />
-        </div>
-      {:else}
-        <div class="content-section">
-          <ManageSubscriptions />
-        </div>
-      {/if}
-    </div>
-  </div>
-</div>
+<HeroSection />
 
 <!-- Features Section -->
-<section class="features">
+<div id="features">
+  <FeaturesSection />
+</div>
+
+<!-- Call-to-Action Section -->
+<section class="cta-section">
   <div class="container">
-    <div class="features-header">
-      <h2>Why Choose DocketCC?</h2>
-      <p>Powerful features to keep you informed</p>
-    </div>
-    <div class="features-grid">
-      <div class="feature-card">
-        <div class="feature-icon">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/>
-          </svg>
-        </div>
-        <h3>Real-time Monitoring</h3>
-        <p>Get notified the moment new filings are submitted to your tracked dockets.</p>
+    <div class="cta-content">
+      <h2>Ready to Stay Ahead of Regulatory Changes?</h2>
+      <p>Join thousands of professionals who trust DocketCC for critical regulatory intelligence.</p>
+      <div class="cta-buttons">
+        <a href="/admin" class="cta-button primary">
+          Start Monitoring
+        </a>
+        <a href="#features" class="cta-button secondary">
+          Learn More
+        </a>
       </div>
-      <div class="feature-card">
-        <div class="feature-icon">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
-          </svg>
-        </div>
-        <h3>AI-Powered Summaries</h3>
-        <p>Complex legal documents simplified into clear, actionable insights.</p>
-      </div>
-      <div class="feature-card">
-        <div class="feature-icon">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <path d="M15 17h5l-5 5v-5zM4.828 4.828A4 4 0 016.243 4h7.515l2 2H20a2 2 0 012 2v9a2 2 0 01-2 2h-8"></path>
-          </svg>
-        </div>
-        <h3>Custom Alerts</h3>
-        <p>Choose your notification frequency: hourly, daily, or weekly updates.</p>
+      
+      <div class="cta-trust">
+        <p class="trust-text">
+          <span class="trust-icon">🔒</span>
+          Enterprise-grade security • SOC 2 certified • No credit card required
+        </p>
       </div>
     </div>
   </div>
 </section>
 
 <style>
-  /* Hero Section */
-  .hero {
+  .cta-section {
     background: linear-gradient(135deg, var(--color-secondary) 0%, #1e293b 100%);
-    color: white;
     padding: var(--spacing-3xl) 0;
     text-align: center;
+    position: relative;
+    overflow: hidden;
   }
-
-  .hero-content {
-    max-width: 800px;
-    margin: 0 auto;
+  
+  .cta-section::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-image: 
+      radial-gradient(circle at 30% 20%, rgba(16, 185, 129, 0.1) 0%, transparent 50%),
+      radial-gradient(circle at 70% 80%, rgba(16, 185, 129, 0.05) 0%, transparent 50%);
+    pointer-events: none;
   }
-
-  .hero-title {
-    font-size: var(--font-size-4xl);
+  
+  .cta-content {
+    position: relative;
+    z-index: 1;
+    color: white;
+  }
+  
+  .cta-content h2 {
+    font-size: 2.5rem;
     font-weight: var(--font-weight-black);
-    margin-bottom: var(--spacing-lg);
-    line-height: 1.1;
+    margin-bottom: var(--spacing-md);
+    color: white;
   }
-
-  .highlight {
-    color: var(--color-primary);
-  }
-
-  .hero-subtitle {
+  
+  .cta-content p {
     font-size: var(--font-size-xl);
     color: rgba(255, 255, 255, 0.9);
-    line-height: 1.6;
-    margin-bottom: 0;
+    margin-bottom: var(--spacing-xl);
+    max-width: 600px;
+    margin-left: auto;
+    margin-right: auto;
   }
-
-  /* Page Content */
-  .page-content {
-    padding: var(--spacing-3xl) 0;
-    background: var(--color-background);
-  }
-
-  /* Tab Navigation */
-  .tab-navigation {
+  
+  .cta-buttons {
     display: flex;
+    gap: var(--spacing-md);
     justify-content: center;
-    gap: var(--spacing-sm);
-    margin-bottom: var(--spacing-2xl);
+    flex-wrap: wrap;
+    margin-bottom: var(--spacing-xl);
   }
-
-  .tab-button {
-    display: flex;
+  
+  .cta-button {
+    display: inline-flex;
     align-items: center;
-    gap: var(--spacing-xs);
+    justify-content: center;
     padding: var(--spacing-md) var(--spacing-xl);
-    background: var(--color-surface);
-    border: 2px solid var(--color-border);
-    border-radius: var(--border-radius-lg);
-    color: var(--color-text-secondary);
-    font-weight: var(--font-weight-semibold);
-    cursor: pointer;
-    transition: all var(--transition-normal);
-    box-shadow: var(--shadow-sm);
-  }
-
-  .tab-button:hover {
-    border-color: var(--color-primary);
-    color: var(--color-primary);
-    transform: translateY(-2px);
-    box-shadow: var(--shadow-lg);
-  }
-
-  .tab-button.active {
-    background: var(--color-primary);
-    border-color: var(--color-primary);
-    color: white;
-    box-shadow: var(--shadow-lg);
-  }
-
-  .tab-icon {
-    width: 20px;
-    height: 20px;
-  }
-
-  /* Content Area */
-  .content-area {
-    margin-bottom: var(--spacing-3xl);
-  }
-
-  .content-section {
-    background: var(--color-surface);
-    padding: var(--spacing-2xl);
-    border-radius: var(--border-radius-xl);
-    box-shadow: var(--shadow-lg);
-    border: 1px solid var(--color-border);
-  }
-
-  /* Features Section */
-  .features {
-    padding: var(--spacing-3xl) 0;
-    background: var(--color-surface);
-  }
-
-  .features-header {
-    text-align: center;
-    margin-bottom: var(--spacing-3xl);
-  }
-
-  .features-header h2 {
-    font-size: var(--font-size-3xl);
-    color: var(--color-secondary);
-    margin-bottom: var(--spacing-sm);
-  }
-
-  .features-header p {
     font-size: var(--font-size-lg);
-    color: var(--color-text-secondary);
-  }
-
-  .features-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-    gap: var(--spacing-xl);
-  }
-
-  .feature-card {
-    background: var(--color-surface);
-    padding: var(--spacing-xl);
+    font-weight: var(--font-weight-semibold);
+    text-decoration: none;
     border-radius: var(--border-radius-lg);
-    box-shadow: var(--shadow-md);
-    border: 1px solid var(--color-border);
-    text-align: center;
     transition: all var(--transition-normal);
+    min-width: 180px;
   }
-
-  .feature-card:hover {
-    transform: translateY(-4px);
-    box-shadow: var(--shadow-xl);
-    border-color: var(--color-primary);
-  }
-
-  .feature-icon {
-    width: 48px;
-    height: 48px;
-    background: linear-gradient(135deg, var(--color-primary), var(--color-primary-hover));
+  
+  .cta-button.primary {
+    background: var(--color-primary);
     color: white;
-    border-radius: var(--border-radius-lg);
+    border: 2px solid var(--color-primary);
+  }
+  
+  .cta-button.primary:hover {
+    background: var(--color-primary-hover);
+    border-color: var(--color-primary-hover);
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-xl);
+  }
+  
+  .cta-button.secondary {
+    background: transparent;
+    color: white;
+    border: 2px solid rgba(255, 255, 255, 0.3);
+  }
+  
+  .cta-button.secondary:hover {
+    background: rgba(255, 255, 255, 0.1);
+    border-color: rgba(255, 255, 255, 0.5);
+    transform: translateY(-2px);
+  }
+  
+  .cta-trust {
+    margin-top: var(--spacing-lg);
+  }
+  
+  .trust-text {
+    font-size: var(--font-size-sm);
+    color: rgba(255, 255, 255, 0.7);
     display: flex;
     align-items: center;
     justify-content: center;
-    margin: 0 auto var(--spacing-lg);
-    box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
-  }
-
-  .feature-icon svg {
-    width: 24px;
-    height: 24px;
-  }
-
-  .feature-card h3 {
-    font-size: var(--font-size-xl);
-    color: var(--color-secondary);
-    margin-bottom: var(--spacing-sm);
-    font-weight: var(--font-weight-bold);
-  }
-
-  .feature-card p {
-    color: var(--color-text-secondary);
-    line-height: 1.6;
+    gap: var(--spacing-xs);
     margin: 0;
   }
-
-  /* Responsive Design */
+  
+  .trust-icon {
+    color: var(--color-primary);
+  }
+  
+  /* Responsive */
   @media (max-width: 768px) {
-    .hero {
-      padding: var(--spacing-2xl) 0;
+    .cta-content h2 {
+      font-size: 2rem;
     }
-
-    .hero-title {
-      font-size: var(--font-size-3xl);
-    }
-
-    .hero-subtitle {
-      font-size: var(--font-size-lg);
-    }
-
-    .tab-navigation {
+    
+    .cta-buttons {
       flex-direction: column;
       align-items: center;
     }
-
-    .tab-button {
+    
+    .cta-button {
       width: 100%;
       max-width: 300px;
-      justify-content: center;
     }
-
-    .content-section {
-      padding: var(--spacing-lg);
-    }
-
-    .features-grid {
-      grid-template-columns: 1fr;
-      gap: var(--spacing-lg);
+    
+    .trust-text {
+      flex-direction: column;
+      gap: var(--spacing-xs);
+      text-align: center;
     }
   }
 </style>
