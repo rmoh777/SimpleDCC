@@ -208,6 +208,7 @@
     font-size: var(--font-size-xl);
     color: var(--color-text-secondary);
     line-height: 1.6;
+    margin: 0;
   }
   
   .features-grid {
@@ -215,10 +216,22 @@
     grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
     gap: var(--spacing-xl);
     margin-bottom: var(--spacing-3xl);
+    gap: var(--spacing-lg);
+    margin-bottom: var(--spacing-2xl);
   }
   
   .feature-card-wrapper {
     position: relative;
+    width: 100%;
+    height: 100%;
+  }
+  
+  .feature-card-wrapper.popular-feature {
+    position: relative;
+  }
+  
+  .feature-card-wrapper :global(.card) {
+    height: 100%;
   }
   
   .popular-badge {
@@ -233,6 +246,15 @@
     font-weight: var(--font-weight-bold);
     z-index: 10;
     box-shadow: var(--shadow-md);
+    top: -1px;
+    right: var(--spacing-md);
+    background: var(--color-primary);
+    color: white;
+    padding: var(--spacing-xs) var(--spacing-sm);
+    border-radius: 0 0 var(--border-radius) var(--border-radius);
+    font-size: var(--font-size-xs);
+    font-weight: var(--font-weight-semibold);
+    z-index: 20;
   }
   
   .feature-content {
@@ -240,6 +262,7 @@
     height: 100%;
     display: flex;
     flex-direction: column;
+    position: relative;
   }
   
   .feature-icon {
@@ -249,6 +272,7 @@
     display: flex;
     align-items: center;
     justify-content: center;
+    display: block;
   }
   
   .feature-title {
@@ -273,6 +297,13 @@
     text-align: left;
   }
   
+  .feature-details {
+    text-align: left;
+    margin-top: var(--spacing-md);
+    padding-top: var(--spacing-md);
+    border-top: 1px solid var(--color-border);
+  }
+  
   .feature-details h4 {
     font-size: var(--font-size-sm);
     font-weight: var(--font-weight-bold);
@@ -280,6 +311,9 @@
     margin-bottom: var(--spacing-xs);
     text-transform: uppercase;
     letter-spacing: 0.05em;
+    font-weight: var(--font-weight-semibold);
+    color: var(--color-primary);
+    margin-bottom: var(--spacing-sm);
   }
   
   .feature-list {
@@ -293,6 +327,15 @@
     color: var(--color-text-secondary);
     position: relative;
     padding-left: var(--spacing-md);
+    margin: 0;
+  }
+  
+  .feature-list li {
+    display: flex;
+    align-items: center;
+    color: var(--color-text-primary);
+    margin-bottom: var(--spacing-xs);
+    font-size: var(--font-size-sm);
   }
   
   .feature-list li::before {
@@ -311,6 +354,20 @@
     border-radius: var(--border-radius);
     font-size: var(--font-size-sm);
     font-weight: var(--font-weight-semibold);
+    color: var(--color-primary);
+    font-weight: var(--font-weight-bold);
+    margin-right: var(--spacing-xs);
+    font-size: var(--font-size-sm);
+  }
+  
+  .expand-button {
+    background: transparent;
+    border: 1px solid var(--color-border);
+    border-radius: var(--border-radius);
+    padding: var(--spacing-xs) var(--spacing-sm);
+    color: var(--color-primary);
+    font-size: var(--font-size-sm);
+    font-weight: var(--font-weight-medium);
     cursor: pointer;
     transition: all var(--transition-normal);
     display: flex;
@@ -324,6 +381,13 @@
     background: var(--color-primary-hover);
     transform: translateY(-2px);
     box-shadow: var(--shadow-md);
+    margin: 0 auto;
+  }
+  
+  .expand-button:hover {
+    background: var(--color-primary);
+    color: white;
+    border-color: var(--color-primary);
   }
   
   .trust-section {
@@ -334,6 +398,7 @@
   
   .trust-section h3 {
     font-size: var(--font-size-2xl);
+    font-weight: var(--font-weight-bold);
     color: var(--color-secondary);
     margin-bottom: var(--spacing-xl);
   }
@@ -361,6 +426,7 @@
     display: flex;
     align-items: center;
     justify-content: center;
+    flex-shrink: 0;
   }
   
   .trust-content {
@@ -372,6 +438,10 @@
     font-weight: var(--font-weight-bold);
     color: var(--color-secondary);
     margin-bottom: var(--spacing-xs);
+    font-size: var(--font-size-base);
+    font-weight: var(--font-weight-semibold);
+    color: var(--color-secondary);
+    margin-bottom: 0.25rem;
   }
   
   .trust-content p {
@@ -389,6 +459,14 @@
     .features-grid {
       grid-template-columns: 1fr;
       gap: var(--spacing-lg);
+  /* Responsive */
+  @media (max-width: 768px) {
+    .features-grid {
+      grid-template-columns: 1fr;
+    }
+    
+    .features-header h2 {
+      font-size: 2rem;
     }
     
     .trust-grid {
