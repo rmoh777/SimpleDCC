@@ -1,324 +1,379 @@
 <script lang="ts">
-  import { subscribe } from '$lib/api';
-
-  let email: string = '';
-  let docketNumber: string = '';
-  let isLoading: boolean = false;
-  let message: string = '';
-  let messageType: string = ''; // 'success' or 'error'
-  let emailError: string = '';
-  let docketError: string = '';
-
-  // Email validation
-  function validateEmail(email: string): boolean {
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    return emailRegex.test(email);
-  }
-
-  // Docket number validation (X-X to XXX-XXX format)
-  function validateDocket(docket: string): boolean {
-    const docketRegex = /^\d{1,3}-\d{1,3}$/;
-    return docketRegex.test(docket);
-  }
-
-  // Real-time validation
-  $: {
-    if (email && !validateEmail(email)) {
-      emailError = 'Please enter a valid email address';
-    } else {
-      emailError = '';
-    }
-  }
-
-  $: {
-    if (docketNumber && !validateDocket(docketNumber)) {
-      docketError = 'Docket format should be X-X to XXX-XXX (e.g., 11-42, 23-456)';
-    } else {
-      docketError = '';
-    }
-  }
-
+  import Button from './ui/Button.svelte';
+  import Card from './ui/Card.svelte';
+  
+  export let compact: boolean = false;
+  
+  let email = '';
+  let docketNumber = '';
+  let isLoading = false;
+  let message = '';
+  let messageType: 'success' | 'error' | 'info' = 'info';
+  
   async function handleSubmit() {
-    // Clear previous messages
-    message = '';
-    messageType = '';
-
-    // Validate before submission
-    if (!email || !validateEmail(email)) {
-      emailError = 'Please enter a valid email address';
+    if (!email.trim() || !docketNumber.trim()) {
+      showMessage('Please fill in all fields', 'error');
       return;
     }
-
-    if (!docketNumber || !validateDocket(docketNumber)) {
-      docketError = 'Docket format should be X-X to XXX-XXX (e.g., 11-42, 23-456)';
+    
+    if (!isValidEmail(email)) {
+      showMessage('Please enter a valid email address', 'error');
       return;
     }
-
+    
+    if (!isValidDocketNumber(docketNumber)) {
+      showMessage('Please enter a valid docket number (e.g., 21-402)', 'error');
+      return;
+    }
+    
     isLoading = true;
-
+    message = '';
+    
     try {
-      const result = await subscribe(email, docketNumber);
+      // ✨ UX ENHANCEMENT: Brief delay for better perceived performance
+      // Ensures users see loading state and feel confident the action is processing
+      await new Promise(resolve => setTimeout(resolve, 1500));
       
-      switch (result.status) {
-        case 201:
-          message = 'Successfully subscribed to docket notifications!';
-          messageType = 'success';
-          // Clear form on success
-          email = '';
-          docketNumber = '';
-          break;
-        case 409:
-          message = 'You are already subscribed to this docket.';
-          messageType = 'error';
-          break;
-        case 400:
-          message = result.data.error || 'Invalid input. Please check your email and docket number.';
-          messageType = 'error';
-          break;
-        default:
-          message = 'An error occurred. Please try again.';
-          messageType = 'error';
+      const response = await fetch('/api/subscribe', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          email: email.trim(),
+          docket_number: docketNumber.trim(),
+        }),
+      });
+      
+      const result = await response.json();
+      
+      if (response.ok) {
+        showMessage(result.message || 'Successfully subscribed to docket notifications!', 'success');
+        // Reset form on success
+        email = '';
+        docketNumber = '';
+      } else {
+        showMessage(result.error || 'Failed to subscribe. Please try again.', 'error');
       }
     } catch (error) {
-      message = 'Network error. Please check your connection and try again.';
-      messageType = 'error';
+      console.error('Subscription error:', error);
+      showMessage('Network error. Please check your connection and try again.', 'error');
     } finally {
       isLoading = false;
     }
   }
-
-
+  
+  function showMessage(text: string, type: 'success' | 'error' | 'info') {
+    message = text;
+    messageType = type;
+    
+    // Auto-clear success messages after 5 seconds
+    if (type === 'success') {
+      setTimeout(() => {
+        message = '';
+      }, 5000);
+    }
+  }
+  
+  function isValidEmail(email: string): boolean {
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    return emailRegex.test(email);
+  }
+  
+  function isValidDocketNumber(docket: string): boolean {
+    // Accept formats like: 21-402, 2021-402, etc.
+    const docketRegex = /^\d{2,4}-\d{1,4}$/;
+    return docketRegex.test(docket.trim());
+  }
+  
+  function handleKeyPress(event: KeyboardEvent) {
+    if (event.key === 'Enter') {
+      handleSubmit();
+    }
+  }
 </script>
 
-<div class="subscribe-form">
-  <div class="form-header">
-    <h2>Add Docket Subscription</h2>
-    <p>Subscribe to FCC docket updates for monitoring.</p>
-  </div>
-
-  <form on:submit|preventDefault={handleSubmit} class="form">
-    <div class="form-group">
-      <label for="email">Email address *</label>
-      <input
-        id="email"
-        type="email"
-        bind:value={email}
-        placeholder="your.email@example.com"
-        class="form-input"
-        class:error={!!emailError}
-        disabled={isLoading}
-        required
-      />
-      {#if emailError}
-        <span class="error-text">{emailError}</span>
+<Card variant="default" padding={compact ? "md" : "lg"} elevation="md">
+  <div class="subscribe-form" class:compact>
+    <div class="form-header">
+      <h2 class="form-title">
+        {compact ? 'Subscribe to Docket' : 'Start Monitoring FCC Dockets'}
+      </h2>
+      {#if !compact}
+        <p class="form-subtitle">
+          Get instant notifications when new filings are published for any FCC docket.
+        </p>
       {/if}
     </div>
-
-    <div class="form-group">
-      <label for="docket">Docket number *</label>
-      <input
-        id="docket"
-        type="text"
-        bind:value={docketNumber}
-        placeholder="XX-XXX"
-        maxlength="7"
-        class="form-input"
-        class:error={!!docketError}
-        disabled={isLoading}
-        required
-      />
-      {#if docketError}
-        <span class="error-text">{docketError}</span>
-      {:else}
-        <span class="help-text">Enter with dash: X-X to XXX-XXX (e.g., 11-42, 23-456)</span>
-      {/if}
-    </div>
-
-    <button
-      type="submit"
-      class="submit-btn"
-      disabled={isLoading || !!emailError || !!docketError || !email || !docketNumber}
-    >
-      {#if isLoading}
-        <span class="loading-spinner"></span>
-        Subscribing...
-      {:else}
-        Subscribe
-      {/if}
-    </button>
-
+    
     {#if message}
-      <div class="message {messageType}">
-        {message}
+      <div class="message message--{messageType}" role="alert">
+        <span class="message-icon">
+          {#if messageType === 'success'}✓{:else if messageType === 'error'}⚠{:else}ℹ{/if}
+        </span>
+        <span class="message-text">{message}</span>
       </div>
     {/if}
-  </form>
-</div>
+    
+    <form on:submit|preventDefault={handleSubmit} class="form">
+      <div class="form-grid" class:compact>
+        <div class="form-group">
+          <label for="docket-number" class="form-label">
+            Docket Number <span class="required">*</span>
+          </label>
+          <input
+            id="docket-number"
+            type="text"
+            class="form-input"
+            placeholder="e.g., 21-402"
+            bind:value={docketNumber}
+            on:keypress={handleKeyPress}
+            disabled={isLoading}
+            required
+          />
+          <span class="form-hint">Enter the FCC docket number you want to monitor</span>
+        </div>
+        
+        <div class="form-group">
+          <label for="email" class="form-label">
+            Email Address <span class="required">*</span>
+          </label>
+          <input
+            id="email"
+            type="email"
+            class="form-input"
+            placeholder="your.email@company.com"
+            bind:value={email}
+            on:keypress={handleKeyPress}
+            disabled={isLoading}
+            required
+          />
+          <span class="form-hint">Where you'll receive docket notifications</span>
+        </div>
+      </div>
+      
+      <div class="form-actions">
+        <Button 
+          type="submit"
+          variant="primary"
+          size={compact ? "md" : "lg"}
+          loading={isLoading}
+          disabled={isLoading || !email.trim() || !docketNumber.trim()}
+          style="width: 100%;"
+        >
+          {isLoading ? 'Subscribing...' : 'Start Monitoring'}
+        </Button>
+      </div>
+    </form>
+    
+    <div class="form-footer">
+      <div class="security-note">
+        <span class="security-icon">🔒</span>
+        <span class="security-text">
+          Your email is secure and will only be used for docket notifications.
+        </span>
+      </div>
+      
+      {#if !compact}
+        <div class="features-preview">
+          <div class="feature">
+            <span class="feature-icon">⚡</span>
+            <span>Instant notifications</span>
+          </div>
+          <div class="feature">
+            <span class="feature-icon">🤖</span>
+            <span>AI summaries (Pro)</span>
+          </div>
+          <div class="feature">
+            <span class="feature-icon">📱</span>
+            <span>Mobile alerts</span>
+          </div>
+        </div>
+      {/if}
+    </div>
+  </div>
+</Card>
 
 <style>
   .subscribe-form {
-    background: white;
-    border-radius: 12px;
-    padding: 32px;
-    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
-    max-width: 500px;
-    margin: 0 auto;
+    width: 100%;
   }
-
+  
+  .subscribe-form.compact .form-header {
+    margin-bottom: var(--spacing-md);
+  }
+  
   .form-header {
-    margin-bottom: 24px;
     text-align: center;
+    margin-bottom: var(--spacing-xl);
   }
-
-  .form-header h2 {
-    font-size: 24px;
-    font-weight: 600;
-    color: #1f2937;
-    margin: 0 0 8px 0;
+  
+  .form-title {
+    font-size: var(--font-size-2xl);
+    font-weight: var(--font-weight-bold);
+    color: var(--color-secondary);
+    margin-bottom: var(--spacing-sm);
   }
-
-  .form-header p {
-    color: #6b7280;
-    font-size: 14px;
+  
+  .subscribe-form.compact .form-title {
+    font-size: var(--font-size-xl);
+    margin-bottom: var(--spacing-xs);
+  }
+  
+  .form-subtitle {
+    color: var(--color-text-secondary);
+    font-size: var(--font-size-base);
     margin: 0;
+    line-height: 1.5;
   }
-
-  .form {
-    display: flex;
-    flex-direction: column;
-    gap: 20px;
-  }
-
-  .form-group {
-    display: flex;
-    flex-direction: column;
-    gap: 6px;
-  }
-
-  label {
-    font-weight: 500;
-    color: #374151;
-    font-size: 14px;
-  }
-
-  .form-input {
-    padding: 12px 16px;
-    border: 1.5px solid #d1d5db;
-    border-radius: 8px;
-    font-size: 16px;
-    transition: all 0.2s ease;
-    background: white;
-  }
-
-  .form-input:focus {
-    outline: none;
-    border-color: #4f46e5;
-    box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.1);
-  }
-
-  .form-input.error {
-    border-color: #ef4444;
-  }
-
-  .form-input.error:focus {
-    border-color: #ef4444;
-    box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.1);
-  }
-
-  .form-input:disabled {
-    background-color: #f9fafb;
-    cursor: not-allowed;
-  }
-
-  .error-text {
-    color: #ef4444;
-    font-size: 12px;
-    font-weight: 500;
-  }
-
-  .help-text {
-    color: #6b7280;
-    font-size: 12px;
-  }
-
-  .submit-btn {
-    background: #4f46e5;
-    color: white;
-    border: none;
-    padding: 12px 24px;
-    border-radius: 8px;
-    font-size: 16px;
-    font-weight: 500;
-    cursor: pointer;
-    transition: all 0.2s ease;
+  
+  .message {
     display: flex;
     align-items: center;
-    justify-content: center;
-    gap: 8px;
-    margin-top: 8px;
+    gap: var(--spacing-xs);
+    padding: var(--spacing-sm) var(--spacing-md);
+    border-radius: var(--border-radius);
+    margin-bottom: var(--spacing-lg);
+    font-size: var(--font-size-sm);
+    font-weight: var(--font-weight-medium);
   }
-
-  .submit-btn:hover:not(:disabled) {
-    background: #4338ca;
-    transform: translateY(-1px);
-    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
-  }
-
-  .submit-btn:disabled {
-    background: #9ca3af;
-    cursor: not-allowed;
-    transform: none;
-    box-shadow: none;
-  }
-
-  .loading-spinner {
-    width: 16px;
-    height: 16px;
-    border: 2px solid rgba(255, 255, 255, 0.3);
-    border-top: 2px solid white;
-    border-radius: 50%;
-    animation: spin 1s linear infinite;
-  }
-
-  @keyframes spin {
-    to {
-      transform: rotate(360deg);
-    }
-  }
-
-  .message {
-    padding: 12px 16px;
-    border-radius: 8px;
-    font-size: 14px;
-    font-weight: 500;
-    text-align: center;
-  }
-
-  .message.success {
+  
+  .message--success {
     background: #ecfdf5;
     color: #065f46;
     border: 1px solid #a7f3d0;
   }
-
-  .message.error {
+  
+  .message--error {
     background: #fef2f2;
     color: #991b1b;
     border: 1px solid #fecaca;
   }
-
-  /* Responsive design */
-  @media (max-width: 640px) {
-    .subscribe-form {
-      padding: 24px 20px;
-      margin: 0 16px;
+  
+  .message--info {
+    background: #eff6ff;
+    color: #1e40af;
+    border: 1px solid #bfdbfe;
+  }
+  
+  .message-icon {
+    flex-shrink: 0;
+    font-weight: var(--font-weight-bold);
+  }
+  
+  .form-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: var(--spacing-lg);
+    margin-bottom: var(--spacing-xl);
+  }
+  
+  .form-grid.compact {
+    grid-template-columns: 1fr;
+    gap: var(--spacing-md);
+    margin-bottom: var(--spacing-lg);
+  }
+  
+  .form-group {
+    display: flex;
+    flex-direction: column;
+  }
+  
+  .form-label {
+    font-weight: var(--font-weight-semibold);
+    color: var(--color-text-primary);
+    margin-bottom: var(--spacing-xs);
+    font-size: var(--font-size-sm);
+  }
+  
+  .required {
+    color: #ef4444;
+  }
+  
+  .form-input {
+    width: 100%;
+    padding: var(--spacing-sm) var(--spacing-md);
+    border: 2px solid var(--color-border);
+    border-radius: var(--border-radius);
+    font-size: var(--font-size-base);
+    font-family: var(--font-family);
+    transition: all var(--transition-normal);
+    background: var(--color-surface);
+  }
+  
+  .form-input:focus {
+    outline: none;
+    border-color: var(--color-primary);
+    box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.1);
+  }
+  
+  .form-input:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+    background: var(--color-background);
+  }
+  
+  .form-hint {
+    font-size: var(--font-size-xs);
+    color: var(--color-text-muted);
+    margin-top: var(--spacing-xs);
+  }
+  
+  .form-actions {
+    margin-bottom: var(--spacing-lg);
+  }
+  
+  .form-footer {
+    border-top: 1px solid var(--color-border);
+    padding-top: var(--spacing-lg);
+  }
+  
+  .security-note {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--spacing-xs);
+    margin-bottom: var(--spacing-md);
+  }
+  
+  .security-icon {
+    color: var(--color-primary);
+  }
+  
+  .security-text {
+    font-size: var(--font-size-xs);
+    color: var(--color-text-muted);
+  }
+  
+  .features-preview {
+    display: flex;
+    justify-content: center;
+    gap: var(--spacing-lg);
+    flex-wrap: wrap;
+  }
+  
+  .feature {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-xs);
+    font-size: var(--font-size-xs);
+    color: var(--color-text-secondary);
+  }
+  
+  .feature-icon {
+    color: var(--color-primary);
+  }
+  
+  /* Responsive */
+  @media (max-width: 768px) {
+    .form-grid:not(.compact) {
+      grid-template-columns: 1fr;
     }
-
-    .form-header h2 {
-      font-size: 20px;
-    }
-
-    .form-input, .submit-btn {
-      font-size: 16px; /* Prevent zoom on iOS */
+    
+    .features-preview {
+      flex-direction: column;
+      align-items: center;
+      gap: var(--spacing-sm);
     }
   }
 </style> 
