@@ -20,7 +20,7 @@
     <!-- Government Banner -->
     <div class="gov-banner">
       <div class="container">
-        🇺🇸 An independent FCC docket monitoring service - Not affiliated with the Federal Communications Commission
+        🇺🇸 An FCC docket monitoring service - Not affiliated with the Federal Communications Commission
       </div>
     </div>
     
