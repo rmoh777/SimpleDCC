@@ -38,54 +38,65 @@
       goto('/admin/login');
     }
   }
+  
+  // Navigation items with new monitoring section
+  const navigationItems = [
+    { href: '/admin', label: 'Dashboard', icon: '📊' },
+    { href: '/admin/subscriptions', label: 'Subscriptions', icon: '👥' },
+    { href: '/admin/monitoring', label: 'Monitoring', icon: '📡' },
+  ];
+  
+  $: currentPath = $page.url.pathname;
 </script>
 
 {#if isLoading}
-  <div class="min-h-screen flex items-center justify-center bg-gray-50">
-    <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+  <div class="min-h-screen bg-background flex items-center justify-center">
+    <div class="text-center">
+      <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
+      <p class="text-muted">Loading...</p>
+    </div>
   </div>
 {:else if isAuthenticated}
-  <div class="min-h-screen bg-gray-50">
-    <!-- Admin Navigation -->
-    <nav class="bg-white shadow-sm border-b">
+  <div class="min-h-screen bg-background">
+    <!-- Admin Header -->
+    <header class="bg-surface border-b border-base">
       <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div class="flex justify-between h-16">
-          <div class="flex items-center space-x-8">
-            <a href="/admin" class="text-xl font-bold text-blue-600">
-              SimpleDCC Admin
-            </a>
-            <div class="flex space-x-4">
-              <a 
-                href="/admin" 
-                class="text-gray-700 hover:text-blue-600 px-3 py-2 rounded-md text-sm font-medium"
-                class:text-blue-600={$page.url.pathname === '/admin'}
-              >
-                Dashboard
-              </a>
-              <a 
-                href="/admin/subscriptions" 
-                class="text-gray-700 hover:text-blue-600 px-3 py-2 rounded-md text-sm font-medium"
-                class:text-blue-600={$page.url.pathname === '/admin/subscriptions'}
-              >
-                Subscriptions
-              </a>
-              <a 
-                href="/admin/system" 
-                class="text-gray-700 hover:text-blue-600 px-3 py-2 rounded-md text-sm font-medium"
-                class:text-blue-600={$page.url.pathname === '/admin/system'}
-              >
-                System
-              </a>
-            </div>
-          </div>
+        <div class="flex justify-between items-center h-16">
           <div class="flex items-center">
+            <h1 class="text-xl font-semibold text-primary">
+              SimpleDCC Admin
+            </h1>
+          </div>
+          
+          <div class="flex items-center space-x-4">
+            <span class="text-sm text-secondary">Administrator</span>
             <button 
               on:click={logout}
-              class="text-gray-500 hover:text-gray-700 px-3 py-2 rounded-md text-sm font-medium"
+              class="btn-base btn-secondary btn-sm"
             >
               Logout
             </button>
           </div>
+        </div>
+      </div>
+    </header>
+    
+    <!-- Navigation Tabs -->
+    <nav class="bg-surface border-b border-base">
+      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div class="flex space-x-8">
+          {#each navigationItems as item}
+            <a 
+              href={item.href}
+              class="flex items-center px-1 py-4 text-sm font-medium border-b-2 transition-colors
+                {currentPath === item.href 
+                  ? 'border-primary text-primary' 
+                  : 'border-transparent text-secondary hover:text-primary hover:border-gray-300'}"
+            >
+              <span class="mr-2">{item.icon}</span>
+              {item.label}
+            </a>
+          {/each}
         </div>
       </div>
     </nav>
@@ -97,4 +108,94 @@
   </div>
 {:else}
   <slot />
-{/if} 
+{/if}
+
+<style>
+  /* Use design system variables */
+  .min-h-screen {
+    min-height: 100vh;
+  }
+  
+  .max-w-7xl {
+    max-width: var(--max-width-content);
+  }
+  
+  .border-primary {
+    border-color: var(--color-primary);
+  }
+  
+  .text-primary {
+    color: var(--color-primary);
+  }
+  
+  .text-secondary {
+    color: var(--color-text-secondary);
+  }
+  
+  .text-muted {
+    color: var(--color-text-muted);
+  }
+  
+  .bg-background {
+    background-color: var(--color-background);
+  }
+  
+  .bg-surface {
+    background-color: var(--color-surface);
+  }
+  
+  .border-base {
+    border-color: var(--color-border);
+  }
+  
+  .btn-base {
+    padding: var(--spacing-2) var(--spacing-4);
+    border-radius: var(--border-radius);
+    font-size: var(--font-size-sm);
+    font-weight: 500;
+    border: 1px solid;
+    transition: var(--transition-fast);
+    cursor: pointer;
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
+  
+  .btn-secondary {
+    background-color: var(--color-surface);
+    border-color: var(--color-border);
+    color: var(--color-text-secondary);
+  }
+  
+  .btn-secondary:hover {
+    background-color: var(--color-background);
+    color: var(--color-text-primary);
+  }
+  
+  .btn-sm {
+    padding: var(--spacing-1) var(--spacing-3);
+    font-size: var(--font-size-xs);
+  }
+  
+  .space-x-4 > * + * {
+    margin-left: var(--spacing-4);
+  }
+  
+  .space-x-8 > * + * {
+    margin-left: var(--spacing-8);
+  }
+  
+  .animate-spin {
+    animation: spin 1s linear infinite;
+  }
+  
+  @keyframes spin {
+    from {
+      transform: rotate(0deg);
+    }
+    to {
+      transform: rotate(360deg);
+    }
+  }
+</style> 
