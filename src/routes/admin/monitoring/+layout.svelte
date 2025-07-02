@@ -1,12 +1,14 @@
 <script>
   import { page } from '$app/stores';
   
-  // Monitoring sub-navigation
+  // Enhanced monitoring sub-navigation with system testing
   const monitoringTabs = [
     { href: '/admin/monitoring', label: 'Overview', icon: '📊' },
     { href: '/admin/monitoring/ecfs', label: 'ECFS Status', icon: '🔍' },
     { href: '/admin/monitoring/ai', label: 'AI Processing', icon: '🤖' },
+    { href: '/admin/monitoring/documents', label: 'Documents', icon: '📄' },
     { href: '/admin/monitoring/logs', label: 'System Logs', icon: '📝' },
+    { href: '/admin/monitoring/system-test', label: 'System Test', icon: '🧪' },
   ];
   
   $: currentPath = $page.url.pathname;
@@ -33,13 +35,13 @@
     </div>
   </div>
   
-  <!-- Sub-navigation Tabs -->
+  <!-- Enhanced Sub-navigation Tabs -->
   <nav class="border-b border-base">
-    <div class="flex space-x-8">
+    <div class="flex space-x-8 overflow-x-auto">
       {#each monitoringTabs as tab}
         <a 
           href={tab.href}
-          class="flex items-center px-1 py-3 text-sm font-medium border-b-2 transition-colors
+          class="flex items-center px-1 py-3 text-sm font-medium border-b-2 transition-colors whitespace-nowrap
             {currentPath === tab.href 
               ? 'border-primary text-primary' 
               : 'border-transparent text-secondary hover:text-primary hover:border-gray-300'}"
@@ -124,5 +126,13 @@
   .btn-sm {
     padding: var(--spacing-1) var(--spacing-3);
     font-size: var(--font-size-xs);
+  }
+  
+  .overflow-x-auto {
+    overflow-x: auto;
+  }
+  
+  .whitespace-nowrap {
+    white-space: nowrap;
   }
 </style> 
