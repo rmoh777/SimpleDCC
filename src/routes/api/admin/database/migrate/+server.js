@@ -7,17 +7,33 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Admin-Key',
 };
 
-export async function POST({ platform, cookies }) {
+export async function POST({ platform, cookies, request }) {
   try {
-    // Verify admin authentication
-    const adminSession = cookies.get('admin_session');
-    if (adminSession !== 'authenticated') {
-      return json({ error: 'Unauthorized' }, { status: 401, headers: corsHeaders });
-    }
-
     const db = platform.env.DB;
     
-    console.log('🚀 Running database migration via admin API...');
+    // Support both authentication methods:
+    // 1. Cookie-based (for admin UI)
+    // 2. Header-based (for curl/API calls)
+    const adminSession = cookies.get('admin_session');
+    const adminKeyHeader = request.headers.get('x-admin-key');
+    const adminSecretKey = platform.env.ADMIN_SECRET_KEY;
+    
+    const isAuthenticatedViaCookie = adminSession === 'authenticated';
+    const isAuthenticatedViaHeader = adminKeyHeader && adminKeyHeader === adminSecretKey;
+    
+    if (!isAuthenticatedViaCookie && !isAuthenticatedViaHeader) {
+      console.log('❌ Migration API: Authentication failed');
+      console.log('- Cookie auth:', adminSession ? 'provided but invalid' : 'not provided');
+      console.log('- Header auth:', adminKeyHeader ? 'provided but invalid' : 'not provided');
+      
+      return json({ 
+        error: 'Unauthorized',
+        details: 'Provide either valid admin session cookie or x-admin-key header'
+      }, { status: 401, headers: corsHeaders });
+    }
+    
+    const authMethod = isAuthenticatedViaCookie ? 'cookie' : 'header';
+    console.log(`🚀 Running database migration via admin API (auth: ${authMethod})...`);
     
     // Use the new auto-migration system
     const migrationResult = await ensureDatabaseSchema(db);
@@ -29,6 +45,7 @@ export async function POST({ platform, cookies }) {
         success: true,
         message: migrationResult.message,
         migrationRan: migrationResult.migrationRan,
+        authMethod,
         details: {
           operations: migrationResult.details || [],
           timestamp: Date.now(),
@@ -43,6 +60,7 @@ export async function POST({ platform, cookies }) {
       return json({
         success: false,
         error: migrationResult.message,
+        authMethod,
         details: {
           timestamp: Date.now()
         }
