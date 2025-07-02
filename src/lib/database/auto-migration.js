@@ -292,16 +292,51 @@ async function runAutoMigration(db, needsTableMigration, needsColumnMigration, m
       }
     }
 
-    // STEP 4: Initialize active_dockets from existing subscriptions
-    const initResult = await db.prepare(`
-      INSERT OR IGNORE INTO active_dockets (docket_number, subscribers_count)
-      SELECT docket_number, COUNT(*) 
+    // STEP 4: Populate active_dockets from real subscription data
+    console.log('📊 Populating active_dockets from real subscriptions...');
+    
+    // First, get all unique dockets from subscriptions with their stats
+    const subscriptionDockets = await db.prepare(`
+      SELECT 
+        docket_number, 
+        COUNT(*) as subscribers_count,
+        MIN(created_at) as first_subscription
       FROM subscriptions 
       GROUP BY docket_number
-    `).run();
+    `).all();
 
-    if (initResult.changes > 0) {
-      operations.push(`Initialized ${initResult.changes} active dockets from subscriptions`);
+    let populatedCount = 0;
+    
+    if (subscriptionDockets.results && subscriptionDockets.results.length > 0) {
+      // Insert each real docket into active_dockets
+      for (const docket of subscriptionDockets.results) {
+        const insertResult = await db.prepare(`
+          INSERT OR REPLACE INTO active_dockets (
+            docket_number, 
+            subscribers_count, 
+            status, 
+            last_checked, 
+            created_at, 
+            updated_at
+          ) VALUES (?, ?, 'active', 0, ?, ?)
+        `).bind(
+          docket.docket_number,
+          docket.subscribers_count,
+          docket.first_subscription,
+          Date.now()
+        ).run();
+        
+        if (insertResult.changes > 0) {
+          populatedCount++;
+        }
+      }
+      
+      operations.push(`Populated ${populatedCount} real dockets from ${subscriptionDockets.results.length} subscription groups`);
+      console.log(`✅ Populated active_dockets with ${populatedCount} real dockets:`, 
+                  subscriptionDockets.results.map(d => d.docket_number).join(', '));
+    } else {
+      operations.push('No subscriptions found - active_dockets table remains empty');
+      console.log('⚠️ No subscriptions found to populate active_dockets');
     }
 
     // Log successful migration
