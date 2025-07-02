@@ -20,27 +20,43 @@ export async function fetchECFSFilings(docketNumber, lookbackHours = DEFAULT_LOO
       throw new Error('ECFS_API_KEY environment variable is not set');
     }
     
-    // Calculate date range for API query
-    const endDate = new Date();
-    const startDate = new Date(endDate.getTime() - (lookbackHours * 60 * 60 * 1000));
+    // Calculate lookback date for API query (single date, not range)
+    const sinceDate = new Date(Date.now() - (lookbackHours * 60 * 60 * 1000));
     
-    // Format dates for FCC API (YYYY-MM-DD)
-    const startDateStr = startDate.toISOString().split('T')[0];
-    const endDateStr = endDate.toISOString().split('T')[0];
+    // Format date for FCC API (YYYY-MM-DD) - EXACT format from ECFS rules
+    const sinceDateStr = sinceDate.toISOString().split('T')[0];
     
-    // Build API URL with parameters
+    // Build API URL with parameters - EXACT pattern from ECFS rules
     const params = new URLSearchParams({
       'api_key': apiKey,
       'proceedings.name': docketNumber,
-      'date_received': `[${startDateStr} TO ${endDateStr}]`,
-      'sort': 'date_received,desc',
-      'format': 'json'
+      'received_from': sinceDateStr,
+      'sort': 'date_disseminated,DESC',
+      'per_page': '20'
     });
     
     const url = `${ECFS_BASE_URL}?${params.toString()}`;
     
-    // Log URL with sanitized API key for debugging
-    console.log(`ECFS: Fetching from ${url.replace(apiKey, '[API_KEY]')}`);
+    // 🐛 DEBUG: Comprehensive logging for 400 errors
+    console.log('=== ECFS API DEBUG START ===');
+    console.log(`🎯 Docket: ${docketNumber}`);
+    console.log(`📅 Received From: ${sinceDateStr} (${lookbackHours}h lookback)`);
+    console.log(`🔗 Base URL: ${ECFS_BASE_URL}`);
+    console.log('📋 Query Parameters:');
+    for (const [key, value] of params.entries()) {
+      if (key === 'api_key') {
+        console.log(`  ${key}: [API_KEY_HIDDEN]`);
+      } else {
+        console.log(`  ${key}: ${value}`);
+      }
+    }
+    console.log(`🌐 Full URL: ${url.replace(apiKey, '[API_KEY]')}`);
+    
+    const headers = {
+      'User-Agent': 'SimpleDCC/1.0 (Regulatory Monitoring Service)',
+      'Accept': 'application/json'
+    };
+    console.log('📤 Headers:', headers);
     
     // Make API request with timeout and error handling
     const controller = new AbortController();
@@ -48,16 +64,30 @@ export async function fetchECFSFilings(docketNumber, lookbackHours = DEFAULT_LOO
     
     const response = await fetch(url, {
       signal: controller.signal,
-      headers: {
-        'User-Agent': 'SimpleDCC/1.0 (Regulatory Monitoring Service)'
-      }
+      headers
     });
     
     clearTimeout(timeoutId);
     
+    console.log(`📥 Response Status: ${response.status} ${response.statusText}`);
+    console.log('📥 Response Headers:', Object.fromEntries(response.headers.entries()));
+    
     if (!response.ok) {
-      throw new Error(`ECFS API error: ${response.status} ${response.statusText}`);
+      // Get the full error response body for debugging
+      let errorBody = 'Unable to read error response';
+      try {
+        errorBody = await response.text();
+        console.log('❌ Error Response Body:', errorBody);
+      } catch (e) {
+        console.log('❌ Could not read error response body:', e.message);
+      }
+      
+      console.log('=== ECFS API DEBUG END (ERROR) ===');
+      throw new Error(`ECFS API error: ${response.status} ${response.statusText} - Body: ${errorBody}`);
     }
+    
+    console.log('✅ Request successful, parsing response...');
+    console.log('=== ECFS API DEBUG END (SUCCESS) ===');
     
     const data = await response.json();
     
@@ -181,18 +211,24 @@ export async function fetchMultipleDockets(docketNumbers, lookbackHours = DEFAUL
   const errors = [];
   
   console.log(`ECFS: Checking ${docketNumbers.length} dockets for new filings`);
+  console.log(`🎯 Dockets to check: ${docketNumbers.join(', ')}`);
   
   // Process dockets sequentially to avoid rate limiting
-  for (const docketNumber of docketNumbers) {
+  for (let i = 0; i < docketNumbers.length; i++) {
+    const docketNumber = docketNumbers[i];
+    console.log(`\n🔄 Processing docket ${i + 1}/${docketNumbers.length}: ${docketNumber}`);
+    
     try {
       const filings = await fetchECFSFilings(docketNumber, lookbackHours, env);
       allFilings.push(...filings);
+      console.log(`✅ Docket ${docketNumber}: Found ${filings.length} filings`);
       
       // Small delay between requests to be respectful to FCC API
       await new Promise(resolve => setTimeout(resolve, 1000));
       
     } catch (error) {
-      console.error(`Failed to fetch docket ${docketNumber}:`, error);
+      console.error(`❌ Failed to fetch docket ${docketNumber}:`, error.message);
+      console.error(`   Full error:`, error);
       errors.push({ docket: docketNumber, error: error.message });
     }
   }
