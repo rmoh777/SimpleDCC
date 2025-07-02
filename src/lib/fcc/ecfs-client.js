@@ -9,10 +9,17 @@ const MAX_FILINGS_PER_REQUEST = 20;
  * Fetch recent filings for a specific docket
  * @param {string} docketNumber - Format: "XX-XXX" (e.g., "23-108")
  * @param {number} lookbackHours - Hours to look back for new filings
+ * @param {Object} env - Cloudflare environment variables (platform.env)
  * @returns {Promise<Array>} Array of filing objects
  */
-export async function fetchECFSFilings(docketNumber, lookbackHours = DEFAULT_LOOKBACK_HOURS) {
+export async function fetchECFSFilings(docketNumber, lookbackHours = DEFAULT_LOOKBACK_HOURS, env) {
   try {
+    // Validate API key is available
+    const apiKey = env?.ECFS_API_KEY;
+    if (!apiKey) {
+      throw new Error('ECFS_API_KEY environment variable is not set');
+    }
+    
     // Calculate date range for API query
     const endDate = new Date();
     const startDate = new Date(endDate.getTime() - (lookbackHours * 60 * 60 * 1000));
@@ -23,7 +30,7 @@ export async function fetchECFSFilings(docketNumber, lookbackHours = DEFAULT_LOO
     
     // Build API URL with parameters
     const params = new URLSearchParams({
-      'api_key': process.env.ECFS_API_KEY || '',
+      'api_key': apiKey,
       'proceedings.name': docketNumber,
       'date_received': `[${startDateStr} TO ${endDateStr}]`,
       'sort': 'date_received,desc',
@@ -31,6 +38,9 @@ export async function fetchECFSFilings(docketNumber, lookbackHours = DEFAULT_LOO
     });
     
     const url = `${ECFS_BASE_URL}?${params.toString()}`;
+    
+    // Log URL with sanitized API key for debugging
+    console.log(`ECFS: Fetching from ${url.replace(apiKey, '[API_KEY]')}`);
     
     // Make API request with timeout and error handling
     const controller = new AbortController();
@@ -163,9 +173,10 @@ function cleanString(str) {
  * Fetch filings for multiple dockets (main function for SimpleDCC)
  * @param {Array<string>} docketNumbers - Array of docket numbers
  * @param {number} lookbackHours - Hours to look back
+ * @param {Object} env - Cloudflare environment variables (platform.env)
  * @returns {Promise<Array>} Combined array of all filings
  */
-export async function fetchMultipleDockets(docketNumbers, lookbackHours = DEFAULT_LOOKBACK_HOURS) {
+export async function fetchMultipleDockets(docketNumbers, lookbackHours = DEFAULT_LOOKBACK_HOURS, env) {
   const allFilings = [];
   const errors = [];
   
@@ -174,7 +185,7 @@ export async function fetchMultipleDockets(docketNumbers, lookbackHours = DEFAUL
   // Process dockets sequentially to avoid rate limiting
   for (const docketNumber of docketNumbers) {
     try {
-      const filings = await fetchECFSFilings(docketNumber, lookbackHours);
+      const filings = await fetchECFSFilings(docketNumber, lookbackHours, env);
       allFilings.push(...filings);
       
       // Small delay between requests to be respectful to FCC API
