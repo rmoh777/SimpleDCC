@@ -1,0 +1,231 @@
+# FCC ECFS API Integration Rules
+
+You are an expert at integrating with the FCC ECFS (Electronic Comment Filing System) API. Follow these rules when working with ECFS API integration.
+
+## API Response Structure Rules
+
+### ALWAYS handle inconsistent response formats
+```javascript
+// The API sometimes returns 'filing' and sometimes 'filings'
+const filings = data.filing || data.filings || [];
+
+// Never assume arrays exist - always check
+if (!filings || filings.length === 0) {
+  logMessage('No filings found in API response');
+  return [];
+}
+```
+
+### ALWAYS use defensive field extraction for author information
+```javascript
+// Author data is scattered across multiple possible fields
+let author = 'Anonymous';
+if (filing.name_of_filer) {
+  author = filing.name_of_filer;
+} else if (filing.filers && Array.isArray(filing.filers) && filing.filers.length > 0) {
+  author = filing.filers[0].name || 'Anonymous';
+} else if (filing.lawfirms && Array.isArray(filing.lawfirms) && filing.lawfirms.length > 0) {
+  author = filing.lawfirms[0].name || 'Anonymous';
+}
+```
+
+### ALWAYS use optional chaining for nested properties
+```javascript
+// Use optional chaining for all nested API fields
+const filingType = filing.submissiontype?.description || 'FILING';
+const documentCount = filing.documents?.length || 0;
+```
+
+## Date Handling Rules
+
+### ALWAYS use this exact date format for API queries
+```javascript
+// Date must be YYYY-MM-DD format (ISO string split at 'T')
+const sinceDate = subHours(new Date(), 2).toISOString().split('T')[0];
+
+// Use 2-hour lookback window to account for FCC processing delays
+const lookbackHours = 2;
+```
+
+### ALWAYS use proper sorting and pagination
+```javascript
+// Use this exact URL pattern for reliable results
+const url = `${baseUrl}/filings?api_key=${apiKey}&proceedings.name=${docketNumber}&sort=date_disseminated,DESC&per_page=20&received_from=${sinceDate}`;
+
+// NEVER use received_to - it's unreliable
+// ALWAYS use date_disseminated,DESC for proper chronological sorting
+```
+
+## API Key and Security Rules
+
+### ALWAYS validate API key before making requests
+```javascript
+if (!apiKey) {
+  throw new Error('ECFS_API_KEY environment variable is not set');
+}
+if (!baseUrl) {
+  throw new Error('ECFS_API_BASE_URL environment variable is not set');
+}
+```
+
+### ALWAYS sanitize API keys from logs
+```javascript
+// Hide API key in log output
+logMessage(`Fetching ECFS filings from: ${url.replace(apiKey, '[API_KEY]')}`);
+```
+
+## Error Handling Rules
+
+### ALWAYS use comprehensive error handling
+```javascript
+try {
+  const response = await fetch(url, {
+    headers: {
+      'Accept': 'application/json',
+      'User-Agent': 'FCC-Monitor-Worker/1.0'
+    }
+  });
+  
+  if (!response.ok) {
+    throw new Error(`ECFS API returned ${response.status}: ${response.statusText}`);
+  }
+  
+  const data = await response.json();
+  // ... process data
+} catch (error) {
+  logMessage(`Error fetching ECFS filings: ${error.message}`);
+  throw error;
+}
+```
+
+### ALWAYS include detailed error context
+```javascript
+// Log the URL being accessed (with sanitized API key)
+// Log the response status and body for debugging
+// Include the docket number in error messages
+```
+
+## Document Processing Rules
+
+### ALWAYS check for documents array
+```javascript
+// Documents may or may not exist
+const documents = [];
+if (filing.documents && Array.isArray(filing.documents)) {
+  documents = filing.documents.map(doc => ({
+    filename: doc.filename,
+    // TODO: Investigate actual field names for download URLs
+    url: doc.url || doc.download_url || doc.file_url,
+    type: doc.type || getFileType(doc.filename),
+    size: doc.size
+  }));
+}
+```
+
+### ALWAYS clean document filenames
+```javascript
+// Remove file extensions and artifacts from filenames
+let cleanTitle = filing.submissiontype?.description || 'Filing';
+if (filing.documents && filing.documents.length > 0 && filing.documents[0].filename) {
+  let filename = filing.documents[0].filename;
+  cleanTitle = filename
+    .replace(/\.pdf$/i, '')
+    .replace(/\([^)]*\)/g, '') // Remove parentheses and contents
+    .replace(/\d{1,2}\.\d{1,2}\.\d{2,4}/g, '') // Remove dates
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+```
+
+## Data Cleaning Rules
+
+### ALWAYS clean company names
+```javascript
+const shortenCompanyName = (name) => {
+  return name
+    .replace(/\b(Inc\.|Incorporated|LLC|Corporation|Corp\.|Company|Co\.)\b/gi, '')
+    .replace(/\bd\/b\/a\s+/gi, '/')
+    .replace(/\s+/g, ' ')
+    .trim();
+};
+```
+
+### ALWAYS generate consistent filing URLs
+```javascript
+// Use this exact pattern for filing URLs
+filing_url: `https://www.fcc.gov/ecfs/search/search-filings/filing/${filing.id_submission}`
+```
+
+## Rate Limiting Rules
+
+### ALWAYS respect FCC API limits
+```javascript
+// Conservative rate limiting - don't overwhelm the API
+const MAX_FILINGS_PER_REQUEST = 20;
+const MAX_FILINGS_TO_PROCESS = 15;
+const REQUEST_DELAY_MS = 1000; // Wait between requests if needed
+```
+
+### ALWAYS include User-Agent header
+```javascript
+headers: {
+  'Accept': 'application/json',
+  'User-Agent': 'YourApp-Name/1.0' // Always identify your application
+}
+```
+
+## Debugging Rules
+
+### ALWAYS log first API response for inspection
+```javascript
+if (filings.length > 0) {
+  logMessage(`API returned ${filings.length} filings for docket ${docketNumber}.`);
+  logMessage(`First filing: ${JSON.stringify(filings[0], null, 2).substring(0, 500)}...`);
+}
+```
+
+### ALWAYS validate response structure before processing
+```javascript
+// Check for expected fields before processing
+if (!filing.id_submission) {
+  logMessage(`Warning: Filing missing id_submission: ${JSON.stringify(filing)}`);
+  continue;
+}
+```
+
+## Critical Investigation Tasks
+
+### Document URL Field Names - UNKNOWN
+```javascript
+// TODO: Investigate actual ECFS API response to find document download URLs
+// The documents array exists but download URL field name is unknown
+// Possible field names: url, download_url, file_url, document_url
+// Test with actual API response to determine correct field
+```
+
+### Pagination Handling - NEEDS TESTING
+```javascript
+// TODO: Test pagination behavior for dockets with >20 filings
+// Current implementation only gets first 20 results
+// May need to implement pagination for high-volume dockets
+```
+
+## Working Patterns (DO NOT CHANGE)
+
+These patterns are proven to work - don't modify them:
+
+1. **2-hour lookback window** - Accounts for FCC processing delays
+2. **date_disseminated,DESC sorting** - Only reliable sorting method
+3. **Multiple author field fallbacks** - Required due to API inconsistencies
+4. **Optional chaining everywhere** - API fields are unreliable
+5. **Sanitized logging** - Never expose API keys in logs
+
+## Common Pitfalls to Avoid
+
+1. **DON'T** assume consistent field names across different filings
+2. **DON'T** use received_to parameter - it's unreliable
+3. **DON'T** trust that arrays exist - always check
+4. **DON'T** expose API keys in logs or error messages
+5. **DON'T** process more than 15-20 filings per batch
+6. **DON'T** assume document URLs are easily accessible
+7. **DON'T** skip the User-Agent header - FCC may block requests without it
