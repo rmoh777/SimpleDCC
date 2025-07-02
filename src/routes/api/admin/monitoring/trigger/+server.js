@@ -35,7 +35,7 @@ export async function POST({ platform, cookies }) {
     
     // Perform ECFS check across all dockets
     const startTime = Date.now();
-    const ecfsResult = await fetchMultipleDockets(docketNumbers, 2); // 2 hour lookback
+    const ecfsResult = await fetchMultipleDockets(docketNumbers, 2, platform.env); // Pass platform.env for API key
     const endTime = Date.now();
     
     // Store new filings
