@@ -81,6 +81,18 @@ const MIGRATION_ALTERATIONS = `
 PRAGMA table_info(subscriptions);
 `;
 
+// CORS headers for local development
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Methods': 'POST, OPTIONS',
+  'Access-Control-Allow-Headers': 'Content-Type, x-admin-key',
+  'Content-Type': 'application/json'
+};
+
+export async function OPTIONS() {
+  return new Response(null, { headers: corsHeaders });
+}
+
 export async function POST({ platform, request }) {
   try {
     const db = platform?.env?.DB;
@@ -89,7 +101,7 @@ export async function POST({ platform, request }) {
       return json({ 
         success: false, 
         error: 'Database connection not available' 
-      }, { status: 500 });
+      }, { status: 500, headers: corsHeaders });
     }
 
     // Verify admin access
@@ -98,7 +110,7 @@ export async function POST({ platform, request }) {
       return json({ 
         success: false, 
         error: 'Unauthorized' 
-      }, { status: 401 });
+      }, { status: 401, headers: corsHeaders });
     }
 
     console.log('Starting ECFS integration database migration...');
@@ -155,7 +167,7 @@ export async function POST({ platform, request }) {
         activeDocketsInitialized: initResult.success,
         timestamp: new Date().toISOString()
       }
-    });
+    }, { headers: corsHeaders });
     
   } catch (error) {
     console.error('Migration failed:', error);
@@ -182,7 +194,7 @@ export async function POST({ platform, request }) {
         timestamp: new Date().toISOString(),
         migration: '003_ecfs_integration'
       }
-    }, { status: 500 });
+    }, { status: 500, headers: corsHeaders });
   }
 }
 
