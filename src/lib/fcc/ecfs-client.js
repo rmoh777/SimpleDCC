@@ -87,12 +87,22 @@ export async function fetchECFSFilings(docketNumber, lookbackHours = DEFAULT_LOO
     }
     
     console.log('✅ Request successful, parsing response...');
-    console.log('=== ECFS API DEBUG END (SUCCESS) ===');
     
     const data = await response.json();
     
-    // Parse and validate filings
-    const filings = data.filings || [];
+    // 🔍 DEBUG: Log actual response structure to identify the correct property
+    console.log('📊 Response structure keys:', Object.keys(data));
+    console.log('📊 Response data sample:', {
+      hasFilings: 'filings' in data,
+      hasFiling: 'filing' in data,
+      filingsLength: data.filings?.length || 'N/A',
+      filingLength: data.filing?.length || 'N/A'
+    });
+    
+    console.log('=== ECFS API DEBUG END (SUCCESS) ===');
+    
+    // 🚨 CRITICAL FIX: API returns 'filing' (singular) not 'filings' (plural)
+    const filings = data.filing || data.filings || [];
     const parsedFilings = filings
       .slice(0, MAX_FILINGS_PER_REQUEST) // Limit results
       .map(filing => parseECFSFiling(filing, docketNumber))
