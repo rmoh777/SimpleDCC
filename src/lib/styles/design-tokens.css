@@ -1,0 +1,61 @@
+/* SimpleDCC Design System - Emerald Theme */
+:root {
+  /* Brand Colors - Emerald Theme */
+  --color-primary: #10b981;           /* Emerald 500 */
+  --color-primary-hover: #059669;     /* Emerald 600 */
+  --color-primary-light: #d1fae5;     /* Emerald 100 */
+  
+  /* System Colors */
+  --color-secondary: #0f172a;         /* Slate 900 */
+  --color-background: #f8fafc;        /* Slate 50 */
+  --color-surface: #ffffff;
+  --color-border: #e2e8f0;            /* Slate 200 */
+  
+  /* Status Colors */
+  --color-success: #10b981;           /* Emerald 500 */
+  --color-warning: #f59e0b;           /* Amber 500 */
+  --color-error: #ef4444;             /* Red 500 */
+  --color-info: #3b82f6;              /* Blue 500 */
+  
+  /* Text Colors */
+  --color-text-primary: #0f172a;      /* Slate 900 */
+  --color-text-secondary: #475569;    /* Slate 600 */
+  --color-text-muted: #94a3b8;        /* Slate 400 */
+  
+  /* Typography */
+  --font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+  --font-size-xs: 0.75rem;
+  --font-size-sm: 0.875rem;
+  --font-size-base: 1rem;
+  --font-size-lg: 1.125rem;
+  --font-size-xl: 1.25rem;
+  --font-size-2xl: 1.5rem;
+  --font-size-3xl: 1.875rem;
+  
+  /* Spacing */
+  --spacing-1: 0.25rem;
+  --spacing-2: 0.5rem;
+  --spacing-3: 0.75rem;
+  --spacing-4: 1rem;
+  --spacing-5: 1.25rem;
+  --spacing-6: 1.5rem;
+  --spacing-8: 2rem;
+  --spacing-10: 2.5rem;
+  --spacing-12: 3rem;
+  
+  /* Layout */
+  --max-width-content: 1200px;
+  --border-radius: 0.5rem;
+  --border-radius-lg: 0.75rem;
+  --border-radius-xl: 1rem;
+  
+  /* Shadows */
+  --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+  --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1);
+  --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1);
+  
+  /* Transitions */
+  --transition-fast: 150ms ease-out;
+  --transition-normal: 250ms ease-out;
+  --transition-slow: 350ms ease-out;
+} 

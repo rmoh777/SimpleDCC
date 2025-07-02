@@ -1,4 +1,6 @@
 <script lang="ts">
+  import '$lib/styles/design-tokens.css';
+  import '$lib/styles/component-base.css';
   import '$lib/styles/globals.css';
   import { page } from '$app/stores';
   
@@ -106,6 +108,23 @@
 {/if}
 
 <style>
+  /* Global base styles using new design tokens */
+  :global(body) {
+    font-family: var(--font-family);
+    color: var(--color-text-primary);
+    background-color: var(--color-background);
+    line-height: 1.6;
+  }
+  
+  :global(h1, h2, h3, h4, h5, h6) {
+    color: var(--color-text-primary);
+    font-weight: 600;
+  }
+  
+  :global(h1) { font-size: var(--font-size-3xl); }
+  :global(h2) { font-size: var(--font-size-2xl); }
+  :global(h3) { font-size: var(--font-size-xl); }
+
   .app {
     min-height: 100vh;
     display: flex;

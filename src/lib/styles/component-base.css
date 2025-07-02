@@ -1,0 +1,98 @@
+/* Base Component Classes */
+
+/* Card Components */
+.card-base {
+  background-color: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--border-radius);
+  box-shadow: var(--shadow-sm);
+  transition: all var(--transition-normal);
+}
+
+.card-hover:hover {
+  box-shadow: var(--shadow-md);
+  transform: translateY(-1px);
+}
+
+.card-padding-sm { padding: var(--spacing-4); }
+.card-padding-md { padding: var(--spacing-6); }
+.card-padding-lg { padding: var(--spacing-8); }
+
+/* Button Components */
+.btn-base {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--border-radius);
+  font-weight: 500;
+  transition: all var(--transition-fast);
+  cursor: pointer;
+  border: none;
+}
+
+.btn-primary {
+  background-color: var(--color-primary);
+  color: white;
+}
+
+.btn-primary:hover {
+  background-color: var(--color-primary-hover);
+}
+
+.btn-secondary {
+  background-color: transparent;
+  color: var(--color-text-secondary);
+  border: 1px solid var(--color-border);
+}
+
+.btn-secondary:hover {
+  background-color: var(--color-background);
+}
+
+.btn-sm {
+  padding: var(--spacing-2) var(--spacing-3);
+  font-size: var(--font-size-sm);
+}
+
+.btn-md {
+  padding: var(--spacing-3) var(--spacing-4);
+  font-size: var(--font-size-base);
+}
+
+.btn-lg {
+  padding: var(--spacing-4) var(--spacing-6);
+  font-size: var(--font-size-lg);
+}
+
+/* Status Indicators */
+.status-success {
+  color: var(--color-success);
+  background-color: rgb(16 185 129 / 0.1);
+}
+
+.status-warning {
+  color: var(--color-warning);
+  background-color: rgb(245 158 11 / 0.1);
+}
+
+.status-error {
+  color: var(--color-error);
+  background-color: rgb(239 68 68 / 0.1);
+}
+
+.status-info {
+  color: var(--color-info);
+  background-color: rgb(59 130 246 / 0.1);
+}
+
+/* Utility Classes */
+.text-primary { color: var(--color-text-primary); }
+.text-secondary { color: var(--color-text-secondary); }
+.text-muted { color: var(--color-text-muted); }
+
+.bg-surface { background-color: var(--color-surface); }
+.bg-background { background-color: var(--color-background); }
+
+.border-base { border: 1px solid var(--color-border); }
+.rounded-base { border-radius: var(--border-radius); }
+.shadow-base { box-shadow: var(--shadow-sm); } 
