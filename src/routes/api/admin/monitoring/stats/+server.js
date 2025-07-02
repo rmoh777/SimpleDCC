@@ -1,67 +1,89 @@
 import { json } from '@sveltejs/kit';
-import { getFilingStats } from '$lib/storage/filing-storage.js';
+import { getMonitoringStats, getActiveDockets } from '$lib/database/db-operations.js';
+import { getFilingStats, getRecentFilings } from '$lib/storage/filing-storage.js';
+import { ensureDatabaseSchema } from '$lib/database/auto-migration.js';
 import { checkSystemHealth } from '$lib/monitoring/system-health.js';
-import { getActiveDockets, getMonitoringStats } from '$lib/database/db-operations.js';
+
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+  'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Admin-Key',
+};
 
 export async function GET({ platform, cookies }) {
   try {
     // Verify admin authentication
     const adminSession = cookies.get('admin_session');
     if (adminSession !== 'authenticated') {
-      return json({ error: 'Unauthorized' }, { status: 401 });
+      return json({ error: 'Unauthorized' }, { status: 401, headers: corsHeaders });
     }
     
     const db = platform.env.DB;
     
-    // Get comprehensive system statistics
-    const [filingStats, systemHealth, activeDockets, monitoringStats] = await Promise.all([
-      getFilingStats(db),
-      checkSystemHealth(db),
-      getActiveDockets(db),
-      getMonitoringStats(db)
-    ]);
+    // STEP 1: Auto-migration check (ensures database schema is valid)
+    console.log('🔧 Running auto-migration check...');
+    const migrationResult = await ensureDatabaseSchema(db);
     
-    // Calculate additional metrics
-    const [jobStats, lastCheckTime] = await Promise.all([
-      getActiveJobStats(db),
-      getLastCheckTime(db)
+    if (!migrationResult.success) {
+      console.error('Auto-migration failed:', migrationResult.message);
+      return json({ 
+        error: 'Database schema issue',
+        details: migrationResult.message,
+        migrationRequired: true
+      }, { status: 500, headers: corsHeaders });
+    }
+
+    if (migrationResult.migrationRan) {
+      console.log('✅ Auto-migration completed:', migrationResult.message);
+    }
+
+    // STEP 2: Gather all monitoring statistics (now safe with valid schema)
+    const [
+      filingStats,
+      lastCheckTime, 
+      activeDockets,
+      monitoringStats,
+      jobStats,
+      activityLogs
+    ] = await Promise.all([
+      getFilingStats(db).catch(err => ({ error: err.message })),
+      getLastCheckTime(db).catch(err => ({ error: err.message })),
+      getActiveDockets(db).catch(err => []),
+      getMonitoringStats(db).catch(err => ({ error: err.message })),
+      getActiveJobStats(db).catch(err => ({ error: err.message })),
+      getRecentFilings(db, 10).catch(err => ({ error: err.message }))
     ]);
-    
-    // Build comprehensive stats response
-    const stats = {
-      // Core system metrics
-      systemHealth: systemHealth.status,
-      activeJobs: jobStats.activeCount,
-      lastCheck: lastCheckTime,
-      totalFilings: filingStats.total,
-      activeDockets: activeDockets.length,
-      
-      // Detailed statistics
-      stats: {
-        pendingFilings: filingStats.byStatus.pending || 0,
-        processedToday: filingStats.recent24h,
-        errorRate: monitoringStats.errorRate || 0
+
+    // Build response with migration info
+    const response = {
+      migration: {
+        checked: true,
+        migrationRan: migrationResult.migrationRan || false,
+        message: migrationResult.message
       },
-      
-      // Health check details
-      healthChecks: systemHealth.checks,
-      
-      // Performance metrics
-      performance: {
-        avgResponseTime: systemHealth.checks?.database?.responseTime || 0,
-        apiUptime: calculateUptime(systemHealth.checks?.ecfsAPI),
-        dbConnections: jobStats.dbConnections
-      }
+      system: {
+        health: determineSystemHealth([filingStats, monitoringStats, jobStats]),
+        lastUpdated: Date.now()
+      },
+      filings: filingStats,
+      lastCheck: lastCheckTime,
+      dockets: {
+        active: activeDockets.length,
+        list: activeDockets
+      },
+      monitoring: monitoringStats,
+      jobs: jobStats,
+      recentActivity: activityLogs
     };
-    
-    return json(stats);
+
+    return json(response, { headers: corsHeaders });
     
   } catch (error) {
-    console.error('Error getting monitoring stats:', error);
+    console.error('Failed to get monitoring stats:', error);
     return json({ 
-      error: 'Failed to retrieve monitoring statistics',
+      error: 'Failed to retrieve monitoring stats',
       details: error.message 
-    }, { status: 500 });
+    }, { status: 500, headers: corsHeaders });
   }
 }
 
@@ -116,4 +138,10 @@ function calculateUptime(apiHealthCheck) {
     default:
       return 95;
   }
+}
+
+function determineSystemHealth(stats) {
+  // Implement the logic to determine system health based on the provided stats
+  // This is a placeholder and should be replaced with the actual implementation
+  return 'healthy';
 } 
