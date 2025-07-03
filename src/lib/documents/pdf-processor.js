@@ -1,6 +1,6 @@
 // PDF Document Processing for Enhanced ECFS Integration
-// Using static import with pdfjs-dist legacy build for Node.js compatibility
-import * as pdfjsLib from 'pdfjs-dist/legacy/build/pdf.mjs';
+// TEMPORARILY DISABLED: pdfjs-dist causes Node.js module issues in Cloudflare Workers
+// import * as pdfjsLib from 'pdfjs-dist/legacy/build/pdf.mjs';
 import { env } from '$env/dynamic/private';
 
 /**
@@ -85,11 +85,15 @@ export async function downloadPDF(pdfUrl, options = {}) {
 }
 
 /**
- * Extracts clean text from a PDF buffer using the server-side legacy build of pdfjs-dist.
- * @param {Buffer|ArrayBuffer} pdfBuffer - The PDF content as a Buffer or ArrayBuffer
- * @returns {Promise<string>} A promise that resolves to the full text content of the PDF
+ * TEMPORARILY DISABLED: PDF text extraction using pdfjs-dist
+ * This causes Node.js module issues in Cloudflare Workers
+ * For now, we'll use Jina API for all PDF processing
  */
 export async function extractTextFromPDF(pdfBuffer) {
+  // DISABLED for Cloudflare Workers compatibility
+  throw new Error('Local PDF processing disabled - use Jina API instead');
+  
+  /* ORIGINAL CODE - DISABLED FOR CLOUDFLARE WORKERS
   try {
     console.log(`📖 Extracting text from PDF (${(pdfBuffer.byteLength / 1024).toFixed(2)} KB)`);
 
@@ -137,6 +141,7 @@ export async function extractTextFromPDF(pdfBuffer) {
     // Re-throw the error so the calling function knows something went wrong.
     throw new Error('Failed to extract text from PDF.', { cause: error });
   }
+  */
 }
 
 /**
@@ -283,35 +288,33 @@ export async function processFilingDocuments(filing) {
       
       if (doc.src && doc.type === 'pdf') {
         
-        // Route A: FCC Direct PDFs → Local pdfjs-dist extraction
+        // Route A: FCC Direct PDFs → Jina API extraction (was local, now using Jina for Cloudflare compatibility)
         if (doc.src.startsWith('https://docs.fcc.gov/public/attachments/')) {
-          console.log('🟢 Route A: FCC Direct PDF → Local extraction');
+          console.log('🟢 Route A: FCC Direct PDF → Jina API extraction');
           try {
-            console.log(`📄 Processing FCC direct PDF: ${doc.src}`);
+            console.log(`📄 Processing FCC direct PDF via Jina API: ${doc.src}`);
             
-            const pdfBuffer = await downloadPDF(doc.src);
-            const textContent = await extractTextFromPDF(pdfBuffer);
+            const textContent = await extractTextFromHTML(doc.src);
             
             processedDocuments.push({
               ...doc,
               text_content: textContent,
-              size: pdfBuffer.byteLength,
               processed_at: Date.now(),
               status: 'processed',
-              processing_method: 'local_pdf_extraction'
+              processing_method: 'jina_pdf_extraction'
             });
             
             processedCount++;
-            console.log(`✅ Local PDF processed successfully: ${doc.filename} (${textContent.length} chars)`);
+            console.log(`✅ Jina PDF processed successfully: ${doc.filename} (${textContent.length} chars)`);
             
           } catch (error) {
-            console.error(`❌ Local PDF processing failed for ${doc.filename}:`, error);
+            console.error(`❌ Jina PDF processing failed for ${doc.filename}:`, error);
             processedDocuments.push({
               ...doc,
               status: 'failed',
               error: error.message,
               processed_at: Date.now(),
-              processing_method: 'local_pdf_extraction'
+              processing_method: 'jina_pdf_extraction'
             });
             failedCount++;
           }
@@ -353,35 +356,33 @@ export async function processFilingDocuments(filing) {
           }
         }
         
-        // Fallback: Other FCC URLs (attempt local processing)
+        // Fallback: Other FCC URLs (attempt Jina API processing)
         else if (doc.src.includes('fcc.gov')) {
-          console.log('🔵 Fallback: Other FCC URL → Attempt local processing');
+          console.log('🔵 Fallback: Other FCC URL → Attempt Jina API processing');
           try {
-            console.log(`⚠️ Unknown FCC URL pattern: ${doc.src} - attempting local processing`);
+            console.log(`⚠️ Unknown FCC URL pattern: ${doc.src} - attempting Jina API processing`);
             
-            const pdfBuffer = await downloadPDF(doc.src);
-            const textContent = await extractTextFromPDF(pdfBuffer);
+            const textContent = await extractTextFromHTML(doc.src);
             
             processedDocuments.push({
               ...doc,
               text_content: textContent,
-              size: pdfBuffer.byteLength,
               processed_at: Date.now(),
               status: 'processed',
-              processing_method: 'fallback_local_extraction'
+              processing_method: 'fallback_jina_extraction'
             });
             
             processedCount++;
-            console.log(`✅ Fallback local processing successful: ${doc.filename} (${textContent.length} chars)`);
+            console.log(`✅ Fallback Jina processing successful: ${doc.filename} (${textContent.length} chars)`);
             
           } catch (error) {
-            console.error(`❌ Fallback local processing failed for ${doc.filename}:`, error);
+            console.error(`❌ Fallback Jina processing failed for ${doc.filename}:`, error);
             processedDocuments.push({
               ...doc,
               status: 'failed',
               error: error.message,
               processed_at: Date.now(),
-              processing_method: 'fallback_local_extraction'
+              processing_method: 'fallback_jina_extraction'
             });
             failedCount++;
           }

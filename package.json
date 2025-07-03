@@ -39,8 +39,6 @@
   "dependencies": {
     "@google/generative-ai": "^0.24.1",
     "bcryptjs": "^3.0.2",
-    "dotenv": "^17.0.1",
-    "node-fetch": "^3.3.2",
-    "pdfjs-dist": "^5.3.31"
+    "node-fetch": "^3.3.2"
   }
 }
