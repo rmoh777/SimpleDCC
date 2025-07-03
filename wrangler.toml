@@ -1,13 +1,6 @@
-name = "simple-docketcc"
-compatibility_date = "2024-03-08"
-
-# Node.js compatibility for dotenv, node-fetch, etc.
+name = "simpledcc"
+compatibility_date = "2024-07-04"
 compatibility_flags = ["nodejs_compat"]
-
-# Environment variables
-[vars]
-ECFS_API_BASE_URL = "https://publicapi.fcc.gov/ecfs"
-ECFS_API_KEY = "7DMIhVNAxnGY64lDwhNxpFVrgFLfc4pUUWXn5lzW"
 
 [[d1_databases]]
 binding = "DB"
