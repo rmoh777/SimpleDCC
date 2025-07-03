@@ -13,13 +13,11 @@ const DEFAULT_LIMIT = 50; // Get last 50 filings per docket
  */
 export async function fetchLatestFilings(docketNumber, limit = DEFAULT_LIMIT, env) {
   try {
-    // Support both local development (process.env) and production (platform.env)
-    const apiKey = env?.ECFS_API_KEY || process.env.ECFS_API_KEY;
+    // Use platform.env for Cloudflare Workers compatibility
+    const apiKey = env?.ECFS_API_KEY;
     if (!apiKey) {
       console.error('🔍 Environment check:', {
-        platformEnvKeys: env ? Object.keys(env) : 'env is null',
-        processEnvHasKey: !!process.env.ECFS_API_KEY,
-        nodeEnv: process.env.NODE_ENV
+        platformEnvKeys: env ? Object.keys(env) : 'env is null'
       });
       throw new Error('ECFS_API_KEY environment variable is not set');
     }
@@ -47,9 +45,21 @@ export async function fetchLatestFilings(docketNumber, limit = DEFAULT_LIMIT, en
     
     const data = await response.json();
     
+    // 🔍 DEBUG: Log raw API response structure to identify document fields
+    console.log(`🔍 RAW FCC API RESPONSE STRUCTURE:`);
+    console.log(`📊 Response keys:`, Object.keys(data));
+    
     // API returns 'filing' array (confirmed from successful test)
     const filings = data.filing || [];
     console.log(`✅ Enhanced ECFS: Found ${filings.length} filings for docket ${docketNumber}`);
+    
+    // 🔍 DEBUG: Log first filing structure if available
+    if (filings.length > 0) {
+      console.log(`🔍 FIRST FILING RAW STRUCTURE:`);
+      console.log(`📊 Filing keys:`, Object.keys(filings[0]));
+      console.log(`📄 Documents array:`, filings[0].documents);
+      console.log(`📄 Documents keys:`, filings[0].documents?.map(doc => Object.keys(doc)));
+    }
     
     // Transform to our enhanced format with direct document access
     return filings.map(filing => transformFilingEnhanced(filing, docketNumber));
@@ -124,12 +134,27 @@ function extractDocumentsEnhanced(rawFiling) {
   try {
     const documents = rawFiling.documents || [];
     
+    // 🔍 DEBUG: Log each document's raw structure  
+    documents.forEach((doc, index) => {
+      console.log(`🔍 DOCUMENT ${index + 1} RAW STRUCTURE:`);
+      console.log(`📄 All document fields:`, Object.keys(doc));
+      console.log(`📄 Document object:`, doc);
+      console.log(`📄 Filename:`, doc.filename);
+      console.log(`📄 Src field:`, doc.src);
+      console.log(`📄 URL field:`, doc.url);
+      console.log(`📄 Link field:`, doc.link);
+      console.log(`📄 Href field:`, doc.href);
+      console.log(`📄 File_location:`, doc.file_location);
+      console.log(`📄 Download_url:`, doc.download_url);
+      console.log(`---`);
+    });
+    
     return documents.map(doc => ({
       filename: doc.filename,
       src: doc.src, // 🎯 DIRECT PDF URL! (e.g., "https://docs.fcc.gov/public/attachments/DA-25-567A1.pdf")
       description: doc.description || '',
       type: getFileType(doc.filename),
-      downloadable: !!doc.src && doc.src.startsWith('https://docs.fcc.gov/'),
+      downloadable: !!doc.src && doc.src.includes('fcc.gov'),
       size_estimate: estimateFileSize(doc.filename)
     }));
     

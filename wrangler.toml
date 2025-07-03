@@ -1,17 +1,13 @@
-name = "simple-docketcc"
-compatibility_date = "2024-03-08"
+# wrangler.toml
 
-# Development environment variables
-[vars]
-ECFS_API_KEY = "7DMIhVNAxnGY64lDwhNxpFVrgFLfc4pUUWXn5lzW"
+# This is the name of your project in the Cloudflare dashboard.
+name = "simpledcc" 
 
-[[d1_databases]]
-binding = "DB"
-database_name = "simple-docketcc-db"
-database_id = "e5bfcb56-11ad-4288-a74c-3749f2ddfd1b"
+# This tells Wrangler that this is a Cloudflare Pages project.
+# It requires you to specify the output directory of your build command.
+# For a standard SvelteKit project, this is simply "build".
+pages_build_output_dir = "build"
 
-[env.production]
-[[env.production.d1_databases]]
-binding = "DB"
-database_name = "simple-docketcc-db"
-database_id = "e5bfcb56-11ad-4288-a74c-3749f2ddfd1b" 
+# This section is crucial for our dependencies to work.
+compatibility_date = "2024-07-04"
+compatibility_flags = [ "nodejs_compat" ] 
