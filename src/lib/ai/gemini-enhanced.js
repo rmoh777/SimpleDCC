@@ -12,7 +12,7 @@ import { getEnvVar } from '$lib/utils/env-loader.js';
 export async function generateEnhancedSummary(filing, documentTexts = [], env) {
   try {
     // TEMPORARY: Hardcode API key to bypass environment variable issues
-    const apiKey = env?.GEMINI_API_KEY || process.env.GEMINI_API_KEY || 'AIzaSyCx_57Ec-9CIPOqQMvMC06YLmVYThIW4_w';
+    const apiKey = env?.GEMINI_API_KEY || 'AIzaSyCx_57Ec-9CIPOqQMvMC06YLmVYThIW4_w';
     
     if (!apiKey) {
       throw new Error('GEMINI_API_KEY not found in environment variables');
