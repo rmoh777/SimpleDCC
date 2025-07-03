@@ -1,9 +1,8 @@
 import { sveltekit } from "@sveltejs/kit/vite";
 import { defineConfig } from "vitest/config";
-import { config } from 'dotenv';
 
-// Load environment variables from .env file
-config();
+// SvelteKit handles environment variables automatically for Cloudflare Pages
+// No need for dotenv or manual process.env definitions
 
 export default defineConfig({
   plugins: [sveltekit()],
@@ -17,11 +16,6 @@ export default defineConfig({
   },
   optimizeDeps: {
     include: ['@google/generative-ai']
-  },
-  define: {
-    // Make env vars available to server-side code
-    'process.env.GEMINI_API_KEY': JSON.stringify(process.env.GEMINI_API_KEY),
-    'process.env.ECFS_API_KEY': JSON.stringify(process.env.ECFS_API_KEY),
-    'process.env.NODE_ENV': JSON.stringify(process.env.NODE_ENV),
   }
+  // Environment variables are handled by SvelteKit's $env/dynamic/private for Cloudflare Pages
 });
