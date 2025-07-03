@@ -1,19 +1,12 @@
 name = "simple-docketcc"
-main = ".svelte-kit/cloudflare/_worker.js"
 compatibility_date = "2024-03-08"
 
-# CRITICAL FIX: Enable Node.js compatibility for dotenv, node-fetch, etc.
-compatibility_flags = [ "nodejs_compat" ]
+# Node.js compatibility for dotenv, node-fetch, etc.
+compatibility_flags = ["nodejs_compat"]
 
-[build]
-command = "npm run build"
-watch_dir = "src"
-
-[site]
-bucket = ".svelte-kit/cloudflare"
-
-# Development environment variables
+# Environment variables
 [vars]
+ECFS_API_BASE_URL = "https://publicapi.fcc.gov/ecfs"
 ECFS_API_KEY = "7DMIhVNAxnGY64lDwhNxpFVrgFLfc4pUUWXn5lzW"
 
 [[d1_databases]]
