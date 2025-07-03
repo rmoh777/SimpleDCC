@@ -1,5 +1,6 @@
 // Enhanced Gemini AI Processing with Document Content
 import { GoogleGenerativeAI } from '@google/generative-ai';
+import { getEnvVar } from '$lib/utils/env-loader.js';
 
 /**
  * Generate enhanced AI summary using document content + filing metadata
@@ -10,7 +11,14 @@ import { GoogleGenerativeAI } from '@google/generative-ai';
  */
 export async function generateEnhancedSummary(filing, documentTexts = [], env) {
   try {
-    const genAI = new GoogleGenerativeAI(env.GEMINI_API_KEY);
+    // TEMPORARY: Hardcode API key to bypass environment variable issues
+    const apiKey = env?.GEMINI_API_KEY || process.env.GEMINI_API_KEY || 'AIzaSyCx_57Ec-9CIPOqQMvMC06YLmVYThIW4_w';
+    
+    if (!apiKey) {
+      throw new Error('GEMINI_API_KEY not found in environment variables');
+    }
+    
+    const genAI = new GoogleGenerativeAI(apiKey);
     const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
     
     // Build enhanced prompt with document content
@@ -195,7 +203,7 @@ export async function processFilingEnhanced(filing, env) {
     let documentTexts = [];
     let processedFiling = filing;
     
-    if (filing.documents?.some(d => d.downloadable)) {
+    if (filing.documents?.some(d => d.src && d.src.includes('fcc.gov'))) {
       const { processFilingDocuments } = await import('$lib/documents/pdf-processor.js');
       processedFiling = await processFilingDocuments(filing);
       

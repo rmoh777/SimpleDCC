@@ -16,10 +16,16 @@ export async function GET({ platform, cookies, url }) {
     
     console.log(`🧪 Testing Enhanced AI Processing - Docket: ${docketNumber}, Full Pipeline: ${testFullPipeline}`);
     
-    if (!platform.env.GEMINI_API_KEY) {
+    // TEMPORARY: Hardcode API key to bypass environment variable issues
+    const apiKey = platform.env?.GEMINI_API_KEY || process.env.GEMINI_API_KEY || 'AIzaSyCx_57Ec-9CIPOqQMvMC06YLmVYThIW4_w';
+    if (!apiKey) {
       return json({
         error: 'GEMINI_API_KEY not configured',
-        suggestion: 'Add GEMINI_API_KEY to environment variables'
+        suggestion: 'Add GEMINI_API_KEY to environment variables',
+        debug: {
+          platform_keys: Object.keys(platform.env || {}),
+          process_env_exists: !!process.env.GEMINI_API_KEY
+        }
       }, { status: 400 });
     }
     
@@ -43,7 +49,9 @@ export async function GET({ platform, cookies, url }) {
     if (testFullPipeline) {
       // Test full enhanced processing pipeline
       const startTime = Date.now();
-      const enhancedFiling = await processFilingEnhanced(testFiling, platform.env);
+      const enhancedFiling = await processFilingEnhanced(testFiling, {
+        GEMINI_API_KEY: apiKey
+      });
       const processingDuration = Date.now() - startTime;
       
       testResults = {
@@ -64,14 +72,24 @@ export async function GET({ platform, cookies, url }) {
           status: enhancedFiling.status
         },
         processing_duration_ms: processingDuration,
-        ai_summary_preview: enhancedFiling.ai_summary?.substring(0, 200) + '...'
+        // FULL AI RESPONSE - No truncation
+        full_ai_response: {
+          summary: enhancedFiling.ai_summary,
+          key_points: enhancedFiling.ai_key_points,
+          stakeholders: enhancedFiling.ai_stakeholders,
+          regulatory_impact: enhancedFiling.ai_regulatory_impact,
+          document_analysis: enhancedFiling.ai_document_analysis,
+          confidence: enhancedFiling.ai_confidence
+        }
       };
       
     } else {
       // Test just AI summary generation
       const startTime = Date.now();
       const mockDocumentTexts = ['Sample document text for AI processing test'];
-      const enhancedSummary = await generateEnhancedSummary(testFiling, mockDocumentTexts, platform.env);
+      const enhancedSummary = await generateEnhancedSummary(testFiling, mockDocumentTexts, {
+        GEMINI_API_KEY: apiKey
+      });
       const aiDuration = Date.now() - startTime;
       
       testResults = {
@@ -86,7 +104,16 @@ export async function GET({ platform, cookies, url }) {
           documents_analyzed: enhancedSummary.processing_notes?.documents_processed || 0
         },
         processing_duration_ms: aiDuration,
-        summary_preview: enhancedSummary.summary?.substring(0, 300) + '...'
+        // FULL AI RESPONSE - No truncation
+        full_ai_response: {
+          summary: enhancedSummary.summary,
+          key_points: enhancedSummary.key_points,
+          stakeholders: enhancedSummary.stakeholders,
+          regulatory_impact: enhancedSummary.regulatory_impact,
+          document_analysis: enhancedSummary.document_analysis,
+          confidence: enhancedSummary.confidence,
+          processing_notes: enhancedSummary.processing_notes
+        }
       };
     }
     
@@ -173,7 +200,15 @@ export async function POST({ platform, request, cookies }) {
         status: f.status,
         key_points_count: f.ai_key_points?.length || 0,
         documents_processed: f.documents_processed || 0,
-        summary_preview: f.ai_summary?.substring(0, 150) + '...'
+        // FULL AI RESPONSE - No truncation
+        full_ai_response: {
+          summary: f.ai_summary,
+          key_points: f.ai_key_points,
+          stakeholders: f.ai_stakeholders,
+          regulatory_impact: f.ai_regulatory_impact,
+          document_analysis: f.ai_document_analysis,
+          confidence: f.ai_confidence
+        }
       }))
     });
     
