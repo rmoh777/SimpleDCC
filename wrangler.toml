@@ -4,6 +4,9 @@ compatibility_date = "2024-03-08"
 # Cloudflare Pages configuration
 pages_build_output_dir = ".svelte-kit/cloudflare"
 
+# Enable Node.js compatibility to support dependencies like node-fetch
+compatibility_flags = ["nodejs_compat"]
+
 # Development environment variables (use placeholders for security)
 [vars]
 ECFS_API_KEY = "placeholder"

@@ -1,7 +1,8 @@
 // In src/routes/api/debug/jina-stream/+server.js
 
 import { env } from '$env/dynamic/private';
-import fetch from 'node-fetch';
+// Native fetch is available in Cloudflare Pages - no need for node-fetch
+// import fetch from 'node-fetch';
 
 export async function GET() {
   const jinaApiKey = env.JINA_API_KEY;
@@ -50,8 +51,8 @@ export async function GET() {
       body: JSON.stringify({
         url: jinaTargetUrl, // Sending the direct download URL
         headers: { 'Referer': targetUrl } // And the original as the Referer
-      }),
-      timeout: 90000,
+      })
+      // Note: Native fetch doesn't support timeout option - Cloudflare Pages has its own timeout handling
     });
 
     if (!response.ok) {
