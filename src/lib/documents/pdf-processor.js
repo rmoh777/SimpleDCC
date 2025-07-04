@@ -74,7 +74,7 @@ async function extractTextFromHTML(url) {
  */
 async function tryEnhancedStreamingMode(url, jinaApiKey) {
   const response = await fetch(`https://r.jina.ai/${url}`, {
-    headers: {
+      headers: {
       'Authorization': `Bearer ${jinaApiKey}`,
       'Accept': 'text/event-stream',
       'X-Return-Format': 'text',
@@ -82,8 +82,8 @@ async function tryEnhancedStreamingMode(url, jinaApiKey) {
       'X-Timeout': '30'
     },
   });
-
-  if (!response.ok) {
+    
+    if (!response.ok) {
     throw new Error(`Enhanced streaming HTTP ${response.status}`);
   }
 
@@ -348,27 +348,27 @@ export async function processFilingDocuments(filing) {
             // =======================================================================
             const sanitizedText = extractionResult.text.replace(/undefined/g, '');
             console.log(`🧹 Sanitized text: removed ${extractionResult.text.length - sanitizedText.length} characters`);
-            
-            processedDocuments.push({
-              ...doc,
+          
+          processedDocuments.push({
+            ...doc,
               text_content: sanitizedText,
               raw_chunks: extractionResult.debug_info?.raw_chunks || [],
               jina_debug: extractionResult.debug_info,
               extraction_strategy: extractionResult.extraction_strategy,
-              processed_at: Date.now(),
+            processed_at: Date.now(),
               status: 'processed',
               processing_method: 'jina_fallback_extraction'
-            });
-            
+          });
+          
             processedCount++;
             console.log(`✅ Fallback Jina processing successful: ${doc.filename} (${sanitizedText.length} chars) via ${extractionResult.extraction_strategy}`);
             
-          } catch (error) {
+        } catch (error) {
             console.error(`❌ Fallback Jina processing failed for ${doc.filename}:`, error);
-            processedDocuments.push({
-              ...doc,
-              status: 'failed',
-              error: error.message,
+          processedDocuments.push({
+            ...doc,
+            status: 'failed',
+            error: error.message,
               processed_at: Date.now(),
               processing_method: 'jina_fallback_extraction'
             });
