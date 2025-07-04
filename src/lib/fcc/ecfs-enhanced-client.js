@@ -1,3 +1,5 @@
+import { env } from '$env/dynamic/private';
+
 // Enhanced ECFS Client - Last 50 Filings Approach with Direct Document Access
 // Based on successful API test: https://publicapi.fcc.gov/ecfs/filings?api_key=...
 
@@ -5,19 +7,20 @@ const ECFS_BASE_URL = 'https://publicapi.fcc.gov/ecfs/filings';
 const DEFAULT_LIMIT = 50; // Get last 50 filings per docket
 
 /**
- * Fetch latest filings for a docket using the proven working API approach
- * @param {string} docketNumber - Format: "XX-XXX" (e.g., "11-42")
+ * Enhanced ECFS client with direct document URL access
+ * @param {string} docketNumber - FCC docket number (e.g., '07-114')
  * @param {number} limit - Number of recent filings to fetch (default: 50)
- * @param {Object} env - Environment variables with API key
+ * @param {Object} passedEnv - Environment variables passed from caller (optional)
  * @returns {Promise<Array>} Array of filing objects with direct document URLs
  */
-export async function fetchLatestFilings(docketNumber, limit = DEFAULT_LIMIT, env) {
+export async function fetchLatestFilings(docketNumber, limit = DEFAULT_LIMIT, passedEnv) {
   try {
-    // Support both local development (process.env) and production (platform.env)
-    const apiKey = env?.ECFS_API_KEY || process.env.ECFS_API_KEY;
+    // Use SvelteKit native env with fallback support for backwards compatibility
+    const apiKey = env.ECFS_API_KEY || passedEnv?.ECFS_API_KEY || process.env.ECFS_API_KEY;
     if (!apiKey) {
       console.error('🔍 Environment check:', {
-        platformEnvKeys: env ? Object.keys(env) : 'env is null',
+        svelteKitEnvHasKey: !!env.ECFS_API_KEY,
+        passedEnvKeys: passedEnv ? Object.keys(passedEnv) : 'passedEnv is null',
         processEnvHasKey: !!process.env.ECFS_API_KEY,
         nodeEnv: process.env.NODE_ENV
       });

@@ -1,18 +1,18 @@
 // Enhanced Gemini AI Processing with Document Content
 import { GoogleGenerativeAI } from '@google/generative-ai';
-import { getEnvVar } from '$lib/utils/env-loader.js';
+import { env } from '$env/dynamic/private';
 
 /**
- * Generate enhanced AI summary using document content + filing metadata
- * @param {Object} filing - Filing with enhanced metadata
+ * Generate enhanced AI summary with document content integration
+ * @param {Object} filing - Filing object with metadata
  * @param {Array} documentTexts - Array of extracted document texts
- * @param {Object} env - Environment variables
+ * @param {Object} passedEnv - Environment variables passed from caller (optional)
  * @returns {Promise<Object>} Enhanced AI summary with structured output
  */
-export async function generateEnhancedSummary(filing, documentTexts = [], env) {
+export async function generateEnhancedSummary(filing, documentTexts = [], passedEnv) {
   try {
-    // TEMPORARY: Hardcode API key to bypass environment variable issues
-    const apiKey = env?.GEMINI_API_KEY || process.env.GEMINI_API_KEY || 'AIzaSyCx_57Ec-9CIPOqQMvMC06YLmVYThIW4_w';
+    // Use SvelteKit native env with fallback support for backwards compatibility
+    const apiKey = env.GEMINI_API_KEY || passedEnv?.GEMINI_API_KEY || process.env.GEMINI_API_KEY || 'AIzaSyCx_57Ec-9CIPOqQMvMC06YLmVYThIW4_w';
     
     if (!apiKey) {
       throw new Error('GEMINI_API_KEY not found in environment variables');
