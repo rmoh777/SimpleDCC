@@ -13,11 +13,13 @@ const DEFAULT_LIMIT = 50; // Get last 50 filings per docket
  */
 export async function fetchLatestFilings(docketNumber, limit = DEFAULT_LIMIT, env) {
   try {
-    // Use platform.env for Cloudflare Workers compatibility
-    const apiKey = env?.ECFS_API_KEY;
+    // Support both local development (process.env) and production (platform.env)
+    const apiKey = env?.ECFS_API_KEY || process.env.ECFS_API_KEY;
     if (!apiKey) {
       console.error('🔍 Environment check:', {
-        platformEnvKeys: env ? Object.keys(env) : 'env is null'
+        platformEnvKeys: env ? Object.keys(env) : 'env is null',
+        processEnvHasKey: !!process.env.ECFS_API_KEY,
+        nodeEnv: process.env.NODE_ENV
       });
       throw new Error('ECFS_API_KEY environment variable is not set');
     }

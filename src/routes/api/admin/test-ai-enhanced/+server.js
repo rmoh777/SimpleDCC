@@ -17,13 +17,14 @@ export async function GET({ platform, cookies, url }) {
     console.log(`🧪 Testing Enhanced AI Processing - Docket: ${docketNumber}, Full Pipeline: ${testFullPipeline}`);
     
     // TEMPORARY: Hardcode API key to bypass environment variable issues
-    const apiKey = platform.env?.GEMINI_API_KEY || 'AIzaSyCx_57Ec-9CIPOqQMvMC06YLmVYThIW4_w';
+    const apiKey = platform.env?.GEMINI_API_KEY || process.env.GEMINI_API_KEY || 'AIzaSyCx_57Ec-9CIPOqQMvMC06YLmVYThIW4_w';
     if (!apiKey) {
       return json({
         error: 'GEMINI_API_KEY not configured',
         suggestion: 'Add GEMINI_API_KEY to environment variables',
         debug: {
-          platform_keys: Object.keys(platform.env || {})
+          platform_keys: Object.keys(platform.env || {}),
+          process_env_exists: !!process.env.GEMINI_API_KEY
         }
       }, { status: 400 });
     }

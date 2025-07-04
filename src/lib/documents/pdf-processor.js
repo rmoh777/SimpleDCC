@@ -1,6 +1,6 @@
 // PDF Document Processing for Enhanced ECFS Integration
-// TEMPORARILY DISABLED: pdfjs-dist causes Node.js module issues in Cloudflare Workers
-// import * as pdfjsLib from 'pdfjs-dist/legacy/build/pdf.mjs';
+// Using static import with pdfjs-dist legacy build for Node.js compatibility
+import * as pdfjsLib from 'pdfjs-dist/legacy/build/pdf.mjs';
 import { env } from '$env/dynamic/private';
 
 /**
@@ -85,15 +85,11 @@ export async function downloadPDF(pdfUrl, options = {}) {
 }
 
 /**
- * TEMPORARILY DISABLED: PDF text extraction using pdfjs-dist
- * This causes Node.js module issues in Cloudflare Workers
- * For now, we'll use Jina API for all PDF processing
+ * Extracts clean text from a PDF buffer using the server-side legacy build of pdfjs-dist.
+ * @param {Buffer|ArrayBuffer} pdfBuffer - The PDF content as a Buffer or ArrayBuffer
+ * @returns {Promise<string>} A promise that resolves to the full text content of the PDF
  */
 export async function extractTextFromPDF(pdfBuffer) {
-  // DISABLED for Cloudflare Workers compatibility
-  throw new Error('Local PDF processing disabled - use Jina API instead');
-  
-  /* ORIGINAL CODE - DISABLED FOR CLOUDFLARE WORKERS
   try {
     console.log(`📖 Extracting text from PDF (${(pdfBuffer.byteLength / 1024).toFixed(2)} KB)`);
 
@@ -141,7 +137,6 @@ export async function extractTextFromPDF(pdfBuffer) {
     // Re-throw the error so the calling function knows something went wrong.
     throw new Error('Failed to extract text from PDF.', { cause: error });
   }
-  */
 }
 
 /**
@@ -151,121 +146,87 @@ export async function extractTextFromPDF(pdfBuffer) {
  */
 async function extractTextFromHTML(htmlUrl) {
   try {
-    console.log(`🌐 Extracting text from HTML viewer using Streaming Mode: ${htmlUrl}`);
+    console.log(`🔵 Using Route B: Jina API Streaming Mode.`);
     
     const jinaApiKey = env.JINA_API_KEY;
     if (!jinaApiKey) {
-      throw new Error('JINA_API_KEY not configured');
+      throw new Error('Cannot process with Jina: JINA_API_KEY not found.');
     }
     
-    console.log(`🚀 Using Jina Streaming Mode with Readability Bypass for: ${htmlUrl}`);
+    const jinaReaderUrl = `https://r.jina.ai/${htmlUrl}`;
     
-    const response = await fetch('https://r.jina.ai/', {
-      method: 'POST',
+    const response = await fetch(jinaReaderUrl, {
       headers: {
         'Authorization': `Bearer ${jinaApiKey}`,
-        'Content-Type': 'application/json',
-        // 🔑 KEY: Request streaming response for patience with slow-loading content
-        'Accept': 'text/event-stream', 
-        // 🔑 KEY: Bypass readability filtering for brute-force text extraction
-        'x-respond-with': 'text',
+        'Accept': 'text/event-stream', // We must specify we want a stream
       },
-      body: JSON.stringify({ url: htmlUrl }),
-      // Give streaming mode plenty of time to work
-      signal: AbortSignal.timeout(90000) // 90 seconds
     });
 
     if (!response.ok) {
-      const errorBody = await response.text();
-      throw new Error(`Jina Streaming API failed with status ${response.status}: ${errorBody}`);
+      throw new Error(`Jina API request failed with status ${response.status}`);
     }
 
-    console.log(`📡 Processing streaming response from Jina...`);
-    
-    // 🔄 Handle the Streaming Response - AGGREGATE ALL CHUNKS (FIX!)
-    const allTextChunks = []; // 1. Initialize an array to store all text parts
-    let chunkCount = 0;
-    
+    // =======================================================================
+    // THE FIX IS HERE: Correctly parse the Server-Sent Events (SSE) stream
+    // =======================================================================
     const reader = response.body.getReader();
     const decoder = new TextDecoder();
-    
-    try {
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
+    let fullText = '';
+    let done = false;
+
+    console.log('📡 Processing streaming response from Jina...');
+    while (!done) {
+      const { value, done: readerDone } = await reader.read();
+      done = readerDone;
+
+      if (value) {
+        const chunk = decoder.decode(value, { stream: true });
+        // SSE streams can contain multiple "data:" lines in a single chunk
+        const lines = chunk.split('\n');
         
-        chunkCount++;
-        const chunkStr = decoder.decode(value, { stream: true });
-        
-        // Parse event-stream format: "data: { ... }\n\n"
-        const lines = chunkStr.split('\n');
         for (const line of lines) {
+          // We only care about lines that start with "data: "
           if (line.startsWith('data: ')) {
-            const chunkData = line.substring(6); // Get content after "data: "
-            
-            // 2. Extract and accumulate text content from each chunk
-            try {
-              // Try to parse as JSON first (common format)
-              const parsedContent = JSON.parse(chunkData);
-              if (parsedContent.content) {
-                allTextChunks.push(parsedContent.content);
-              } else if (parsedContent.text) {
-                allTextChunks.push(parsedContent.text);
-              } else if (parsedContent.data) {
-                allTextChunks.push(parsedContent.data);
-              }
-            } catch {
-              // If not JSON, treat as plain text and add it
-              if (chunkData.trim()) {
-                allTextChunks.push(chunkData);
+            // Extract the JSON part of the message
+            const jsonString = line.substring(6);
+            if (jsonString.trim()) {
+              try {
+                // Parse the JSON and get the content
+                const parsed = JSON.parse(jsonString);
+                if (parsed.content) {
+                  fullText += parsed.content;
+                }
+              } catch (e) {
+                // It's possible to get incomplete JSON in a chunk, so we log and continue
+                console.warn('...could not parse a streaming JSON chunk, continuing...');
               }
             }
-            
-            console.log(`📦 Received chunk ${chunkCount}, size: ${chunkData.length} chars`);
           }
         }
       }
-    } finally {
-      reader.releaseLock();
     }
-    
-    console.log(`✅ Streaming complete: ${chunkCount} chunks received, aggregating ${allTextChunks.length} text parts`);
-    
-    // 3. Join all collected text chunks into one single string
-    const textContent = allTextChunks.join('');
+    // =======================================================================
 
-    if (!textContent || textContent.includes('You need to enable JavaScript')) {
-      console.error(`❌ Streaming Mode failed. Aggregated ${allTextChunks.length} chunks but got no meaningful content.`);
-      throw new Error('Jina Streaming Mode failed to extract meaningful content.');
+    if (!fullText) {
+      throw new Error('Jina Streaming Mode failed to aggregate meaningful content.');
     }
+
+    console.log(`✅ Streaming complete. Extracted ${fullText.length} characters.`);
     
-    console.log(`✅ Jina Streaming Mode aggregated ${allTextChunks.length} chunks into ${textContent.length} characters from HTML viewer`);
-    
-    // Show FULL content for debugging when short, or preview when long
-    if (textContent.length <= 500) {
-      console.log(`🔍 FULL EXTRACTED TEXT (${textContent.length} chars):`);
-      console.log(`"${textContent}"`);
+    // Show detailed debugging output
+    if (fullText.length <= 500) {
+      console.log(`🔍 FULL EXTRACTED TEXT (${fullText.length} chars):`);
+      console.log(`"${fullText}"`);
       console.log(`🔍 END OF EXTRACTED TEXT`);
     } else {
-      console.log(`📄 Content preview (first 300 chars): "${textContent.substring(0, 300)}..."`);
+      console.log(`📄 Content preview (first 300 chars): "${fullText.substring(0, 300)}..."`);
     }
     
-    // Show character analysis
-    const trimmed = textContent.trim();
-    const lines = textContent.split('\n').length;
-    const words = textContent.split(/\s+/).filter(w => w.length > 0).length;
-    
-    console.log(`📊 Text Analysis: ${trimmed.length} chars (trimmed), ${lines} lines, ${words} words`);
-    
-    if (textContent.length < 200) {
-      console.warn(`⚠️ Warning: Very short content may indicate extraction failure`);
-    }
-    
-    return textContent;
+    return fullText;
     
   } catch (error) {
-    console.error('❌ HTML text extraction failed:', error);
-    throw error;
+    console.error(`❌ Jina Streaming processing failed:`, error);
+    throw error; // Re-throw the error to be caught by the main try/catch block
   }
 }
 
@@ -288,33 +249,35 @@ export async function processFilingDocuments(filing) {
       
       if (doc.src && doc.type === 'pdf') {
         
-        // Route A: FCC Direct PDFs → Jina API extraction (was local, now using Jina for Cloudflare compatibility)
+        // Route A: FCC Direct PDFs → Local pdfjs-dist extraction
         if (doc.src.startsWith('https://docs.fcc.gov/public/attachments/')) {
-          console.log('🟢 Route A: FCC Direct PDF → Jina API extraction');
+          console.log('🟢 Route A: FCC Direct PDF → Local extraction');
           try {
-            console.log(`📄 Processing FCC direct PDF via Jina API: ${doc.src}`);
+            console.log(`📄 Processing FCC direct PDF: ${doc.src}`);
             
-            const textContent = await extractTextFromHTML(doc.src);
+            const pdfBuffer = await downloadPDF(doc.src);
+            const textContent = await extractTextFromPDF(pdfBuffer);
             
             processedDocuments.push({
               ...doc,
               text_content: textContent,
+              size: pdfBuffer.byteLength,
               processed_at: Date.now(),
               status: 'processed',
-              processing_method: 'jina_pdf_extraction'
+              processing_method: 'local_pdf_extraction'
             });
             
             processedCount++;
-            console.log(`✅ Jina PDF processed successfully: ${doc.filename} (${textContent.length} chars)`);
+            console.log(`✅ Local PDF processed successfully: ${doc.filename} (${textContent.length} chars)`);
             
           } catch (error) {
-            console.error(`❌ Jina PDF processing failed for ${doc.filename}:`, error);
+            console.error(`❌ Local PDF processing failed for ${doc.filename}:`, error);
             processedDocuments.push({
               ...doc,
               status: 'failed',
               error: error.message,
               processed_at: Date.now(),
-              processing_method: 'jina_pdf_extraction'
+              processing_method: 'local_pdf_extraction'
             });
             failedCount++;
           }
@@ -356,33 +319,35 @@ export async function processFilingDocuments(filing) {
           }
         }
         
-        // Fallback: Other FCC URLs (attempt Jina API processing)
+        // Fallback: Other FCC URLs (attempt local processing)
         else if (doc.src.includes('fcc.gov')) {
-          console.log('🔵 Fallback: Other FCC URL → Attempt Jina API processing');
+          console.log('🔵 Fallback: Other FCC URL → Attempt local processing');
           try {
-            console.log(`⚠️ Unknown FCC URL pattern: ${doc.src} - attempting Jina API processing`);
+            console.log(`⚠️ Unknown FCC URL pattern: ${doc.src} - attempting local processing`);
             
-            const textContent = await extractTextFromHTML(doc.src);
+            const pdfBuffer = await downloadPDF(doc.src);
+            const textContent = await extractTextFromPDF(pdfBuffer);
             
             processedDocuments.push({
               ...doc,
               text_content: textContent,
+              size: pdfBuffer.byteLength,
               processed_at: Date.now(),
               status: 'processed',
-              processing_method: 'fallback_jina_extraction'
+              processing_method: 'fallback_local_extraction'
             });
             
             processedCount++;
-            console.log(`✅ Fallback Jina processing successful: ${doc.filename} (${textContent.length} chars)`);
+            console.log(`✅ Fallback local processing successful: ${doc.filename} (${textContent.length} chars)`);
             
           } catch (error) {
-            console.error(`❌ Fallback Jina processing failed for ${doc.filename}:`, error);
+            console.error(`❌ Fallback local processing failed for ${doc.filename}:`, error);
             processedDocuments.push({
               ...doc,
               status: 'failed',
               error: error.message,
               processed_at: Date.now(),
-              processing_method: 'fallback_jina_extraction'
+              processing_method: 'fallback_local_extraction'
             });
             failedCount++;
           }
