@@ -1,9 +1,10 @@
 import { sveltekit } from "@sveltejs/kit/vite";
 import { defineConfig } from "vitest/config";
-import { config } from 'dotenv';
+// Remove dotenv import - SvelteKit handles environment variables natively
+// import { config } from 'dotenv';
 
-// Load environment variables from .env file
-config();
+// Remove dotenv config call - causes node:fs runtime errors in Cloudflare Pages
+// config();
 
 export default defineConfig({
   plugins: [sveltekit()],
