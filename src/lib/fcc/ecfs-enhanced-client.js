@@ -1,3 +1,5 @@
+import { env } from '$env/dynamic/private';
+
 // Enhanced ECFS Client - Last 50 Filings Approach with Direct Document Access
 // Based on successful API test: https://publicapi.fcc.gov/ecfs/filings?api_key=...
 
@@ -5,19 +7,20 @@ const ECFS_BASE_URL = 'https://publicapi.fcc.gov/ecfs/filings';
 const DEFAULT_LIMIT = 50; // Get last 50 filings per docket
 
 /**
- * Fetch latest filings for a docket using the proven working API approach
- * @param {string} docketNumber - Format: "XX-XXX" (e.g., "11-42")
+ * Enhanced ECFS client with direct document URL access
+ * @param {string} docketNumber - FCC docket number (e.g., '07-114')
  * @param {number} limit - Number of recent filings to fetch (default: 50)
- * @param {Object} env - Environment variables with API key
+ * @param {Object} passedEnv - Environment variables passed from caller (optional)
  * @returns {Promise<Array>} Array of filing objects with direct document URLs
  */
-export async function fetchLatestFilings(docketNumber, limit = DEFAULT_LIMIT, env) {
+export async function fetchLatestFilings(docketNumber, limit = DEFAULT_LIMIT, passedEnv) {
   try {
-    // Support both local development (process.env) and production (platform.env)
-    const apiKey = env?.ECFS_API_KEY || process.env.ECFS_API_KEY;
+    // Use SvelteKit native env with fallback support for backwards compatibility
+    const apiKey = env.ECFS_API_KEY || passedEnv?.ECFS_API_KEY || process.env.ECFS_API_KEY;
     if (!apiKey) {
       console.error('🔍 Environment check:', {
-        platformEnvKeys: env ? Object.keys(env) : 'env is null',
+        svelteKitEnvHasKey: !!env.ECFS_API_KEY,
+        passedEnvKeys: passedEnv ? Object.keys(passedEnv) : 'passedEnv is null',
         processEnvHasKey: !!process.env.ECFS_API_KEY,
         nodeEnv: process.env.NODE_ENV
       });
@@ -47,9 +50,21 @@ export async function fetchLatestFilings(docketNumber, limit = DEFAULT_LIMIT, en
     
     const data = await response.json();
     
+    // 🔍 DEBUG: Log raw API response structure to identify document fields
+    console.log(`🔍 RAW FCC API RESPONSE STRUCTURE:`);
+    console.log(`📊 Response keys:`, Object.keys(data));
+    
     // API returns 'filing' array (confirmed from successful test)
     const filings = data.filing || [];
     console.log(`✅ Enhanced ECFS: Found ${filings.length} filings for docket ${docketNumber}`);
+    
+    // 🔍 DEBUG: Log first filing structure if available
+    if (filings.length > 0) {
+      console.log(`🔍 FIRST FILING RAW STRUCTURE:`);
+      console.log(`📊 Filing keys:`, Object.keys(filings[0]));
+      console.log(`📄 Documents array:`, filings[0].documents);
+      console.log(`📄 Documents keys:`, filings[0].documents?.map(doc => Object.keys(doc)));
+    }
     
     // Transform to our enhanced format with direct document access
     return filings.map(filing => transformFilingEnhanced(filing, docketNumber));
@@ -124,12 +139,27 @@ function extractDocumentsEnhanced(rawFiling) {
   try {
     const documents = rawFiling.documents || [];
     
+    // 🔍 DEBUG: Log each document's raw structure  
+    documents.forEach((doc, index) => {
+      console.log(`🔍 DOCUMENT ${index + 1} RAW STRUCTURE:`);
+      console.log(`📄 All document fields:`, Object.keys(doc));
+      console.log(`📄 Document object:`, doc);
+      console.log(`📄 Filename:`, doc.filename);
+      console.log(`📄 Src field:`, doc.src);
+      console.log(`📄 URL field:`, doc.url);
+      console.log(`📄 Link field:`, doc.link);
+      console.log(`📄 Href field:`, doc.href);
+      console.log(`📄 File_location:`, doc.file_location);
+      console.log(`📄 Download_url:`, doc.download_url);
+      console.log(`---`);
+    });
+    
     return documents.map(doc => ({
       filename: doc.filename,
       src: doc.src, // 🎯 DIRECT PDF URL! (e.g., "https://docs.fcc.gov/public/attachments/DA-25-567A1.pdf")
       description: doc.description || '',
       type: getFileType(doc.filename),
-      downloadable: !!doc.src && doc.src.startsWith('https://docs.fcc.gov/'),
+      downloadable: !!doc.src && doc.src.includes('fcc.gov'),
       size_estimate: estimateFileSize(doc.filename)
     }));
     

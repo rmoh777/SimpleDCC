@@ -1,9 +1,17 @@
 name = "simple-docketcc"
 compatibility_date = "2024-03-08"
 
-# Development environment variables
+# Cloudflare Pages configuration
+pages_build_output_dir = ".svelte-kit/cloudflare"
+
+# Enable Node.js compatibility to support dependencies like node-fetch
+compatibility_flags = ["nodejs_compat"]
+
+# Development environment variables (use placeholders for security)
 [vars]
-ECFS_API_KEY = "7DMIhVNAxnGY64lDwhNxpFVrgFLfc4pUUWXn5lzW"
+ECFS_API_KEY = "placeholder"
+GEMINI_API_KEY = "placeholder"
+JINA_API_KEY = "placeholder"
 
 [[d1_databases]]
 binding = "DB"
