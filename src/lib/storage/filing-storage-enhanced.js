@@ -1,7 +1,7 @@
 // Enhanced Filing Storage with AI Processing Integration
 import { storeFilings as storeFilingsOriginal } from './filing-storage.js';
 import { processFilingBatchEnhanced } from '$lib/ai/gemini-enhanced.js';
-import { identifyNewFilings } from '$lib/fcc/ecfs-enhanced-client.js';
+import { identifyNewFilings } from '$lib/fcc/ecfs-client.js';
 
 /**
  * Store filings with enhanced AI processing

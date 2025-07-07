@@ -1,5 +1,5 @@
 import { json } from '@sveltejs/kit';
-import { fetchLatestFilings, fetchMultipleDocketsEnhanced, identifyNewFilings } from '$lib/fcc/ecfs-enhanced-client.js';
+import { fetchLatestFilings, fetchMultipleDockets, identifyNewFilings } from '$lib/fcc/ecfs-client.js';
 import { processFilingDocuments } from '$lib/documents/pdf-processor.js';
 
 export async function GET({ platform, cookies, url }) {
@@ -114,7 +114,7 @@ export async function POST({ platform, request, cookies }) {
     
     console.log(`🧪 Enhanced ECFS Multi-Docket Test: ${dockets.join(', ')}`);
     
-    const result = await fetchMultipleDocketsEnhanced(dockets, platform.env);
+    const result = await fetchMultipleDockets(dockets, 2, platform.env);
     
     return json({
       success: true,

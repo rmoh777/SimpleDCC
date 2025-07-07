@@ -1,3 +1,28 @@
+# E3 Phase 1: Core Consolidation ⏱️ *45 minutes*
+
+**Objective:** Replace dual-system complexity with enhanced-only ECFS processing. Consolidate ecfs-client.js to use proven enhanced implementation without feature flags.
+
+## What Cursor Should Know:
+
+You are consolidating SimpleDCC from a dual ECFS system (original + enhanced with feature flags) to a clean enhanced-only implementation. The enhanced system uses:
+
+- **Count-based queries** instead of time-based (last 50 filings per docket)
+- **Direct document URL access** via `doc.src` field from ECFS API
+- **Perfect deduplication** using `id_submission` instead of composite keys
+- **Jina AI document extraction** for PDF text processing
+- **Gemini AI analysis** with document content for richer insights
+
+Your task is to replace the contents of existing files to use ONLY the enhanced approach, removing all feature flag complexity.
+
+---
+
+## Files to Modify:
+
+### 1. `src/lib/fcc/ecfs-client.js` (REPLACE ENTIRE CONTENTS)
+
+Replace this file's contents with the enhanced-only implementation:
+
+```javascript
 // Enhanced-Only ECFS Client - Production Ready
 // No feature flags - uses proven enhanced approach exclusively
 
@@ -312,4 +337,167 @@ export async function identifyNewFilings(filings, db) {
     console.error('❌ Enhanced deduplication failed:', error);
     return filings; // Return all filings if deduplication fails
   }
-} 
+}
+```
+
+### 2. `src/routes/api/cron/daily-check/+server.js` (UPDATE)
+
+Update the cron endpoint to use enhanced processing only:
+
+```javascript
+// Enhanced-only cron processing - no feature flags
+export async function POST({ platform, request }) {
+  const cronSecret = platform?.env?.CRON_SECRET;
+  const providedSecret = request.headers.get('X-Cron-Secret');
+  
+  if (cronSecret !== providedSecret) {
+    return new Response('Unauthorized', { status: 401 });
+  }
+  
+  try {
+    console.log('🚀 Starting enhanced cron check...');
+    const startTime = Date.now();
+    
+    // Get active dockets
+    const { getActiveDockets } = await import('$lib/database/db-operations.js');
+    const activeDockets = await getActiveDockets(platform.env.DB);
+    const docketNumbers = activeDockets.map(d => d.docket_number);
+    
+    if (docketNumbers.length === 0) {
+      return new Response(JSON.stringify({ 
+        success: true, 
+        message: 'No active dockets to check',
+        enhanced: true
+      }));
+    }
+    
+    // Enhanced processing pipeline
+    const { processAllDockets } = await import('$lib/fcc/ecfs-client.js');
+    const result = await processAllDockets(docketNumbers, platform.env, platform.env.DB, {
+      lookbackHours: 2 // Standard 2-hour lookback
+    });
+    
+    // Process daily digest emails (only during notification hours)
+    const currentHour = new Date().getHours();
+    if (currentHour === 9) { // 9 AM daily digests
+      try {
+        const { processDailyDigests } = await import('$lib/processing/digest-processor.js');
+        await processDailyDigests(platform.env);
+        result.digestsSent = true;
+      } catch (digestError) {
+        console.error('❌ Daily digest processing failed:', digestError);
+        result.digestError = digestError.message;
+      }
+    }
+    
+    // Log successful operation
+    const { logSystemEvent } = await import('$lib/database/db-operations.js');
+    await logSystemEvent(platform.env.DB, 'info', 'Enhanced cron check completed', 'cron', {
+      dockets_checked: docketNumbers.length,
+      new_filings: result.newFilings,
+      ai_processed: result.aiProcessed,
+      documents_processed: result.documentsProcessed,
+      duration_ms: Date.now() - startTime,
+      enhanced: true
+    });
+    
+    return new Response(JSON.stringify(result));
+    
+  } catch (error) {
+    console.error('❌ Enhanced cron job failed:', error);
+    
+    // Log error
+    try {
+      const { logSystemEvent } = await import('$lib/database/db-operations.js');
+      await logSystemEvent(platform.env.DB, 'error', 'Enhanced cron check failed', 'cron', {
+        error: error.message,
+        stack: error.stack,
+        enhanced: true
+      });
+    } catch (logError) {
+      console.error('Failed to log cron error:', logError);
+    }
+    
+    return new Response(JSON.stringify({ 
+      success: false, 
+      error: error.message,
+      enhanced: true
+    }), { status: 500 });
+  }
+}
+```
+
+---
+
+## Testing Phase 1:
+
+### **Test 1: Enhanced Pipeline Function**
+```bash
+# Test enhanced ECFS processing directly
+curl "http://localhost:5173/api/test-document-flow?docket=11-42&limit=3"
+
+# Expected: Should work without any feature flag references
+```
+
+### **Test 2: Cron Endpoint**  
+```bash
+# Test updated cron endpoint
+curl -X POST "http://localhost:5173/api/cron/daily-check" \
+  -H "X-Cron-Secret: your_cron_secret"
+
+# Expected: Enhanced processing logs, no feature flag mentions
+```
+
+### **Test 3: Admin Stats**
+```bash
+# Test admin monitoring still works
+curl "http://localhost:5173/api/admin/monitoring/stats"
+
+# Expected: Returns enhanced processing metrics
+```
+
+---
+
+## Success Criteria Phase 1:
+
+- ✅ **Enhanced ECFS processing** works without feature flags
+- ✅ **No regression** in existing functionality  
+- ✅ **Cron endpoint** uses enhanced processing only
+- ✅ **Admin monitoring** shows enhanced metrics
+- ✅ **Logs show** "Enhanced" processing throughout
+- ✅ **No mentions** of feature flags or dual systems in logs
+
+---
+
+## Common Issues & Solutions:
+
+### **Issue: Import errors**
+```javascript
+// Fix: Ensure enhanced storage import works
+const { storeFilingsEnhanced } = await import('$lib/storage/filing-storage-enhanced.js');
+```
+
+### **Issue: Environment variables**
+```javascript
+// Verify all required environment variables exist:
+ECFS_API_KEY=your_fcc_api_key
+JINA_API_KEY=your_jina_api_key  
+GEMINI_API_KEY=your_google_ai_key
+CRON_SECRET=your_cron_secret
+```
+
+### **Issue: Database schema**
+```sql
+-- Ensure enhanced columns exist
+ALTER TABLE filings ADD COLUMN IF NOT EXISTS ai_enhanced INTEGER DEFAULT 0;
+ALTER TABLE filings ADD COLUMN IF NOT EXISTS documents_processed INTEGER DEFAULT 0;
+```
+
+---
+
+**Phase 1 Complete When:**
+- Enhanced ECFS processing works end-to-end
+- No feature flag references remain in code
+- Cron processing uses enhanced pipeline
+- Admin dashboard shows enhanced metrics
+- Ready for Phase 2 (Intelligent Scheduling)

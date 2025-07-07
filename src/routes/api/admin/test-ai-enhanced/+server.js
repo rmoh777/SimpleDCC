@@ -1,7 +1,7 @@
 import { json } from '@sveltejs/kit';
 import { env } from '$env/dynamic/private';
 import { generateEnhancedSummary, processFilingEnhanced } from '$lib/ai/gemini-enhanced.js';
-import { fetchLatestFilings } from '$lib/fcc/ecfs-enhanced-client.js';
+import { fetchLatestFilings } from '$lib/fcc/ecfs-client.js';
 
 // Admin authentication check
 function isValidAdminRequest(request) {
@@ -168,7 +168,7 @@ export async function POST({ request, platform }) {
     
     console.log(`🧪 Enhanced AI Batch Test: ${dockets.join(', ')}, Max: ${max_filings}`);
     
-    const { fetchMultipleDocketsEnhanced } = await import('$lib/fcc/ecfs-enhanced-client.js');
+    const { fetchMultipleDockets } = await import('$lib/fcc/ecfs-client.js');
     const { processFilingBatchEnhanced } = await import('$lib/ai/gemini-enhanced.js');
     
     // Use SvelteKit native env with fallback support for backwards compatibility
@@ -187,7 +187,7 @@ export async function POST({ request, platform }) {
     }
     
     // Get sample filings
-    const ecfsResult = await fetchMultipleDocketsEnhanced(dockets, platform.env);
+    const ecfsResult = await fetchMultipleDockets(dockets, 2, platform.env);
     const sampleFilings = ecfsResult.filings.slice(0, max_filings);
     
     if (sampleFilings.length === 0) {

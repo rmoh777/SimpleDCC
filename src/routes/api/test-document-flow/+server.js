@@ -1,5 +1,5 @@
 import { json } from '@sveltejs/kit';
-import { fetchLatestFilings } from '$lib/fcc/ecfs-enhanced-client.js';
+import { fetchLatestFilings } from '$lib/fcc/ecfs-client.js';
 import { generateEnhancedSummary } from '$lib/ai/gemini-enhanced.js';
 import { env } from '$env/dynamic/private';
 
