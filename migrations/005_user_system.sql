@@ -1,4 +1,4 @@
--- migrations/004_user_system.sql
+-- migrations/005_user_system.sql
 -- Phase 2 Card 1: User Accounts + Notification Queue Processing
 -- Production-safe migration that preserves existing data and maintains backward compatibility
 
@@ -71,7 +71,7 @@ VALUES (
   'Phase 2 Card 1 migration completed successfully',
   'database',
   json_object(
-    'migration', '004_user_system',
+    'migration', '005_user_system',
     'users_created', (SELECT COUNT(*) FROM users),
     'subscriptions_linked', (SELECT COUNT(*) FROM subscriptions WHERE user_id IS NOT NULL),
     'notifications_marked', (SELECT COUNT(*) FROM user_notifications)
