@@ -9,13 +9,17 @@
     id: string;
     docket_number: string;
     created_at: number;
+    frequency: string;
+    user_tier: string;
   }> = [];
   let isLoading = false;
   let isLoadingSubscriptions = false;
   let message = '';
   let messageType: 'success' | 'error' | 'info' = 'info';
   let unsubscribeLoading: Set<string> = new Set();
+  let frequencyUpdating: Set<string> = new Set();
   let hasPerformedLookup = false;
+  let userTier = 'free';
   
   async function handleLookup() {
     if (!email.trim()) {
@@ -43,6 +47,7 @@
       
       if (response.ok) {
         subscriptions = result.subscriptions || [];
+        userTier = result.user_tier || 'free';
         if (subscriptions.length === 0) {
           showMessage('No active subscriptions found for this email address.', 'info');
         } else {
@@ -96,6 +101,49 @@
     }
   }
   
+  async function handleFrequencyUpdate(subscriptionId: string, docketNumber: string, newFrequency: string) {
+    // Check if user tier allows this frequency
+    if (userTier === 'free' && newFrequency !== 'daily') {
+      showMessage('Pro subscription required for hourly and immediate notifications. Please upgrade to Pro.', 'error');
+      return;
+    }
+    
+    frequencyUpdating = new Set([...frequencyUpdating, subscriptionId]);
+    
+    try {
+      const response = await fetch('/api/subscriptions/frequency', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          email: email.trim(),
+          docket_number: docketNumber,
+          frequency: newFrequency,
+        }),
+      });
+      
+      const result = await response.json();
+      
+      if (response.ok) {
+        // Update local subscription
+        subscriptions = subscriptions.map(sub => 
+          sub.id === subscriptionId 
+            ? { ...sub, frequency: newFrequency }
+            : sub
+        );
+        showMessage(`Updated notification frequency for docket ${docketNumber} to ${newFrequency}.`, 'success');
+      } else {
+        showMessage(result.error || 'Failed to update frequency.', 'error');
+      }
+    } catch (error) {
+      console.error('Frequency update error:', error);
+      showMessage('Network error. Please try again.', 'error');
+    } finally {
+      frequencyUpdating = new Set([...frequencyUpdating].filter(id => id !== subscriptionId));
+    }
+  }
+  
   function showMessage(text: string, type: 'success' | 'error' | 'info') {
     message = text;
     messageType = type;
@@ -130,6 +178,41 @@
   
   function isUnsubscribeLoading(subscriptionId: string): boolean {
     return unsubscribeLoading.has(subscriptionId);
+  }
+  
+  function isFrequencyUpdating(subscriptionId: string): boolean {
+    return frequencyUpdating.has(subscriptionId);
+  }
+  
+  function getTierBadge(tier: string): { text: string; class: string } {
+    switch (tier) {
+      case 'pro':
+        return { text: 'Pro', class: 'tier-badge--pro' };
+      case 'trial':
+        return { text: 'Trial', class: 'tier-badge--trial' };
+      default:
+        return { text: 'Free', class: 'tier-badge--free' };
+    }
+  }
+  
+  function getFrequencyOptions(tier: string) {
+    const options = [
+      { value: 'daily', label: 'Daily', available: true }
+    ];
+    
+    if (tier === 'pro' || tier === 'trial') {
+      options.push(
+        { value: 'weekly', label: 'Weekly', available: true },
+        { value: 'immediate', label: 'Immediate', available: true }
+      );
+    } else {
+      options.push(
+        { value: 'weekly', label: 'Weekly (Pro)', available: false },
+        { value: 'immediate', label: 'Immediate (Pro)', available: false }
+      );
+    }
+    
+    return options;
   }
 </script>
 
@@ -186,14 +269,34 @@
     
     {#if subscriptions.length > 0}
       <div class="subscriptions-section">
-        <h3 class="subscriptions-title">Your Active Subscriptions</h3>
+        <div class="subscriptions-header">
+          <h3 class="subscriptions-title">Your Active Subscriptions</h3>
+          <div class="user-tier-badge">
+            {#if userTier === 'pro'}
+              <span class="tier-badge tier-badge--pro">Pro</span>
+            {:else if userTier === 'trial'}
+              <span class="tier-badge tier-badge--trial">Trial</span>
+            {:else}
+              <span class="tier-badge tier-badge--free">Free</span>
+            {/if}
+          </div>
+        </div>
         
-        {#if !compact}
+        {#if !compact && userTier === 'free'}
           <div class="upgrade-note upgrade-note--top">
             <span class="upgrade-icon">⭐</span>
             <span class="upgrade-text">
-              Want AI summaries and unlimited dockets? 
+              Want AI summaries and immediate notifications? 
               <a href="/pricing" class="upgrade-link">Upgrade to Pro</a>
+            </span>
+          </div>
+        {/if}
+        
+        {#if !compact && userTier === 'trial'}
+          <div class="trial-note">
+            <span class="trial-icon">🎁</span>
+            <span class="trial-text">
+              You're in a Pro trial! Enjoy AI summaries and all notification frequencies.
             </span>
           </div>
         {/if}
@@ -208,6 +311,34 @@
                 <div class="subscribe-date">
                   Subscribed on {formatDate(subscription.created_at)}
                 </div>
+              </div>
+              
+              <div class="subscription-controls">
+                <div class="frequency-control">
+                  <label class="frequency-label">Frequency:</label>
+                  <select 
+                    class="frequency-select"
+                    value={subscription.frequency}
+                    disabled={isFrequencyUpdating(subscription.id)}
+                    on:change={(e) => handleFrequencyUpdate(subscription.id, subscription.docket_number, (e.target as HTMLSelectElement).value)}
+                  >
+                    {#each getFrequencyOptions(userTier) as option}
+                      <option value={option.value} disabled={!option.available}>
+                        {option.label}
+                      </option>
+                    {/each}
+                  </select>
+                  {#if isFrequencyUpdating(subscription.id)}
+                    <span class="frequency-updating">Updating...</span>
+                  {/if}
+                </div>
+                
+                {#if userTier === 'free' && subscription.frequency !== 'daily'}
+                  <div class="frequency-upgrade-note">
+                    <span class="upgrade-icon">⭐</span>
+                    <span>Pro required for this frequency</span>
+                  </div>
+                {/if}
               </div>
               
               <div class="subscription-actions">
@@ -380,11 +511,63 @@
     padding-top: var(--spacing-lg);
   }
   
+  .subscriptions-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: var(--spacing-md);
+  }
+  
   .subscriptions-title {
     font-size: var(--font-size-lg);
     font-weight: var(--font-weight-semibold);
     color: var(--color-secondary);
+    margin: 0;
+  }
+  
+  .user-tier-badge {
+    display: flex;
+    align-items: center;
+  }
+  
+  .tier-badge {
+    padding: 0.25rem 0.75rem;
+    border-radius: 1rem;
+    font-size: var(--font-size-xs);
+    font-weight: var(--font-weight-semibold);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+  
+  .tier-badge--free {
+    background: #f3f4f6;
+    color: #6b7280;
+  }
+  
+  .tier-badge--trial {
+    background: #fef3c7;
+    color: #92400e;
+  }
+  
+  .tier-badge--pro {
+    background: #d1fae5;
+    color: #065f46;
+  }
+  
+  .trial-note {
+    background: rgba(16, 185, 129, 0.05);
+    padding: var(--spacing-sm) var(--spacing-md);
+    border-radius: var(--border-radius);
+    border: 1px solid rgba(16, 185, 129, 0.2);
     margin-bottom: var(--spacing-md);
+    font-size: var(--font-size-sm);
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-xs);
+  }
+  
+  .trial-icon {
+    color: var(--color-primary);
   }
   
   .subscriptions-list {
@@ -397,12 +580,13 @@
   .subscription-item {
     display: flex;
     justify-content: space-between;
-    align-items: center;
+    align-items: flex-start;
     padding: var(--spacing-md);
     border: 1px solid var(--color-border);
     border-radius: var(--border-radius);
     background: var(--color-background);
     transition: all var(--transition-normal);
+    gap: var(--spacing-md);
   }
   
   .subscription-item:hover {
@@ -424,6 +608,64 @@
   .subscribe-date {
     color: var(--color-text-muted);
     font-size: var(--font-size-sm);
+  }
+  
+  .subscription-controls {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-xs);
+    min-width: 150px;
+  }
+  
+  .frequency-control {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+  }
+  
+  .frequency-label {
+    font-size: var(--font-size-xs);
+    color: var(--color-text-secondary);
+    font-weight: var(--font-weight-medium);
+  }
+  
+  .frequency-select {
+    padding: 0.25rem 0.5rem;
+    border: 1px solid var(--color-border);
+    border-radius: var(--border-radius);
+    font-size: var(--font-size-sm);
+    background: var(--color-surface);
+    color: var(--color-text-primary);
+    transition: border-color var(--transition-normal);
+  }
+  
+  .frequency-select:focus {
+    outline: none;
+    border-color: var(--color-primary);
+  }
+  
+  .frequency-select:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+  }
+  
+  .frequency-updating {
+    font-size: var(--font-size-xs);
+    color: var(--color-text-muted);
+    font-style: italic;
+  }
+  
+  .frequency-upgrade-note {
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+    font-size: var(--font-size-xs);
+    color: var(--color-text-muted);
+  }
+  
+  .subscription-actions {
+    display: flex;
+    align-items: flex-start;
   }
   
   .subscriptions-footer {
@@ -513,10 +755,21 @@
       flex-direction: column;
     }
     
+    .subscriptions-header {
+      flex-direction: column;
+      gap: var(--spacing-sm);
+      align-items: flex-start;
+    }
+    
     .subscription-item {
       flex-direction: column;
       align-items: flex-start;
       gap: var(--spacing-sm);
+    }
+    
+    .subscription-controls {
+      width: 100%;
+      min-width: auto;
     }
     
     .subscription-actions {
