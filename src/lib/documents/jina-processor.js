@@ -1,9 +1,9 @@
-// PDF Document Processing for Enhanced ECFS Integration
-// UNIFIED JINA APPROACH: Both direct PDFs and HTML viewers use Jina API for text extraction
+// Jina Document Processing for Enhanced ECFS Integration
+// UNIFIED JINA APPROACH: Robust handling of both JSON and plain text responses
 import { env } from '$env/dynamic/private';
 
 /**
- * Extract text from any URL using unified Jina approach with multiple fallback strategies
+ * Extract text from any URL using unified Jina approach with intelligent response handling
  * Handles both direct PDFs and HTML viewer URLs
  * @param {string} url - URL like "https://docs.fcc.gov/public/attachments/file.pdf" or "https://www.fcc.gov/ecfs/document/ID/1"
  * @returns {Promise<Object>} Object with extracted text and debug info
@@ -155,7 +155,7 @@ async function tryEnhancedStreamingMode(url, jinaApiKey) {
 }
 
 /**
- * Strategy 2: Simple reader without streaming
+ * Strategy 2: Simple reader with intelligent response handling (FIXED)
  */
 async function trySimpleReaderMode(url, jinaApiKey) {
   const response = await fetch(`https://r.jina.ai/${url}`, {
@@ -171,28 +171,43 @@ async function trySimpleReaderMode(url, jinaApiKey) {
     throw new Error(`Simple reader HTTP ${response.status}`);
   }
 
-  const result = await response.json();
-  const content = result?.data?.text || result?.text || '';
-  
-  if (!content) {
+  // ✅ THE FIX: Intelligently handle the response based on its Content-Type
+  const contentType = response.headers.get('content-type');
+  let extractedText;
+
+  if (contentType && contentType.includes('application/json')) {
+    // Handles structured JSON responses (from streaming or future Jina features)
+    const jsonData = await response.json();
+    // Adjust this path based on the actual JSON structure Jina returns
+    extractedText = jsonData?.data?.content || jsonData?.content || jsonData?.text || '';
+    console.log(`✅ Jina Processor: Extracted text from JSON response (Simple Reader).`);
+  } else {
+    // Handles plain text responses, which is the current case for reader.jina.ai
+    extractedText = await response.text();
+    console.log(`✅ Jina Processor: Extracted text from plain text response (Simple Reader).`);
+  }
+
+  if (!extractedText) {
+    console.warn(`⚠️ Jina Processor: Extracted empty text for ${url}`);
     throw new Error('Simple reader returned empty content');
   }
   
-  if (content.includes('You need to enable JavaScript')) {
+  if (extractedText.includes('You need to enable JavaScript')) {
     throw new Error('Simple reader hit JavaScript requirement');
   }
 
   return {
-    text: content,
+    text: extractedText,
     debug_info: {
       mode: 'simple_reader',
-      response_structure: Object.keys(result)
+      content_type: contentType,
+      response_was_json: contentType && contentType.includes('application/json')
     }
   };
 }
 
 /**
- * Strategy 3: Basic POST as last resort
+ * Strategy 3: Basic POST with intelligent response handling (FIXED)
  */
 async function tryBasicPostMode(url, jinaApiKey) {
   const response = await fetch('https://r.jina.ai/', {
@@ -214,17 +229,33 @@ async function tryBasicPostMode(url, jinaApiKey) {
     throw new Error(`Basic POST HTTP ${response.status}`);
   }
 
-  const result = await response.json();
-  const content = result?.data?.text || result?.text || '';
-  
-  if (!content) {
+  // ✅ THE FIX: Intelligently handle the response based on its Content-Type
+  const contentType = response.headers.get('content-type');
+  let extractedText;
+
+  if (contentType && contentType.includes('application/json')) {
+    // Handles structured JSON responses (from streaming or future Jina features)
+    const jsonData = await response.json();
+    // Adjust this path based on the actual JSON structure Jina returns
+    extractedText = jsonData?.data?.content || jsonData?.data?.text || jsonData?.content || jsonData?.text || '';
+    console.log(`✅ Jina Processor: Extracted text from JSON response (Basic POST).`);
+  } else {
+    // Handles plain text responses, which is the current case for reader.jina.ai
+    extractedText = await response.text();
+    console.log(`✅ Jina Processor: Extracted text from plain text response (Basic POST).`);
+  }
+
+  if (!extractedText) {
+    console.warn(`⚠️ Jina Processor: Extracted empty text for ${url}`);
     throw new Error('Basic POST returned empty content');
   }
 
   return {
-    text: content,
+    text: extractedText,
     debug_info: {
-      mode: 'basic_post'
+      mode: 'basic_post',
+      content_type: contentType,
+      response_was_json: contentType && contentType.includes('application/json')
     }
   };
 }

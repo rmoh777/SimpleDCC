@@ -61,10 +61,10 @@ export class FilingBatchProcessor {
     
     try {
       // Import the storage function
-      const { storeFilings } = await import('./filing-storage.js');
+              const { storeFilingsEnhanced } = await import('./filing-storage-enhanced.js');
       
-      // Store filings for this docket
-      const result = await storeFilings(filings, this.db);
+      // Store filings for this docket (using enhanced storage)
+      const result = await storeFilingsEnhanced(filings, this.db, {});
       
       console.log(`Batch Processor: Docket ${docketNumber} - ${result.newFilings} new, ${result.duplicates} duplicates`);
       

@@ -1,6 +1,6 @@
 import { json } from '@sveltejs/kit';
-import { fetchMultipleDockets } from '$lib/fcc/ecfs-client.js';
-import { storeFilings } from '$lib/storage/filing-storage.js';
+import { fetchMultipleDocketsEnhanced } from '$lib/fcc/ecfs-enhanced-client.js';
+import { storeFilingsEnhanced } from '$lib/storage/filing-storage-enhanced.js';
 import { getActiveDockets, logSystemEvent, updateDocketStats } from '$lib/database/db-operations.js';
 
 export async function POST({ platform, cookies }) {
@@ -35,11 +35,12 @@ export async function POST({ platform, cookies }) {
     
     // Perform ECFS check across all dockets
     const startTime = Date.now();
-    const ecfsResult = await fetchMultipleDockets(docketNumbers, 2, platform.env); // Pass platform.env for API key
+    const ecfsResult = await fetchMultipleDocketsEnhanced(docketNumbers, platform.env); // Enhanced client with direct document access
     const endTime = Date.now();
     
-    // Store new filings
-    const newFilingsCount = await storeFilings(ecfsResult.filings, db);
+    // Store new filings with enhanced processing
+    const storageResult = await storeFilingsEnhanced(ecfsResult.filings, db, platform.env);
+    const newFilingsCount = storageResult.newFilings;
     
     // Update docket statistics
     for (const docket of activeDockets) {

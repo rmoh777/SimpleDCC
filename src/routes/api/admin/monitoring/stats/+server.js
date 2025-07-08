@@ -1,6 +1,7 @@
 import { json } from '@sveltejs/kit';
 import { getMonitoringStats, getActiveDockets } from '$lib/database/db-operations.js';
 import { getFilingStats, getRecentFilings } from '$lib/storage/filing-storage.js';
+import { getEnhancedProcessingStats } from '$lib/storage/filing-storage-enhanced.js';
 import { ensureDatabaseSchema } from '$lib/database/auto-migration.js';
 import { checkSystemHealth } from '$lib/monitoring/system-health.js';
 

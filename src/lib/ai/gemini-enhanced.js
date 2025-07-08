@@ -204,7 +204,7 @@ export async function processFilingEnhanced(filing, env) {
     let processedFiling = filing;
     
     if (filing.documents?.some(d => d.src && d.src.includes('fcc.gov'))) {
-      const { processFilingDocuments } = await import('$lib/documents/pdf-processor.js');
+      const { processFilingDocuments } = await import('$lib/documents/jina-processor.js');
       processedFiling = await processFilingDocuments(filing);
       
       // Extract text content from processed documents
