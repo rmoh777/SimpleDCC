@@ -1,6 +1,7 @@
 <script lang="ts">
   import Button from './ui/Button.svelte';
   import Card from './ui/Card.svelte';
+  import ProTrialModal from './ProTrialModal.svelte';
   
   export let compact: boolean = false;
   
@@ -9,6 +10,11 @@
   let isLoading = false;
   let message = '';
   let messageType: 'success' | 'error' | 'info' = 'info';
+  
+  // Pro trial modal state
+  let showTrialModal = false;
+  let userTier = 'free';
+  let subscriptionResult: any = null;
   
   async function handleSubmit() {
     if (!email.trim() || !docketNumber.trim()) {
@@ -48,10 +54,18 @@
       const result = await response.json();
       
       if (response.ok) {
-        showMessage(result.message || 'Successfully subscribed to docket notifications!', 'success');
-        // Reset form on success
-        email = '';
-        docketNumber = '';
+        subscriptionResult = result;
+        userTier = result.user_tier || 'free';
+        
+        // Show pro trial modal if user is eligible
+        if (result.show_trial_upsell && userTier === 'free') {
+          showTrialModal = true;
+        } else {
+          showMessage(result.message || 'Successfully subscribed to docket notifications!', 'success');
+          // Reset form on success
+          email = '';
+          docketNumber = '';
+        }
       } else {
         showMessage(result.error || 'Failed to subscribe. Please try again.', 'error');
       }
@@ -90,6 +104,26 @@
     if (event.key === 'Enter') {
       handleSubmit();
     }
+  }
+  
+  function handleTrialStarted(event: CustomEvent) {
+    const result = event.detail;
+    userTier = result.user.user_tier;
+    showMessage('🎉 Pro trial activated! You now have access to AI-powered summaries and immediate notifications.', 'success');
+    // Reset form on success after a small delay to allow message to show
+    setTimeout(() => {
+      email = '';
+      docketNumber = '';
+    }, 100);
+  }
+  
+  function handleTrialDeclined() {
+    showMessage(subscriptionResult?.message || 'Successfully subscribed to docket notifications!', 'success');
+    // Reset form on success after a small delay to allow message to show
+    setTimeout(() => {
+      email = '';
+      docketNumber = '';
+    }, 100);
   }
 </script>
 
@@ -193,6 +227,15 @@
     </div>
   </div>
 </Card>
+
+<!-- Pro Trial Modal -->
+<ProTrialModal 
+  bind:showModal={showTrialModal}
+  docketNumber={docketNumber}
+  userEmail={email}
+  on:trial-started={handleTrialStarted}
+  on:trial-declined={handleTrialDeclined}
+/>
 
 <style>
   .subscribe-form {
