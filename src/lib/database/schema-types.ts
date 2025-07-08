@@ -51,7 +51,27 @@ export interface NotificationQueue {
   created_at: number;
 }
 
-// Enhanced subscription interface
+// Phase 2 Card 1: User accounts interface
+export interface User {
+  id: number;
+  email: string;
+  user_tier: 'free' | 'pro' | 'trial';
+  trial_expires_at?: number;
+  stripe_customer_id?: string;
+  grace_period_until?: number;
+  created_at: number;
+}
+
+// Phase 2 Card 1: User notification tracking for deduplication
+export interface UserNotification {
+  id: number;
+  user_id: number;
+  filing_id: string;
+  notification_type: 'daily' | 'weekly' | 'immediate';
+  sent_at: number;
+}
+
+// Enhanced subscription interface with user account linking
 export interface EnhancedSubscription {
   id: number;
   email: string;
@@ -59,6 +79,13 @@ export interface EnhancedSubscription {
   frequency: 'daily' | 'weekly' | 'immediate';
   last_notified: number;
   created_at: number;
+  user_id?: number; // Phase 2 Card 1: Link to users table
+}
+
+// Enhanced notification queue processing interface
+export interface NotificationQueueItem extends NotificationQueue {
+  user?: User; // Join with user data for processing
+  filings?: Filing[]; // Related filings for this notification
 }
 
 // Monitoring stats interface for A3 dashboard integration
