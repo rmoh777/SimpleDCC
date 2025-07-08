@@ -1,14 +1,17 @@
 // Admin endpoint for testing cron scheduling and timezone logic
-import { json } from '@sveltejs/kit';
-import { getETTimeInfo, getProcessingStrategy, getNextProcessingTime } from '$lib/utils/timezone.js';
+import { getETTimeInfo, getProcessingStrategy, getNextProcessingTime } from '$lib/utils/timezone';
 
 export async function GET({ url, platform, cookies }) {
+  // Check admin auth (use your existing pattern)
+  const session = cookies.get('admin_session');
+  if (session !== 'authenticated') {
+    return new Response(JSON.stringify({ error: 'Unauthorized' }), { 
+      status: 401,
+      headers: { 'Content-Type': 'application/json' }
+    });
+  }
+  
   try {
-    // Check admin auth (use your existing pattern)
-    const session = cookies.get('admin_session');
-    if (session !== 'authenticated') {
-      return json({ error: 'Unauthorized' }, { status: 401 });
-    }
     
     // Get current scheduling info
     const timeInfo = getETTimeInfo();
@@ -42,7 +45,7 @@ export async function GET({ url, platform, cookies }) {
       };
     }
     
-    return json({
+    const responseData = {
       success: true,
       current_time: {
         utc: new Date().toISOString(),
@@ -60,13 +63,20 @@ export async function GET({ url, platform, cookies }) {
       },
       next_processing: getNextProcessingTime(),
       test_results: testResults
+    };
+    
+    return new Response(JSON.stringify(responseData), {
+      headers: { 'Content-Type': 'application/json' }
     });
     
   } catch (error) {
     console.error('Error testing cron schedule:', error);
-    return json({ 
+    return new Response(JSON.stringify({ 
       error: 'Failed to test cron schedule',
       details: error.message 
-    }, { status: 500 });
+    }), { 
+      status: 500,
+      headers: { 'Content-Type': 'application/json' }
+    });
   }
 } 
