@@ -2,6 +2,7 @@ import { env } from '$env/dynamic/private';
 import { getActiveDockets } from '$lib/database/db-operations.js';
 import { fetchLatestFilings } from '$lib/fcc/ecfs-enhanced-client.js';
 import { generateEnhancedSummary } from '$lib/ai/gemini-enhanced.js';
+import { getETTimeInfo, getProcessingStrategy, getNextProcessingTime } from '$lib/utils/timezone.js';
 
 // Enhanced-only cron processing - using same pipeline as production test
 export async function POST({ platform, request }) {
@@ -17,8 +18,35 @@ export async function POST({ platform, request }) {
   }
   
   try {
-    console.log('🚀 Starting enhanced cron check...');
     const startTime = Date.now();
+    
+    // NEW: Add timezone intelligence
+    const timeInfo = getETTimeInfo();
+    const strategy = getProcessingStrategy();
+    
+    console.log(`🚀 Starting enhanced cron check...`);
+    console.log(`🕐 Cron triggered: ${timeInfo.etHour}:00 ET (DST: ${timeInfo.isDST})`);
+    console.log(`📋 Processing strategy: ${strategy.processingType}`);
+    
+    // NEW: Skip processing during quiet hours
+    if (!strategy.shouldProcess) {
+      console.log(`😴 Quiet hours - skipping processing until ${getNextProcessingTime()}`);
+      
+      const { logSystemEvent } = await import('$lib/database/db-operations.js');
+      await logSystemEvent(platform.env.DB, 'info', 'Cron skipped (quiet hours)', 'cron', {
+        et_hour: timeInfo.etHour,
+        is_dst: timeInfo.isDST,
+        next_processing: getNextProcessingTime()
+      });
+      
+      return new Response(JSON.stringify({ 
+        success: true, 
+        skipped: true,
+        reason: 'quiet_hours',
+        et_hour: timeInfo.etHour,
+        next_processing: getNextProcessingTime()
+      }));
+    }
     
     // ✅ FIXED UNIFIED ENVIRONMENT PATTERN: Use SvelteKit env for development, platform.env for production
     const environmentVars = {
@@ -48,22 +76,23 @@ export async function POST({ platform, request }) {
     
     console.log(`📋 Found ${docketNumbers.length} active dockets`);
     
-    // Conservative limits for production cron (as specified by engineering director)
-    const maxDockets = 5; // Limit to first 5 dockets
-    const maxFilingsPerDocket = 3; // Maximum 3 filings per docket
+    // NEW: Use strategy-based limits instead of hardcoded ones
+    const maxDockets = strategy.batchSize;
+    const maxFilingsPerDocket = strategy.lookbackHours > 4 ? 5 : 3; // More filings for catch-up
     const testDockets = docketNumbers.slice(0, maxDockets);
     
-    console.log(`🎯 Processing ${testDockets.length} dockets: ${testDockets.join(', ')}`);
+    console.log(`🎯 Processing ${testDockets.length}/${docketNumbers.length} dockets (${strategy.processingType})`);
+    console.log(`🎯 Dockets: ${testDockets.join(', ')}`);
     
     // ==============================================
     // STEP 2: SEQUENTIAL ENHANCED PROCESSING
     // ==============================================
     console.log('📡 STEP 2: Sequential enhanced processing with rate limiting...');
     
-    // Convert lookbackHours to smart count limit (same as production test)
-    const lookbackHours = 2; // Keep for API compatibility
+    // NEW: Use strategy-based lookback logic
+    const lookbackHours = strategy.lookbackHours;
     const smartLimit = Math.min(Math.max(Math.ceil(lookbackHours * 5), 10), 50);
-    console.log(`🔍 Using smart count limit: ${smartLimit} (converted from ${lookbackHours}h lookback)`);
+    console.log(`🔍 Using smart count limit: ${smartLimit} (converted from ${lookbackHours}h lookback, ${strategy.processingType})`);
     
     const processingResults = [];
     const allProcessedFilings = [];
@@ -237,14 +266,10 @@ export async function POST({ platform, request }) {
     }
     
     // ==============================================
-    // STEP 4: DAILY DIGEST PROCESSING (PLACEHOLDER)
+    // STEP 4: COMPLETE NOTIFICATION QUEUE PROCESSING
     // ==============================================
-    let digestResults = null;
-    const currentHour = new Date().getHours();
-    
-    // TODO: Implement digest processing when email infrastructure is ready
-    console.log(`⏭️ STEP 4: Daily digest processing not yet implemented (current hour: ${currentHour})`);
-    digestResults = { sent: 0, message: 'Digest processing not implemented yet' };
+    console.log(`⏭️ STEP 4: Processing notification queue and sending digests`);
+    const digestResults = await processNotificationQueue(platform.env, timeInfo, strategy);
     
     // ==============================================
     // STEP 5: LOGGING AND RESULTS
@@ -261,16 +286,20 @@ export async function POST({ platform, request }) {
     console.log(`   💾 New filings stored: ${storageResults?.newFilings || 0}`);
     console.log(`   🤖 AI processed: ${storageResults?.aiProcessed || 0}`);
     
-    // Log successful operation
+    // Enhanced logging with timezone and strategy info
     try {
       const { logSystemEvent } = await import('$lib/database/db-operations.js');
       await logSystemEvent(platform.env.DB, 'info', 'Enhanced cron check completed', 'cron', {
+        processing_type: strategy.processingType,
+        et_hour: timeInfo.etHour,
+        is_dst: timeInfo.isDST,
         dockets_checked: testDockets.length,
         total_dockets: docketNumbers.length,
         filings_processed: allProcessedFilings.length,
         new_filings: storageResults?.newFilings || 0,
         ai_processed: storageResults?.aiProcessed || 0,
         documents_processed: storageResults?.documentsProcessed || 0,
+        emails_sent: digestResults.sent,
         duration_ms: totalTime,
         enhanced: true,
         sequential_processing: true,
@@ -280,12 +309,20 @@ export async function POST({ platform, request }) {
       console.error('Failed to log cron success:', logError);
     }
     
+    console.log(`✅ Enhanced cron complete: ${storageResults?.newFilings || 0} new filings, ${digestResults.sent} emails sent`);
+    
     // Return comprehensive results
     const result = {
       success: true,
       enhanced: true,
       sequential_processing: true,
       rate_limited: true,
+      
+      // NEW: Timezone and Strategy Info
+      processing_type: strategy.processingType,
+      et_hour: timeInfo.etHour,
+      is_dst: timeInfo.isDST,
+      next_processing: getNextProcessingTime(),
       
       // Processing Summary
       dockets_checked: testDockets.length,
@@ -300,8 +337,8 @@ export async function POST({ platform, request }) {
       storage_enhanced: storageResults?.enhanced === true,
       
       // Digest Results
-      digests_sent: digestResults?.sent || 0,
-      digest_errors: digestResults?.error || null,
+      emails_sent: digestResults?.sent || 0,
+      digest_errors: digestResults?.errors || [],
       
       // Performance Metrics
       processing_time_ms: totalTime,
@@ -320,12 +357,15 @@ export async function POST({ platform, request }) {
     const errorMessage = error instanceof Error ? error.message : String(error);
     console.error('❌ Enhanced cron job failed:', errorMessage);
     
-    // Log error
+    // Enhanced error handling with timezone context
+    const timeInfo = getETTimeInfo();
     try {
       const { logSystemEvent } = await import('$lib/database/db-operations.js');
       await logSystemEvent(platform.env.DB, 'error', 'Enhanced cron check failed', 'cron', {
         error: errorMessage,
         stack: error instanceof Error ? error.stack : '',
+        et_hour: timeInfo.etHour,
+        is_dst: timeInfo.isDST,
         enhanced: true
       });
     } catch (logError) {
@@ -335,9 +375,51 @@ export async function POST({ platform, request }) {
     return new Response(JSON.stringify({ 
       success: false, 
       error: errorMessage,
+      et_hour: timeInfo.etHour,
       enhanced: true,
-      processing_time_ms: Date.now() - Date.now()
+      processing_time_ms: Date.now() - startTime
     }), { status: 500 });
+  }
+}
+
+// NEW: Complete Step 4 implementation - notification queue processing
+async function processNotificationQueue(env, timeInfo, strategy) {
+  try {
+    console.log(`📧 Processing notifications for ${strategy.processingType} at ${timeInfo.etHour}:00 ET`);
+    
+    let emailsSent = 0;
+    const errors = [];
+    
+    // Import the existing notification queue processor
+    const { processNotificationQueue: processQueue } = await import('$lib/notifications/queue-processor.js');
+    
+    // Process notifications using the existing queue system
+    const queueResults = await processQueue(env.DB, env);
+    
+    emailsSent = queueResults.sent;
+    if (queueResults.errors && queueResults.errors.length > 0) {
+      errors.push(...queueResults.errors);
+    }
+    
+    console.log(`📧 Notification processing complete: ${emailsSent} emails sent, ${errors.length} errors`);
+    
+    return {
+      sent: emailsSent,
+      errors: errors,
+      processed: queueResults.processed || 0,
+      failed: queueResults.failed || 0,
+      message: `Processed ${queueResults.processed || 0} notifications, sent ${emailsSent} emails`
+    };
+    
+  } catch (error) {
+    console.error('❌ Notification queue processing failed:', error);
+    return {
+      sent: 0,
+      errors: [error.message],
+      processed: 0,
+      failed: 1,
+      message: 'Notification processing failed'
+    };
   }
 }
 
