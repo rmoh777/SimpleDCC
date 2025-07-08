@@ -230,6 +230,44 @@
     </div>
   </Card>
 
+  <!-- Schema Fix Tools -->
+  <Card class="mb-6">
+    <h2 class="text-xl font-semibold mb-4">🔧 Schema Fix Tools</h2>
+    
+    <div class="space-y-4">
+      <div class="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+        <div class="flex items-center gap-2 mb-2">
+          <span class="text-yellow-600">⚠️</span>
+          <h3 class="font-medium text-yellow-800">Production Schema Issues?</h3>
+        </div>
+        <p class="text-sm text-yellow-700 mb-3">
+          If you're seeing "no such column: ai_enhanced" errors or database viewer failures, 
+          your production database may be missing AI columns that exist in development.
+        </p>
+        <div class="flex gap-2">
+          <a 
+            href="/admin/database/fix-ai-columns" 
+            class="inline-flex items-center px-3 py-1 bg-yellow-600 text-white text-sm rounded hover:bg-yellow-700"
+          >
+            🔧 Fix AI Columns Schema
+          </a>
+          <a 
+            href="/test-database-view" 
+            target="_blank"
+            class="inline-flex items-center px-3 py-1 bg-blue-600 text-white text-sm rounded hover:bg-blue-700"
+          >
+            🔍 Test Database Viewer
+          </a>
+        </div>
+      </div>
+
+      <div class="text-sm text-gray-600">
+        <p><strong>When to use:</strong> When local development works but production gives column errors.</p>
+        <p><strong>What it does:</strong> Manually adds missing AI columns (ai_enhanced, ai_key_points, etc.) to production database.</p>
+      </div>
+    </div>
+  </Card>
+
   <!-- Migration Results -->
   {#if migrationResult}
     <Card>
