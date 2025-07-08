@@ -124,8 +124,8 @@ export async function GET({ url, cookies, platform }) {
           const errorMessage = enhancedError instanceof Error ? enhancedError.message : String(enhancedError);
           console.warn(`⚠️ Enhanced storage failed, using basic storage fallback:`, errorMessage);
           
-          const { storeFilings } = await import('$lib/storage/filing-storage.js');
-          const basicStored = await storeFilings(allFilings, platform.env.DB);
+                      const { storeFilingsEnhanced } = await import('$lib/storage/filing-storage-enhanced.js');
+                      const basicStored = await storeFilingsEnhanced(allFilings, platform.env.DB, platform.env);
           storageResults = { 
             newFilings: basicStored, 
             enhanced: false, 

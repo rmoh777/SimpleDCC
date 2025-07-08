@@ -215,8 +215,8 @@ export async function POST({ platform, request }) {
           const errorMessage = enhancedError instanceof Error ? enhancedError.message : String(enhancedError);
           console.warn(`⚠️ Enhanced storage failed, using basic storage fallback:`, errorMessage);
           
-          const { storeFilings } = await import('$lib/storage/filing-storage.js');
-          const basicStored = await storeFilings(allProcessedFilings, platform.env.DB);
+          const { storeFilingsEnhanced } = await import('$lib/storage/filing-storage-enhanced.js');
+          const basicStored = await storeFilingsEnhanced(allProcessedFilings, platform.env.DB, platform.env);
           storageResults = { 
             newFilings: basicStored, 
             enhanced: false, 
@@ -237,25 +237,14 @@ export async function POST({ platform, request }) {
     }
     
     // ==============================================
-    // STEP 4: DAILY DIGEST PROCESSING
+    // STEP 4: DAILY DIGEST PROCESSING (PLACEHOLDER)
     // ==============================================
     let digestResults = null;
     const currentHour = new Date().getHours();
     
-    if (currentHour === 9) { // 9 AM daily digests
-      console.log('📧 STEP 4: Processing daily digest emails...');
-      try {
-        const { processDailyDigests } = await import('$lib/processing/digest-processor.js');
-        digestResults = await processDailyDigests(platform.env);
-        console.log(`✅ Daily digests processed: ${digestResults?.sent || 0} sent`);
-      } catch (digestError) {
-        const errorMessage = digestError instanceof Error ? digestError.message : String(digestError);
-        console.error('❌ Daily digest processing failed:', errorMessage);
-        digestResults = { error: errorMessage };
-      }
-    } else {
-      console.log(`⏭️ STEP 4: Skipping daily digests (current hour: ${currentHour}, digest hour: 9)`);
-    }
+    // TODO: Implement digest processing when email infrastructure is ready
+    console.log(`⏭️ STEP 4: Daily digest processing not yet implemented (current hour: ${currentHour})`);
+    digestResults = { sent: 0, message: 'Digest processing not implemented yet' };
     
     // ==============================================
     // STEP 5: LOGGING AND RESULTS

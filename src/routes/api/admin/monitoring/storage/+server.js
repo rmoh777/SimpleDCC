@@ -1,5 +1,6 @@
 import { json } from '@sveltejs/kit';
 import { getFilingStats, getPendingFilingsForProcessing, cleanupOldFilings } from '$lib/storage/filing-storage.js';
+import { getEnhancedProcessingStats } from '$lib/storage/filing-storage-enhanced.js';
 
 export async function GET({ platform, cookies }) {
   try {
