@@ -1,6 +1,6 @@
 import { json } from '@sveltejs/kit';
 import { fetchLatestFilings } from '$lib/fcc/ecfs-enhanced-client.js';
-import { processFilingDocuments } from '$lib/documents/pdf-processor.js';
+import { processFilingDocuments } from '$lib/documents/jina-processor.js';
 import { generateEnhancedSummary } from '$lib/ai/gemini-enhanced.js';
 
 export async function GET({ platform, cookies, url }) {

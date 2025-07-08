@@ -120,8 +120,11 @@ async function storeBatch(db, filings) {
       await db.prepare(`
         INSERT INTO filings (
           id, docket_number, title, author, filing_type, 
-          date_received, filing_url, documents, raw_data, status
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+          date_received, filing_url, documents, raw_data, status,
+          ai_summary, ai_key_points, ai_stakeholders, ai_regulatory_impact,
+          ai_document_analysis, ai_confidence, ai_enhanced, 
+          documents_processed, processed_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       `).bind(
         filing.id,
         filing.docket_number,
@@ -132,7 +135,16 @@ async function storeBatch(db, filings) {
         filing.filing_url,
         filing.documents ? JSON.stringify(filing.documents) : null,
         JSON.stringify(filing.raw_data),
-        filing.status || 'pending'
+        filing.status || 'pending',
+        filing.ai_summary || null,
+        filing.ai_key_points ? JSON.stringify(filing.ai_key_points) : null,
+        filing.ai_stakeholders || null,
+        filing.ai_regulatory_impact || null,
+        filing.ai_document_analysis || null,
+        filing.ai_confidence || null,
+        filing.ai_enhanced ? 1 : 0,
+        filing.documents_processed || 0,
+        filing.processed_at || null
       ).run();
       
       stored++;
