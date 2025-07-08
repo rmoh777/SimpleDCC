@@ -307,4 +307,166 @@ export async function cleanupOldLogs(db, daysToKeep = 30) {
     console.error('Failed to cleanup old logs:', error);
     return { success: false, error: error.message };
   }
+}
+
+// ==============================================
+// Phase 2 Card 1: User and Notification Functions
+// ==============================================
+
+/**
+ * Get users who need notifications for new filings
+ * Integrates with existing active dockets system
+ * @param {Array} docketNumbers - Array of docket numbers with new filings
+ * @param {Object} db - Database connection
+ * @returns {Promise<Array>} Array of users who need notifications
+ */
+export async function getUsersForNotification(docketNumbers, db) {
+  try {
+    if (!docketNumbers || docketNumbers.length === 0) return [];
+    
+    const placeholders = docketNumbers.map(() => '?').join(',');
+    
+    const result = await db.prepare(`
+      SELECT DISTINCT 
+        u.id, u.email, u.user_tier, u.trial_expires_at,
+        s.docket_number, s.frequency, s.last_notified
+      FROM users u
+      JOIN subscriptions s ON u.id = s.user_id
+      WHERE s.docket_number IN (${placeholders})
+      ORDER BY u.user_tier DESC, s.frequency ASC
+    `).bind(...docketNumbers).all();
+    
+    return result.results || [];
+    
+  } catch (error) {
+    console.error('Error getting users for notification:', error);
+    return [];
+  }
+}
+
+/**
+ * Update user last notified timestamp
+ * @param {number} userId - User ID
+ * @param {string} docketNumber - Docket number
+ * @param {Object} db - Database connection
+ * @returns {Promise<Object>} Result of the operation
+ */
+export async function updateUserLastNotified(userId, docketNumber, db) {
+  try {
+    const result = await db.prepare(`
+      UPDATE subscriptions 
+      SET last_notified = ? 
+      WHERE user_id = ? AND docket_number = ?
+    `).bind(Math.floor(Date.now() / 1000), userId, docketNumber).run();
+    
+    return { success: true, changes: result.changes };
+    
+  } catch (error) {
+    console.error('Error updating last notified:', error);
+    return { success: false, error: error.message };
+  }
+}
+
+/**
+ * Get notification queue statistics for admin dashboard
+ * @param {Object} db - Database connection
+ * @returns {Promise<Object>} Notification queue statistics
+ */
+export async function getNotificationQueueStats(db) {
+  try {
+    const stats = await db.prepare(`
+      SELECT 
+        status,
+        digest_type,
+        COUNT(*) as count
+      FROM notification_queue 
+      WHERE created_at > ?
+      GROUP BY status, digest_type
+      ORDER BY status, digest_type
+    `).bind(Math.floor(Date.now() / 1000) - 86400).all(); // Last 24 hours
+    
+    const pendingCount = await db.prepare(`
+      SELECT COUNT(*) as count 
+      FROM notification_queue 
+      WHERE status = 'pending'
+    `).first();
+    
+    return {
+      breakdown: stats.results || [],
+      pending_total: pendingCount?.count || 0
+    };
+    
+  } catch (error) {
+    console.error('Error getting queue stats:', error);
+    return { breakdown: [], pending_total: 0 };
+  }
+}
+
+/**
+ * Get user statistics for admin dashboard
+ * @param {Object} db - Database connection
+ * @returns {Promise<Object>} User statistics by tier
+ */
+export async function getUserStats(db) {
+  try {
+    const tierStats = await db.prepare(`
+      SELECT 
+        user_tier,
+        COUNT(*) as count,
+        COUNT(CASE WHEN trial_expires_at > ? THEN 1 END) as active_trials
+      FROM users
+      GROUP BY user_tier
+      ORDER BY user_tier
+    `).bind(Math.floor(Date.now() / 1000)).all();
+    
+    const totalUsers = await db.prepare(`
+      SELECT COUNT(*) as count FROM users
+    `).first();
+    
+    const recentSignups = await db.prepare(`
+      SELECT COUNT(*) as count 
+      FROM users 
+      WHERE created_at > ?
+    `).bind(Math.floor(Date.now() / 1000) - 86400).first(); // Last 24 hours
+    
+    return {
+      tier_breakdown: tierStats.results || [],
+      total_users: totalUsers?.count || 0,
+      recent_signups: recentSignups?.count || 0
+    };
+    
+  } catch (error) {
+    console.error('Error getting user stats:', error);
+    return { tier_breakdown: [], total_users: 0, recent_signups: 0 };
+  }
+}
+
+/**
+ * Get enhanced monitoring stats including Phase 2 metrics
+ * @param {Object} db - Database connection
+ * @returns {Promise<Object>} Enhanced monitoring statistics
+ */
+export async function getEnhancedMonitoringStats(db) {
+  try {
+    // Get base monitoring stats
+    const baseStats = await getMonitoringStats(db);
+    
+    // Get Phase 2 specific stats
+    const userStats = await getUserStats(db);
+    const queueStats = await getNotificationQueueStats(db);
+    
+    return {
+      ...baseStats,
+      user_metrics: userStats,
+      notification_queue: queueStats
+    };
+    
+  } catch (error) {
+    console.error('Error getting enhanced monitoring stats:', error);
+    return {
+      systemHealth: 'error',
+      user_metrics: { tier_breakdown: [], total_users: 0, recent_signups: 0 },
+      notification_queue: { breakdown: [], pending_total: 0 }
+    };
+  }
 } 
