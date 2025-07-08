@@ -1,5 +1,6 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
+import { createOrGetUser, getUserByEmail } from '$lib/users/user-operations';
 
 function isValidEmail(email: string): boolean {
   return !!(email && email.includes('@') && email.includes('.'));
@@ -44,10 +45,13 @@ export const POST: RequestHandler = async ({ request, platform }) => {
     // Normalize email to lowercase
     const normalizedEmail = email.toLowerCase();
 
-    // Check for existing subscription
+    // Phase 2 Card 1: Create or get user account
+    const user = await createOrGetUser(normalizedEmail, platform.env.DB);
+
+    // Check for existing subscription (enhanced to use user_id)
     const existing = await platform.env.DB
-      .prepare('SELECT id FROM subscriptions WHERE email = ? AND docket_number = ?')
-      .bind(normalizedEmail, docket_number)
+      .prepare('SELECT id FROM subscriptions WHERE user_id = ? AND docket_number = ?')
+      .bind(user.id, docket_number)
       .first();
 
     if (existing) {
@@ -57,10 +61,10 @@ export const POST: RequestHandler = async ({ request, platform }) => {
       }, { status: 409 });
     }
 
-    // Insert new subscription
+    // Insert new subscription linked to user (maintaining backward compatibility with email column)
     const result = await platform.env.DB
-      .prepare('INSERT INTO subscriptions (email, docket_number, created_at) VALUES (?, ?, ?)')
-      .bind(normalizedEmail, docket_number, Math.floor(Date.now() / 1000))
+      .prepare('INSERT INTO subscriptions (user_id, email, docket_number, frequency, created_at) VALUES (?, ?, ?, ?, ?)')
+      .bind(user.id, normalizedEmail, docket_number, 'daily', Math.floor(Date.now() / 1000))
       .run();
 
     if (result.success) {
@@ -81,7 +85,9 @@ export const POST: RequestHandler = async ({ request, platform }) => {
       return json({ 
         success: true,
         message: `Successfully subscribed to docket ${docket_number}`,
-        id: result.meta.last_row_id 
+        id: result.meta.last_row_id,
+        user_tier: user.user_tier, // Phase 2 Card 1: Include user tier
+        show_trial_upsell: user.user_tier === 'free' // Phase 2 Card 1: Signal for pro trial modal
       }, { status: 201 });
     } else {
       return json({ 
@@ -120,14 +126,25 @@ export const GET: RequestHandler = async ({ url, platform }) => {
     // Normalize email to lowercase for lookup
     const normalizedEmail = email.toLowerCase();
 
+    // Phase 2 Card 1: Get user information
+    const user = await getUserByEmail(normalizedEmail, platform.env.DB);
+
+    // Get subscriptions with enhanced information (backward compatible)
     const subscriptions = await platform.env.DB
-      .prepare('SELECT id, docket_number, created_at FROM subscriptions WHERE email = ? ORDER BY created_at DESC')
+      .prepare(`
+        SELECT s.id, s.docket_number, s.frequency, s.created_at, s.last_notified
+        FROM subscriptions s
+        WHERE s.email = ? 
+        ORDER BY s.created_at DESC
+      `)
       .bind(normalizedEmail)
       .all();
 
     return json({ 
       subscriptions: subscriptions.results || [],
-      count: subscriptions.results?.length || 0
+      count: subscriptions.results?.length || 0,
+      user_tier: user?.user_tier || 'free', // Phase 2 Card 1: Include user tier
+      trial_expires_at: user?.trial_expires_at // Phase 2 Card 1: Include trial info
     });
 
   } catch (error) {
