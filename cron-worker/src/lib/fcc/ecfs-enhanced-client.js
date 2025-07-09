@@ -13,13 +13,12 @@ const DEFAULT_LIMIT = 50; // Get last 50 filings per docket
  */
 export async function fetchLatestFilings(docketNumber, limit = DEFAULT_LIMIT, env) {
   try {
-    // Use the passed environment object
-    const apiKey = env.ECFS_API_KEY || process.env.ECFS_API_KEY;
+    // Use env object passed from the worker environment
+    const apiKey = env?.ECFS_API_KEY;
     if (!apiKey) {
       console.error('🔍 Environment check:', {
-        envHasKey: !!env.ECFS_API_KEY,
-        processEnvHasKey: !!process.env.ECFS_API_KEY,
-        nodeEnv: process.env.NODE_ENV
+        envHasKey: !!env?.ECFS_API_KEY,
+        envKeys: env ? Object.keys(env) : 'env is null'
       });
       throw new Error('ECFS_API_KEY environment variable is not set');
     }
