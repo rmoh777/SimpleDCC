@@ -11,7 +11,9 @@ export function generateDailyDigest(userEmail, filings, options = {}) {
   const {
     brandName = 'SimpleDCC',
     supportEmail = 'support@simpledcc.com',
-    unsubscribeBaseUrl = 'https://simpledcc.pages.dev'
+    unsubscribeBaseUrl = 'https://simpledcc.pages.dev',
+    user_tier = 'free',
+    digest_type = 'daily'
   } = options;
   
   const today = new Date().toLocaleDateString('en-US', {
@@ -28,8 +30,8 @@ export function generateDailyDigest(userEmail, filings, options = {}) {
   
   return {
     subject: `${brandName}: ${totalFilings} new filing${totalFilings !== 1 ? 's' : ''} across ${uniqueDockets} docket${uniqueDockets !== 1 ? 's' : ''} - ${today}`,
-    html: generateHTMLTemplate(userEmail, filingsByDocket, { brandName, supportEmail, unsubscribeBaseUrl, today }),
-    text: generateTextTemplate(userEmail, filingsByDocket, { brandName, supportEmail, unsubscribeBaseUrl, today })
+    html: generateHTMLTemplate(userEmail, filingsByDocket, { brandName, supportEmail, unsubscribeBaseUrl, today, user_tier, digest_type }),
+    text: generateTextTemplate(userEmail, filingsByDocket, { brandName, supportEmail, unsubscribeBaseUrl, today, user_tier, digest_type })
   };
 }
 
@@ -37,7 +39,7 @@ export function generateDailyDigest(userEmail, filings, options = {}) {
  * Generate HTML email template with professional styling
  */
 function generateHTMLTemplate(userEmail, filingsByDocket, options) {
-  const { brandName, supportEmail, unsubscribeBaseUrl, today } = options;
+  const { brandName, supportEmail, unsubscribeBaseUrl, today, user_tier, digest_type } = options;
   
   return `
 <!DOCTYPE html>
@@ -352,6 +354,8 @@ function generateHTMLTemplate(userEmail, filingsByDocket, options) {
         </p>
       </div>
       
+      ${generateTierSpecificBanner(user_tier, unsubscribeBaseUrl)}
+      
       <!-- Docket Sections -->
       ${Object.entries(filingsByDocket).map(([docketNumber, filings]) => `
         <div class="docket-section">
@@ -371,21 +375,7 @@ function generateHTMLTemplate(userEmail, filingsByDocket, options) {
                 </div>
               </div>
               
-              ${filing.ai_summary ? `
-                <div class="ai-summary">
-                  <div class="ai-summary-header">
-                    <span style="font-size: 16px;">🤖</span>
-                    <h5 class="ai-summary-title">AI Summary</h5>
-                  </div>
-                  <p class="ai-summary-text">${escapeHtml(filing.ai_summary)}</p>
-                </div>
-              ` : `
-                <div style="background-color: #f3f4f6; padding: 12px; border-radius: 6px; margin-bottom: 16px;">
-                  <p style="margin: 0; font-size: 14px; color: #6b7280; font-style: italic;">
-                    📝 Full filing details available in original document
-                  </p>
-                </div>
-              `}
+              ${generateFilingContent(filing, user_tier, unsubscribeBaseUrl)}
               
               <div class="filing-actions">
                 <a href="${filing.filing_url}" class="filing-link" target="_blank">
@@ -416,10 +406,96 @@ function generateHTMLTemplate(userEmail, filingsByDocket, options) {
 }
 
 /**
+ * Generate tier-specific banner content
+ */
+function generateTierSpecificBanner(user_tier, unsubscribeBaseUrl) {
+  switch (user_tier) {
+    case 'free':
+      return `
+        <div style="background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%); color: white; padding: 24px; border-radius: 8px; margin-bottom: 32px; text-align: center;">
+          <h3 style="margin: 0 0 12px 0; font-size: 18px; font-weight: 600;">🚀 Upgrade to Pro for Full AI Summaries</h3>
+          <p style="margin: 0 0 16px 0; font-size: 14px; opacity: 0.9;">
+            Free users see basic filing metadata. Upgrade to Pro for AI-powered summaries that help you quickly understand key regulatory developments.
+          </p>
+          <a href="${unsubscribeBaseUrl}/pricing" style="display: inline-block; background-color: white; color: #1d4ed8; text-decoration: none; padding: 10px 24px; border-radius: 6px; font-weight: 600; font-size: 14px;">
+            Upgrade to Pro →
+          </a>
+        </div>
+      `;
+    
+    case 'trial':
+      return `
+        <div style="background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); color: white; padding: 24px; border-radius: 8px; margin-bottom: 32px; text-align: center;">
+          <h3 style="margin: 0 0 12px 0; font-size: 18px; font-weight: 600;">⏰ Trial Active - Full AI Access</h3>
+          <p style="margin: 0 0 16px 0; font-size: 14px; opacity: 0.9;">
+            You're enjoying full AI summaries during your trial. Don't miss out on continued access to detailed regulatory insights.
+          </p>
+          <a href="${unsubscribeBaseUrl}/pricing" style="display: inline-block; background-color: white; color: #d97706; text-decoration: none; padding: 10px 24px; border-radius: 6px; font-weight: 600; font-size: 14px;">
+            Continue with Pro →
+          </a>
+        </div>
+      `;
+    
+    case 'pro':
+    default:
+      return ''; // No banner for pro users
+  }
+}
+
+/**
+ * Generate filing content based on user tier
+ */
+function generateFilingContent(filing, user_tier, unsubscribeBaseUrl) {
+  if (user_tier === 'free') {
+    // Free users get basic metadata with upgrade prompt
+    return `
+      <div style="background-color: #f3f4f6; padding: 16px; border-radius: 6px; margin-bottom: 16px;">
+        <p style="margin: 0 0 8px 0; font-size: 14px; color: #6b7280; font-style: italic;">
+          📝 Basic filing information (upgrade for AI summary)
+        </p>
+        <div style="background-color: #e5e7eb; padding: 12px; border-radius: 4px; margin-bottom: 12px;">
+          <p style="margin: 0; font-size: 13px; color: #4b5563;">
+            <strong>Filing Type:</strong> ${escapeHtml(filing.filing_type || 'N/A')}<br>
+            <strong>Date Received:</strong> ${formatDate(filing.date_received)}<br>
+            <strong>Author:</strong> ${escapeHtml(filing.author || 'N/A')}
+          </p>
+        </div>
+        <div style="text-align: center; margin-top: 12px;">
+          <a href="${unsubscribeBaseUrl}/pricing" style="display: inline-block; background-color: #10b981; color: white; text-decoration: none; padding: 8px 16px; border-radius: 4px; font-size: 12px; font-weight: 500;">
+            Upgrade for AI Summary →
+          </a>
+        </div>
+      </div>
+    `;
+  } else {
+    // Trial and Pro users get full AI summaries
+    if (filing.ai_summary) {
+      return `
+        <div class="ai-summary">
+          <div class="ai-summary-header">
+            <span style="font-size: 16px;">🤖</span>
+            <h5 class="ai-summary-title">AI Summary</h5>
+          </div>
+          <p class="ai-summary-text">${escapeHtml(filing.ai_summary)}</p>
+        </div>
+      `;
+    } else {
+      return `
+        <div style="background-color: #f3f4f6; padding: 12px; border-radius: 6px; margin-bottom: 16px;">
+          <p style="margin: 0; font-size: 14px; color: #6b7280; font-style: italic;">
+            📝 Full filing details available in original document
+          </p>
+        </div>
+      `;
+    }
+  }
+}
+
+/**
  * Generate plain text email template
  */
 function generateTextTemplate(userEmail, filingsByDocket, options) {
-  const { brandName, supportEmail, unsubscribeBaseUrl, today } = options;
+  const { brandName, supportEmail, unsubscribeBaseUrl, today, user_tier } = options;
   const totalFilings = Object.values(filingsByDocket).reduce((sum, filings) => sum + filings.length, 0);
   const uniqueDockets = Object.keys(filingsByDocket).length;
   
@@ -433,6 +509,19 @@ function generateTextTemplate(userEmail, filingsByDocket, options) {
   text += `Dockets: ${uniqueDockets}\n`;
   text += `AI Summaries: ${Object.values(filingsByDocket).flat().filter(f => f.ai_summary).length}\n\n`;
   
+  // Add tier-specific message
+  if (user_tier === 'free') {
+    text += `UPGRADE TO PRO FOR AI SUMMARIES\n`;
+    text += `${'-'.repeat(35)}\n`;
+    text += `Free users see basic filing metadata. Upgrade to Pro for AI-powered summaries.\n`;
+    text += `Upgrade: ${unsubscribeBaseUrl}/pricing\n\n`;
+  } else if (user_tier === 'trial') {
+    text += `TRIAL ACTIVE - FULL AI ACCESS\n`;
+    text += `${'-'.repeat(30)}\n`;
+    text += `You're enjoying full AI summaries during your trial. Continue with Pro for ongoing access.\n`;
+    text += `Continue: ${unsubscribeBaseUrl}/pricing\n\n`;
+  }
+  
   Object.entries(filingsByDocket).forEach(([docketNumber, filings]) => {
     text += `DOCKET ${docketNumber}\n`;
     text += `${'-'.repeat(20)}\n`;
@@ -444,7 +533,10 @@ function generateTextTemplate(userEmail, filingsByDocket, options) {
       text += `   Type: ${filing.filing_type}\n`;
       text += `   Date: ${formatDate(filing.date_received)}\n`;
       
-      if (filing.ai_summary) {
+      if (user_tier === 'free') {
+        text += `   AI Summary: [Upgrade to Pro for AI summaries]\n`;
+        text += `   Upgrade: ${unsubscribeBaseUrl}/pricing\n`;
+      } else if (filing.ai_summary) {
         text += `   AI Summary: ${filing.ai_summary}\n`;
       }
       
@@ -654,7 +746,8 @@ ${brandName} - Professional FCC Regulatory Monitoring`
 export function generateFilingAlert(userEmail, filing, options = {}) {
   const {
     brandName = 'SimpleDCC',
-    unsubscribeBaseUrl = 'https://simpledcc.pages.dev'
+    unsubscribeBaseUrl = 'https://simpledcc.pages.dev',
+    user_tier = 'free'
   } = options;
   
   return {
@@ -771,12 +864,7 @@ export function generateFilingAlert(userEmail, filing, options = {}) {
     
     <h3>${escapeHtml(filing.title)}</h3>
     
-    ${filing.ai_summary ? `
-      <div class="ai-summary-box">
-        <h4 style="margin-top: 0; color: #0c4a6e;">🤖 AI Summary</h4>
-        <p style="margin-bottom: 0;">${escapeHtml(filing.ai_summary)}</p>
-      </div>
-    ` : ''}
+    ${generateFilingAlertContent(filing, user_tier, unsubscribeBaseUrl)}
     
     <div style="text-align: center;">
       <a href="${filing.filing_url}" class="cta-button" target="_blank">
@@ -798,12 +886,72 @@ Author: ${filing.author}
 Type: ${filing.filing_type}
 Date: ${formatDate(filing.date_received)}
 
-${filing.ai_summary ? `AI Summary: ${filing.ai_summary}\n` : ''}
+${generateFilingAlertTextContent(filing, user_tier, unsubscribeBaseUrl)}
 
 View full filing: ${filing.filing_url}
 
 Unsubscribe: ${unsubscribeBaseUrl}/unsubscribe?email=${encodeURIComponent(userEmail)}&docket=${filing.docket_number}`
   };
+}
+
+/**
+ * Generate filing alert content based on user tier (HTML version)
+ */
+function generateFilingAlertContent(filing, user_tier, unsubscribeBaseUrl) {
+  if (user_tier === 'free') {
+    return `
+      <div style="background-color: #f3f4f6; padding: 20px; border-radius: 8px; margin: 20px 0; text-align: center;">
+        <h4 style="margin-top: 0; color: #4b5563;">🚀 Upgrade to Pro for AI Summary</h4>
+        <p style="margin-bottom: 16px; color: #6b7280;">Free users see basic filing information. Upgrade to Pro for AI-powered summaries that help you quickly understand key regulatory developments.</p>
+        <a href="${unsubscribeBaseUrl}/pricing" style="display: inline-block; background-color: #10b981; color: white; text-decoration: none; padding: 10px 20px; border-radius: 6px; font-weight: 600;">
+          Upgrade to Pro →
+        </a>
+      </div>
+    `;
+  } else if (user_tier === 'trial') {
+    const content = filing.ai_summary ? `
+      <div class="ai-summary-box">
+        <h4 style="margin-top: 0; color: #0c4a6e;">🤖 AI Summary</h4>
+        <p style="margin-bottom: 0;">${escapeHtml(filing.ai_summary)}</p>
+      </div>
+    ` : '';
+    
+    return content + `
+      <div style="background-color: #fef3c7; padding: 16px; border-radius: 6px; margin: 20px 0; text-align: center;">
+        <p style="margin: 0; color: #92400e; font-size: 14px;">
+          ⏰ <strong>Trial Active</strong> - You're enjoying full AI summaries. <a href="${unsubscribeBaseUrl}/pricing" style="color: #92400e; text-decoration: underline;">Continue with Pro →</a>
+        </p>
+      </div>
+    `;
+  } else {
+    // Pro users get full AI summaries with no banners
+    return filing.ai_summary ? `
+      <div class="ai-summary-box">
+        <h4 style="margin-top: 0; color: #0c4a6e;">🤖 AI Summary</h4>
+        <p style="margin-bottom: 0;">${escapeHtml(filing.ai_summary)}</p>
+      </div>
+    ` : '';
+  }
+}
+
+/**
+ * Generate filing alert content based on user tier (text version)
+ */
+function generateFilingAlertTextContent(filing, user_tier, unsubscribeBaseUrl) {
+  if (user_tier === 'free') {
+    return `UPGRADE TO PRO FOR AI SUMMARY
+${'-'.repeat(32)}
+Free users see basic filing information. Upgrade to Pro for AI-powered summaries.
+Upgrade: ${unsubscribeBaseUrl}/pricing
+`;
+  } else if (user_tier === 'trial') {
+    const content = filing.ai_summary ? `AI Summary: ${filing.ai_summary}\n\n` : '';
+    return content + `TRIAL ACTIVE - Continue with Pro: ${unsubscribeBaseUrl}/pricing
+`;
+  } else {
+    // Pro users get full AI summaries
+    return filing.ai_summary ? `AI Summary: ${filing.ai_summary}\n` : '';
+  }
 }
 
 // Helper functions
