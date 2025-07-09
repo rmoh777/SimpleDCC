@@ -1,6 +1,6 @@
 // cron-worker/src/index.ts
 import { processNotificationQueue } from './lib/notifications/queue-processor';
-import { getTimezoneInfo } from './lib/utils/timezone';
+import { getETTimeInfo } from './lib/utils/timezone';
 
 // A placeholder for the fetchAndStoreFilings function, assuming it will be part of the cron logic
 async function fetchAndStoreFilings(env, lookbackHours, batchSize) {
@@ -13,7 +13,7 @@ export default {
   async scheduled(controller, env, ctx) {
     console.log("(INFO) ⏰ Cron job triggered by schedule.");
 
-    const { etHour, currentStrategy } = getTimezoneInfo();
+    const { etHour, currentStrategy } = getETTimeInfo();
     console.log(`(INFO) ET hour is ${etHour}. Using strategy: ${currentStrategy.key}`);
 
     if (currentStrategy.key === 'quiet_hours') {
