@@ -44,6 +44,7 @@
     { href: '/admin', label: 'Dashboard', icon: '📊' },
     { href: '/admin/subscriptions', label: 'Subscriptions', icon: '👥' },
     { href: '/admin/monitoring', label: 'Monitoring', icon: '📡' },
+    { href: '/admin/status', label: 'System Health', icon: '🔍' },
     { href: '/admin/database/migrate', label: 'Database', icon: '🗄️' },
   ];
   
