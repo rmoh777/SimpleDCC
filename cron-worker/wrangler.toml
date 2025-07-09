@@ -1,0 +1,21 @@
+name = "simpledcc-cron-worker"
+main = "src/index.ts"
+compatibility_date = "2024-03-08"
+
+[triggers]
+crons = ["0 */2 * * *"]
+
+[[d1_databases]]
+binding = "DB"
+database_name = "simple-docketcc-db"
+database_id = "e5bfcb56-11ad-4288-a74c-3749f2ddfd1b"
+
+[vars]
+GEMINI_API_KEY = "placeholder"
+JINA_API_KEY = "placeholder"
+ECFS_API_KEY = "placeholder"
+RESEND_API_KEY = "placeholder"
+CRON_SECRET = "dev_cron_secret_change_in_production"
+APP_URL = "https://simpledcc.pages.dev"
+FROM_EMAIL = "notifications@simpledcc.pages.dev"
+FROM_NAME = "SimpleDCC" 
