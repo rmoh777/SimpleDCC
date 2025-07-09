@@ -20,12 +20,11 @@ async function processSeedSubscriptions(env: any) {
     
     // Find subscriptions that need seeding
     const seedSubscriptions = await env.DB.prepare(`
-      SELECT DISTINCT s.docket_number, s.email, s.tier, u.id as user_id, u.email as user_email
+      SELECT s.id as subscription_id, s.docket_number, u.id as user_id, u.email, u.user_tier
       FROM subscriptions s
-      LEFT JOIN users u ON s.email = u.email  
+      JOIN users u ON s.user_id = u.id
       WHERE s.needs_seed = 1
-      ORDER BY s.created_at DESC
-      LIMIT 10
+      LIMIT 25
     `).all();
     
     if (!seedSubscriptions.results || seedSubscriptions.results.length === 0) {
@@ -80,7 +79,7 @@ async function processSeedSubscriptions(env: any) {
             `).bind(
               subscription.email,
               docketNumber,
-              JSON.stringify({ filings: processedFilings, tier: subscription.tier }),
+              JSON.stringify({ filings: processedFilings, tier: subscription.user_tier }),
               Date.now()
             ).run();
             
@@ -88,8 +87,8 @@ async function processSeedSubscriptions(env: any) {
             await env.DB.prepare(`
               UPDATE subscriptions 
               SET needs_seed = 0 
-              WHERE email = ? AND docket_number = ?
-            `).bind(subscription.email, docketNumber).run();
+              WHERE id = ?
+            `).bind(subscription.subscription_id).run();
             
             console.log(`🌱 Queued seed digest for ${subscription.email} on docket ${docketNumber}`);
             processed++;
