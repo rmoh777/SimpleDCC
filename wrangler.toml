@@ -7,34 +7,7 @@ pages_build_output_dir = ".svelte-kit/cloudflare"
 # Enable Node.js compatibility to support dependencies like node-fetch
 compatibility_flags = ["nodejs_compat"]
 
-# Development environment variables (use placeholders for security)
-[vars]
-ECFS_API_KEY = "placeholder"
-GEMINI_API_KEY = "placeholder"
-JINA_API_KEY = "placeholder"
-RESEND_API_KEY = "placeholder"
-FROM_EMAIL = "dev@simpledcc.pages.dev"
-FROM_NAME = "SimpleDCC Dev"
-APP_URL = "http://localhost:5173"
-
 [[d1_databases]]
-binding = "DB"
-database_name = "simple-docketcc-db"
-database_id = "e5bfcb56-11ad-4288-a74c-3749f2ddfd1b"
-
-# Production environment configuration
-[env.production]
-[env.production.vars]
-# Existing API keys
-ECFS_API_KEY = "production_ecfs_key"
-GEMINI_API_KEY = "production_gemini_key"
-JINA_API_KEY = "production_jina_key"
-RESEND_API_KEY = "production_resend_key"
-FROM_EMAIL = "notifications@simpledcc.pages.dev"
-FROM_NAME = "SimpleDCC"
-APP_URL = "https://simpledcc.pages.dev"
-
-[[env.production.d1_databases]]
 binding = "DB"
 database_name = "simple-docketcc-db"
 database_id = "e5bfcb56-11ad-4288-a74c-3749f2ddfd1b" 
