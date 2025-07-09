@@ -1,12 +1,408 @@
-// cron-worker/src/index.ts
+// cron-worker/src/index.ts - Real Production Pipeline Implementation
 import { processNotificationQueue } from './lib/notifications/queue-processor';
 import { getETTimeInfo, getProcessingStrategy } from './lib/utils/timezone';
+import { getActiveDockets } from './lib/database/db-operations';
+import { fetchLatestFilings } from './lib/fcc/ecfs-enhanced-client';
+import { storeFilingsEnhanced } from './lib/storage/filing-storage-enhanced';
+import { checkDatabaseSchema } from './lib/database/auto-migration';
+import { processFilingBatchEnhanced } from './lib/ai/gemini-enhanced';
 
-// A placeholder for the fetchAndStoreFilings function, assuming it will be part of the cron logic
-async function fetchAndStoreFilings(env, lookbackHours, batchSize) {
-  console.log(`(INFO) Placeholder for fetchAndStoreFilings. Lookback: ${lookbackHours}, Batch: ${batchSize}`);
-  // In the future, the actual ECFS fetching logic will go here.
-  return;
+/**
+ * Process seed subscriptions - Welcome experience for new users
+ * @param {Object} env - Environment variables from worker
+ * @returns {Promise<Object>} Seeding results
+ */
+async function processSeedSubscriptions(env: any) {
+  const startTime = Date.now();
+  
+  try {
+    console.log('🌱 Starting seed subscription processing...');
+    
+    // Find subscriptions that need seeding
+    const seedSubscriptions = await env.DB.prepare(`
+      SELECT DISTINCT s.docket_number, s.email, s.tier, u.id as user_id, u.email as user_email
+      FROM subscriptions s
+      LEFT JOIN users u ON s.email = u.email  
+      WHERE s.needs_seed = 1
+      ORDER BY s.created_at DESC
+      LIMIT 10
+    `).all();
+    
+    if (!seedSubscriptions.results || seedSubscriptions.results.length === 0) {
+      console.log('🌱 No subscriptions need seeding');
+      return { processed: 0, sent: 0, errors: [] };
+    }
+    
+    console.log(`🌱 Found ${seedSubscriptions.results.length} subscriptions needing seed digest`);
+    
+    let processed = 0;
+    let sent = 0;
+    const errors: any[] = [];
+    
+    // Group by docket to process efficiently
+    const docketGroups = seedSubscriptions.results.reduce((groups, sub) => {
+      if (!groups[sub.docket_number]) {
+        groups[sub.docket_number] = [];
+      }
+      groups[sub.docket_number].push(sub);
+      return groups;
+    }, {} as any);
+    
+    for (const [docketNumber, subscriptions] of Object.entries(docketGroups)) {
+      try {
+        console.log(`🌱 Processing seed for docket ${docketNumber}...`);
+        
+        // Fetch latest 5 filings for this docket
+        const filings = await fetchLatestFilings(docketNumber, 5, env);
+        
+        if (filings.length === 0) {
+          console.log(`🌱 No filings found for docket ${docketNumber}, skipping seed`);
+          continue;
+        }
+        
+        console.log(`🌱 Found ${filings.length} filings for docket ${docketNumber}, processing with AI...`);
+        
+        // Process filings through AI pipeline
+        const processedFilings = await processFilingBatchEnhanced(filings, env, {
+          maxConcurrent: 2,
+          delayBetween: 1000
+        });
+        
+        console.log(`🌱 AI processing completed for ${processedFilings.length} filings`);
+        
+        // Create seed digest notifications for each subscription
+        for (const subscription of subscriptions as any[]) {
+          try {
+            // Queue seed digest notification
+            await env.DB.prepare(`
+              INSERT INTO notification_queue (user_email, docket_number, digest_type, filing_data, created_at)
+              VALUES (?, ?, 'seed_digest', ?, ?)
+            `).bind(
+              subscription.email,
+              docketNumber,
+              JSON.stringify({ filings: processedFilings, tier: subscription.tier }),
+              Date.now()
+            ).run();
+            
+            // Mark subscription as seeded
+            await env.DB.prepare(`
+              UPDATE subscriptions 
+              SET needs_seed = 0 
+              WHERE email = ? AND docket_number = ?
+            `).bind(subscription.email, docketNumber).run();
+            
+            console.log(`🌱 Queued seed digest for ${subscription.email} on docket ${docketNumber}`);
+            processed++;
+            
+          } catch (subError) {
+            console.error(`🌱 Failed to process seed for ${subscription.email}:`, subError);
+            errors.push({ email: subscription.email, error: subError.message });
+          }
+        }
+        
+        // Rate limiting between dockets
+        await new Promise(resolve => setTimeout(resolve, 2000));
+        
+      } catch (docketError) {
+        console.error(`🌱 Failed to process seed for docket ${docketNumber}:`, docketError);
+        errors.push({ docket: docketNumber, error: docketError.message });
+      }
+    }
+    
+    const duration = Date.now() - startTime;
+    console.log(`🌱 Seed processing completed: ${processed} processed in ${duration}ms`);
+    
+    return { processed, sent: 0, errors, duration_ms: duration };
+    
+  } catch (error) {
+    console.error('🌱 Seed processing failed:', error);
+    return { processed: 0, sent: 0, errors: [{ error: error.message }] };
+  }
+}
+
+/**
+ * Main pipeline orchestration function - migrated from working SvelteKit test-production-flow
+ * @param {Object} env - Environment variables from worker
+ * @param {Object} ctx - Worker context
+ * @param {boolean} isManualTrigger - Whether this is a manual trigger or scheduled run
+ * @returns {Promise<Object>} Pipeline execution results
+ */
+async function runDataPipeline(env: any, ctx: any, isManualTrigger = false) {
+  const startTime = Date.now();
+  let logEntries: any[] = [];
+  
+  function addLog(level: string, message: string, data: any = null) {
+    const logEntry = {
+      timestamp: new Date().toISOString(),
+      level,
+      message,
+      data,
+      duration_ms: Date.now() - startTime
+    };
+    logEntries.push(logEntry);
+    console.log(`[${level.toUpperCase()}] ${message}`, data || '');
+  }
+
+  try {
+    addLog('info', '🚀 Starting data pipeline execution', { 
+      manual_trigger: isManualTrigger,
+      worker_env_keys: Object.keys(env).filter(key => !key.includes('SECRET'))
+    });
+
+    // ==============================================
+    // STEP 1: SCHEMA CHECK (Critical for Manual Trigger)
+    // ==============================================
+    if (isManualTrigger) {
+      addLog('info', '🔍 Running database schema check...');
+      const schemaCheck = await checkDatabaseSchema(env.DB);
+      
+      if (!schemaCheck.isValid) {
+        addLog('error', 'Database schema check failed', {
+          missing_tables: schemaCheck.missingTables,
+          missing_columns: schemaCheck.missingColumns,
+          error: schemaCheck.error
+        });
+        
+        return {
+          success: false,
+          error: 'Database schema validation failed',
+          schema_check: schemaCheck,
+          logs: logEntries
+        };
+      }
+      
+      addLog('info', '✅ Database schema validation passed', {
+        schema_valid: true,
+        all_columns_present: Object.keys(schemaCheck.missingColumns).length === 0
+      });
+    }
+
+    // ==============================================
+    // STEP 2: GET ACTIVE DOCKETS
+    // ==============================================
+    addLog('info', '📊 Fetching active dockets from database...');
+    const docketStartTime = Date.now();
+    
+    const activeDockets = await getActiveDockets(env.DB);
+    const docketEndTime = Date.now();
+    
+    addLog('info', `✅ Retrieved ${activeDockets.length} active dockets`, {
+      dockets: activeDockets.map(d => d.docket_number),
+      query_time_ms: docketEndTime - docketStartTime
+    });
+
+    if (activeDockets.length === 0) {
+      addLog('warning', 'No active dockets found - pipeline will exit early');
+      return {
+        success: true,
+        skipped: true,
+        reason: 'No active dockets found',
+        logs: logEntries
+      };
+    }
+
+    // For manual trigger, test with single docket for detailed logging
+    const testDockets = isManualTrigger ? 
+      activeDockets.filter(d => d.docket_number === '02-10').slice(0, 1) : 
+      activeDockets;
+
+    // ==============================================
+    // STEP 3: FETCH FILINGS FROM ECFS
+    // ==============================================
+    addLog('info', `📡 Fetching filings from ECFS for ${testDockets.length} dockets...`);
+    const ecfsStartTime = Date.now();
+    
+    const { etHour } = getETTimeInfo();
+    const processingStrategy = getProcessingStrategy();
+    // For manual testing, use smaller limit to see detailed AI processing
+    const smartLimit = isManualTrigger ? 
+      2 : 
+      Math.min(Math.max(Math.ceil(processingStrategy.lookbackHours * 5), 10), 50);
+    
+    addLog('info', `Using processing strategy: ${processingStrategy.processingType}`, {
+      et_hour: etHour,
+      lookback_hours: processingStrategy.lookbackHours,
+      smart_limit: smartLimit
+    });
+
+    const allFilings: any[] = [];
+    const docketResults: any[] = [];
+
+    for (const docket of testDockets) {
+      const docketNumber = docket.docket_number;
+      addLog('info', `🎯 Processing docket ${docketNumber}...`);
+      
+      try {
+        const filings = await fetchLatestFilings(docketNumber, smartLimit, env);
+        addLog('info', `✅ ${docketNumber}: Found ${filings.length} filings`);
+        
+        if (isManualTrigger && filings.length > 0) {
+          // For manual trigger, include detailed filing info
+          addLog('info', `📋 Sample filing details for ${docketNumber}:`, {
+            first_filing: {
+              id: filings[0].id,
+              title: filings[0].title,
+              author: filings[0].author,
+              filing_type: filings[0].filing_type,
+              date_received: filings[0].date_received,
+              documents_count: filings[0].documents?.length || 0,
+              has_downloadable_docs: filings[0].documents?.some(doc => doc.downloadable) || false
+            }
+          });
+        }
+        
+        allFilings.push(...filings);
+        docketResults.push({ docket_number: docketNumber, filings_count: filings.length, success: true });
+        
+      } catch (docketError) {
+        const errorMessage = docketError instanceof Error ? docketError.message : String(docketError);
+        addLog('error', `❌ ${docketNumber}: Failed to fetch filings`, { error: errorMessage });
+        docketResults.push({ docket_number: docketNumber, filings_count: 0, success: false, error: errorMessage });
+      }
+      
+      // Rate limiting between dockets
+      if (testDockets.length > 1 && testDockets.indexOf(docket) < testDockets.length - 1) {
+        addLog('info', '⏱️ Rate limiting: 2 second delay...');
+        await new Promise(resolve => setTimeout(resolve, 2000));
+      }
+    }
+    
+    const ecfsEndTime = Date.now();
+    addLog('info', `✅ ECFS processing completed`, {
+      total_filings: allFilings.length,
+      docket_results: docketResults,
+      processing_time_ms: ecfsEndTime - ecfsStartTime
+    });
+
+    // ==============================================
+    // STEP 4: ENHANCED STORAGE (REAL PRODUCTION PIPELINE)
+    // ==============================================
+    let storageResults: any = null;
+    
+    if (allFilings.length > 0) {
+      addLog('info', `💾 Processing ${allFilings.length} filings through enhanced storage...`);
+      const storageStartTime = Date.now();
+      
+      try {
+        // For manual trigger, process limited filings for detailed logging
+        const filingsToProcess = isManualTrigger ? allFilings.slice(0, 2) : allFilings;
+        
+        addLog('info', `🔍 Using storeFilingsEnhanced with AI processing enabled...`);
+        const enhancedResults = await storeFilingsEnhanced(filingsToProcess, env.DB, env, {
+          enableAIProcessing: true,
+          enableJinaProcessing: true
+        });
+        
+        storageResults = {
+          newFilings: enhancedResults?.newFilings || 0,
+          aiProcessed: enhancedResults?.aiProcessed || 0,
+          documentsProcessed: enhancedResults?.documentsProcessed || 0,
+          enhanced: true
+        };
+        
+        const storageEndTime = Date.now();
+        addLog('info', '✅ Enhanced storage completed', {
+          ...storageResults,
+          processing_time_ms: storageEndTime - storageStartTime
+        });
+        
+        // For manual trigger, include detailed AI processing results
+        if (isManualTrigger && enhancedResults?.aiProcessed > 0) {
+          // Get the processed filing details for all processed filings
+          const processedFilings = await env.DB.prepare(`
+            SELECT id, title, ai_summary, ai_key_points, ai_stakeholders, ai_regulatory_impact, ai_confidence 
+            FROM filings 
+            WHERE id IN (${filingsToProcess.map(() => '?').join(',')}) AND ai_summary IS NOT NULL
+          `).bind(...filingsToProcess.map(f => f.id)).all();
+          
+          if (processedFilings.results && processedFilings.results.length > 0) {
+            for (const processedFiling of processedFilings.results) {
+              addLog('info', '🤖 AI processing results:', {
+                filing_id: processedFiling.id,
+                filing_title: processedFiling.title,
+                ai_summary_length: processedFiling.ai_summary?.length || 0,
+                ai_confidence: processedFiling.ai_confidence,
+                has_key_points: !!processedFiling.ai_key_points,
+                has_stakeholders: !!processedFiling.ai_stakeholders,
+                has_regulatory_impact: !!processedFiling.ai_regulatory_impact
+              });
+            }
+          }
+        }
+        
+      } catch (storageError) {
+        const errorMessage = storageError instanceof Error ? storageError.message : String(storageError);
+        addLog('error', '❌ Enhanced storage failed', { error: errorMessage });
+        storageResults = { error: errorMessage };
+      }
+    } else {
+      addLog('info', '⏭️ Skipping storage - no new filings to process');
+    }
+
+    // ==============================================
+    // STEP 5: NOTIFICATION QUEUE PROCESSING
+    // ==============================================
+    addLog('info', '📧 Processing notification queue...');
+    const notificationStartTime = Date.now();
+    
+    try {
+      const queueResult = await processNotificationQueue(env.DB, env);
+      const notificationEndTime = Date.now();
+      
+      addLog('info', '✅ Notification queue processing completed', {
+        processed: queueResult.processed,
+        sent: queueResult.sent,
+        failed: queueResult.failed,
+        errors: queueResult.errors,
+        processing_time_ms: notificationEndTime - notificationStartTime
+      });
+      
+    } catch (notificationError) {
+      const errorMessage = notificationError instanceof Error ? notificationError.message : String(notificationError);
+      addLog('error', '❌ Notification queue processing failed', { error: errorMessage });
+    }
+
+    // ==============================================
+    // STEP 6: FINAL RESULTS
+    // ==============================================
+    const totalEndTime = Date.now();
+    const totalDuration = totalEndTime - startTime;
+    
+    addLog('info', '🎯 Pipeline execution completed successfully', {
+      total_duration_ms: totalDuration,
+      dockets_processed: testDockets.length,
+      filings_fetched: allFilings.length,
+      storage_success: storageResults && !storageResults.error,
+      ai_processed: storageResults?.aiProcessed || 0
+    });
+
+    return {
+      success: true,
+      manual_trigger: isManualTrigger,
+      pipeline_results: {
+        dockets_processed: testDockets.length,
+        filings_fetched: allFilings.length,
+        storage_results: storageResults,
+        docket_results: docketResults
+      },
+      processing_stats: {
+        total_duration_ms: totalDuration,
+        ecfs_duration_ms: ecfsEndTime - ecfsStartTime,
+        storage_duration_ms: storageResults ? Date.now() - startTime : 0
+      },
+      logs: logEntries
+    };
+
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    addLog('error', '❌ Pipeline execution failed', { error: errorMessage, stack: error.stack });
+    
+    return {
+      success: false,
+      error: errorMessage,
+      logs: logEntries
+    };
+  }
 }
 
 export default {
@@ -17,7 +413,7 @@ export default {
     let errorStack = null;
 
     try {
-      console.log("(INFO) ⏰ Cron job triggered by schedule.");
+      console.log("(INFO) ⏰ Scheduled cron job triggered - executing real pipeline.");
 
       const { etHour } = getETTimeInfo();
       const processingStrategy = getProcessingStrategy();
@@ -28,19 +424,25 @@ export default {
         return;
       }
 
-      console.log("(INFO) Starting ECFS processing...");
-      await fetchAndStoreFilings(env, processingStrategy.lookbackHours, processingStrategy.batchSize);
+      // Process seed subscriptions first (welcome experience)
+      console.log("(INFO) 🌱 Processing seed subscriptions...");
+      const seedResult = await processSeedSubscriptions(env);
+      console.log(`(INFO) 🌱 Seed processing completed: ${seedResult.processed} subscriptions processed`);
 
-      console.log("(INFO) Starting notification queue processing...");
-      await processNotificationQueue(env.DB, env);
+      // Execute the real pipeline
+      const pipelineResult = await runDataPipeline(env, ctx, false);
+      
+      if (!pipelineResult.success) {
+        throw new Error(`Pipeline failed: ${pipelineResult.error}`);
+      }
 
-      console.log("(INFO) ✅ Cron processing complete.");
+      console.log(`(INFO) ✅ Real pipeline execution completed successfully. Processed ${pipelineResult.pipeline_results?.dockets_processed || 0} dockets, ${pipelineResult.pipeline_results?.filings_fetched || 0} filings.`);
 
     } catch (error) {
       status = 'FAILURE';
       errorMessage = error.message;
       errorStack = error.stack;
-      console.error("❌ Cron job failed:", error);
+      console.error("❌ Real pipeline execution failed:", error);
 
     } finally {
       const durationMs = Date.now() - startTime;
@@ -49,7 +451,7 @@ export default {
         status: status,
         run_timestamp: Math.floor(startTime / 1000),
         duration_ms: durationMs,
-        metrics: JSON.stringify({}), // Placeholder for future metrics
+        metrics: JSON.stringify({}),
         error_message: errorMessage,
         error_stack: errorStack
       };
@@ -67,7 +469,7 @@ export default {
           logEntry.error_stack
         );
         
-        ctx.waitUntil(stmt.run()); // Use waitUntil to ensure the log is written even if the main function has returned
+        ctx.waitUntil(stmt.run());
         console.log(`(INFO) Health status logged: ${status} in ${durationMs}ms`);
       } catch (logError) {
         console.error("❌ Failed to log health status:", logError);
@@ -75,144 +477,59 @@ export default {
     }
   },
 
-  // NEW: Add this 'fetch' handler for manual testing
+  // Manual trigger endpoint for testing and debugging
   async fetch(request, env, ctx) {
     const url = new URL(request.url);
-    if (url.pathname !== '/manual-test') {
+    
+    if (url.pathname !== '/manual-trigger') {
       return new Response('Not Found', { status: 404 });
     }
 
-    // Security Check: Only allow this if a secret header is present
-    if (request.headers.get('X-Admin-Secret') !== env.CRON_SECRET) {
+    if (request.method !== 'POST') {
+      return new Response('Method Not Allowed', { status: 405 });
+    }
+
+    // Security Check: Verify admin secret
+    const adminSecret = request.headers.get('X-Admin-Secret');
+    if (!adminSecret || adminSecret !== env.CRON_SECRET) {
+      console.log(`❌ Manual trigger: Unauthorized access attempt`);
       return new Response('Unauthorized', { status: 401 });
     }
 
-    // --- Test Configuration ---
-    const TEST_DOCKET_NUMBER = '11-42'; // The docket to test
-    const TEST_USER_EMAIL = 'test-user@example.com';
-    const TEST_USER_TIER = 'pro'; // Change to 'free' to test the other path
+    console.log(`🔍 Manual trigger: Authorized access - executing single filing pipeline test`);
 
     try {
-      let log = '🚀 Starting Manual End-to-End Test...\n\n';
-
-      // Step 1: Fetch latest filing from ECFS
-      log += '--- Step 1: Fetching from ECFS ---\n';
-      const { fetchLatestFilings } = await import('./lib/fcc/ecfs-enhanced-client.js');
-      const newFilings = await fetchLatestFilings(TEST_DOCKET_NUMBER, 5, env);
-      if (!newFilings || newFilings.length === 0) {
-        return new Response(`No new filings found for docket ${TEST_DOCKET_NUMBER}. Test cannot proceed.`, { status: 404 });
-      }
-      const testFiling = newFilings[0];
-      log += `✅ Found filing: ${testFiling.title}\n`;
-      log += `   ID: ${testFiling.id}\n`;
-      log += `   URL: ${testFiling.filing_url}\n`;
-      log += `   Documents: ${testFiling.documents ? testFiling.documents.length : 0} documents\n\n`;
-
-      // Step 2: Process notification queue (this tests the existing cron-worker functionality)
-      log += '--- Step 2: Testing Notification Queue Processing ---\n';
+      // Execute pipeline in manual mode (single filing, detailed logging)
+      const pipelineResult = await runDataPipeline(env, ctx, true);
       
-      // First, create a test notification queue entry
-      const testNotificationId = await env.DB.prepare(`
-        INSERT INTO notification_queue (user_email, docket_number, filing_ids, digest_type, status, scheduled_for, created_at)
-        VALUES (?, ?, ?, ?, 'pending', ?, ?)
-      `).bind(
-        TEST_USER_EMAIL,
-        TEST_DOCKET_NUMBER,
-        JSON.stringify([testFiling.id]),
-        'daily',
-        Math.floor(Date.now() / 1000),
-        Math.floor(Date.now() / 1000)
-      ).run();
-      
-      log += `✅ Created test notification queue entry (ID: ${testNotificationId.meta.last_row_id})\n`;
-
-      // Test the queue processing
-      const queueResult = await processNotificationQueue(env.DB, env);
-      log += `✅ Queue processing completed:\n`;
-      log += `   Processed: ${queueResult.processed}\n`;
-      log += `   Sent: ${queueResult.sent}\n`;
-      log += `   Failed: ${queueResult.failed}\n`;
-      if (queueResult.errors.length > 0) {
-        log += `   Errors: ${queueResult.errors.join(', ')}\n`;
-      }
-      log += '\n';
-
-      // Step 3: Test Email Generation (using cron-worker functions)
-      log += `--- Step 3: Testing Email Generation for '${TEST_USER_TIER}' user ---\n`;
-      
-      // Create a mock filing with some basic AI content for testing
-      const mockFilingWithAI = {
-        ...testFiling,
-        ai_summary: 'This is a test AI summary for the manual test. It demonstrates how AI-processed content would appear in the email.',
-        ai_key_points: 'Key test points, Enhanced security protocols, Updated compliance requirements',
-        ai_stakeholders: 'Test stakeholders, Regulatory bodies, Industry participants',
-        ai_regulatory_impact: 'Significant impact on test operations and compliance requirements',
-        ai_confidence: '0.85'
-      };
-      
-      const { generateDailyDigest } = await import('./lib/email/daily-digest.js');
-      const emailContent = generateDailyDigest(TEST_USER_EMAIL, [mockFilingWithAI], { 
-        user_tier: TEST_USER_TIER,
-        APP_URL: env.APP_URL || 'https://simpledcc.pages.dev'
-      });
-      
-      log += `✅ Email generated successfully for ${TEST_USER_TIER} user.\n`;
-      log += `   Subject: ${emailContent.subject}\n`;
-      log += `   HTML length: ${emailContent.html ? emailContent.html.length : 0} characters\n`;
-      log += `   Text length: ${emailContent.text ? emailContent.text.length : 0} characters\n\n`;
-
-      // Step 4: Show tier-specific content differences
-      log += '--- Step 4: Testing Tier-Specific Content ---\n';
-      
-      const tiers = ['free', 'trial', 'pro'];
-      for (const tier of tiers) {
-        const tierEmail = generateDailyDigest(TEST_USER_EMAIL, [mockFilingWithAI], { 
-          user_tier: tier,
-          APP_URL: env.APP_URL || 'https://simpledcc.pages.dev'
-        });
-        
-        log += `✅ ${tier.toUpperCase()} tier email:\n`;
-        log += `   Subject: ${tierEmail.subject}\n`;
-        log += `   HTML length: ${tierEmail.html ? tierEmail.html.length : 0} characters\n`;
-        
-        // Show tier-specific content indicators
-        if (tier === 'free') {
-          const hasUpgradePrompt = tierEmail.html.includes('Upgrade to Pro') || tierEmail.html.includes('upgrade');
-          log += `   Contains upgrade prompt: ${hasUpgradePrompt}\n`;
-        } else if (tier === 'trial') {
-          const hasTrialReminder = tierEmail.html.includes('trial') || tierEmail.html.includes('expires');
-          log += `   Contains trial reminder: ${hasTrialReminder}\n`;
-        } else {
-          const hasFullContent = tierEmail.html.includes('ai_summary') || tierEmail.html.length > 2000;
-          log += `   Contains full AI content: ${hasFullContent}\n`;
+      // Return detailed JSON response for debugging
+      return new Response(JSON.stringify({
+        timestamp: new Date().toISOString(),
+        test_mode: 'manual_trigger',
+        docket_tested: '02-10',
+        ...pipelineResult
+      }, null, 2), {
+        headers: {
+          'Content-Type': 'application/json',
+          'Cache-Control': 'no-cache'
         }
-        log += '\n';
-      }
-
-      // Show sample of the generated email
-      log += '--- SAMPLE EMAIL CONTENT ---\n';
-      log += emailContent.html ? emailContent.html.substring(0, 800) + '...' : 'No HTML content generated';
-      log += '\n\n';
-
-      log += '✅ End-to-End Test Complete.\n';
-      log += '📊 Test Summary:\n';
-      log += `   - ECFS Fetching: ✅ Retrieved ${newFilings.length} filings\n`;
-      log += `   - Queue Processing: ✅ Processed ${queueResult.processed} notifications\n`;
-      log += `   - Email Generation: ✅ Generated emails for all tiers\n`;
-      log += `   - Tier Differentiation: ✅ Verified tier-specific content\n`;
-
-      return new Response(log, { 
-        headers: { 'Content-Type': 'text/plain' },
-        status: 200
       });
 
     } catch (error) {
-      console.error('Manual Test Failed:', error);
-      const errorLog = `❌ Test failed: ${error.message}\n\nStack Trace:\n${error.stack}`;
-      return new Response(errorLog, { 
-        headers: { 'Content-Type': 'text/plain' },
-        status: 500 
+      console.error('❌ Manual trigger failed:', error);
+      
+      return new Response(JSON.stringify({
+        success: false,
+        error: error.message,
+        timestamp: new Date().toISOString(),
+        test_mode: 'manual_trigger'
+      }, null, 2), {
+        status: 500,
+        headers: {
+          'Content-Type': 'application/json',
+          'Cache-Control': 'no-cache'
+        }
       });
     }
-  },
+  }
 }; 

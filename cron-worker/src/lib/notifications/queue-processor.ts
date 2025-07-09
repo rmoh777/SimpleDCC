@@ -1,5 +1,5 @@
-import type { NotificationQueueItem, User, Filing } from '$lib/database/schema-types';
-import { getUserByEmail } from '$lib/users/user-operations';
+import type { NotificationQueueItem, User, Filing } from '../database/schema-types';
+import { getUserByEmail } from '../users/user-operations';
 
 /**
  * Process pending notifications in the queue
@@ -127,17 +127,33 @@ async function processUserNotificationBatch(
   db: any,
   env: any
 ): Promise<void> {
-  // Get all filing IDs from the queue items
-  const allFilingIds = queueItems.flatMap(item => {
-    try {
-      return JSON.parse(item.filing_ids);
-    } catch {
-      return [item.filing_ids]; // Handle non-JSON filing IDs
-    }
-  });
+  let filings: Filing[] = [];
   
-  // Get filing details
-  const filings = await getFilingsForNotification(allFilingIds, db);
+  if (digestType === 'seed_digest') {
+    // For seed digest, filing data is stored in the filing_data column
+    const seedData = queueItems.find(item => item.filing_data);
+    if (seedData) {
+      try {
+        const parsedData = JSON.parse(seedData.filing_data);
+        filings = parsedData.filings || [];
+      } catch (error) {
+        console.error(`Failed to parse seed digest data for ${user.email}:`, error);
+        return;
+      }
+    }
+  } else {
+    // For other digest types, get filing IDs from the queue items
+    const allFilingIds = queueItems.flatMap(item => {
+      try {
+        return JSON.parse(item.filing_ids);
+      } catch {
+        return [item.filing_ids]; // Handle non-JSON filing IDs
+      }
+    });
+    
+    // Get filing details from database
+    filings = await getFilingsForNotification(allFilingIds, db);
+  }
   
   if (filings.length === 0) {
     console.log(`No filings found for ${user.email} ${digestType} notification`);
@@ -147,8 +163,10 @@ async function processUserNotificationBatch(
   // Generate and send email based on digest type and user tier
   await generateAndSendNotificationEmail(user, digestType, filings, env);
   
-  // Mark user as notified for these filings
-  await markUserNotifiedForFilings(user.id, filings, digestType, db);
+  // Mark user as notified for these filings (skip for seed digest as it's a one-time welcome)
+  if (digestType !== 'seed_digest') {
+    await markUserNotifiedForFilings(user.id, filings, digestType, db);
+  }
   
   console.log(`📧 Processed ${digestType} notification for ${user.email}: ${filings.length} filings (${user.user_tier} tier)`);
 }
@@ -180,8 +198,8 @@ async function generateAndSendNotificationEmail(
 ): Promise<void> {
   try {
     // Import existing email generation functions
-    const { generateDailyDigest, generateFilingAlert } = await import('$lib/email/daily-digest.js');
-    const { sendEmail } = await import('$lib/email.ts');
+    const { generateDailyDigest, generateFilingAlert, generateSeedDigest } = await import('../email/daily-digest.js');
+    const { sendEmail } = await import('../email.ts');
     
     let emailContent;
     
@@ -190,6 +208,13 @@ async function generateAndSendNotificationEmail(
       emailContent = generateFilingAlert(user.email, filings[0], {
         user_tier: user.user_tier,
         unsubscribe_url: `${env.APP_URL || 'https://simpledcc.pages.dev'}/unsubscribe?email=${encodeURIComponent(user.email)}`
+      });
+    } else if (digestType === 'seed_digest') {
+      // Generate seed digest (welcome experience)
+      const docketNumber = filings[0]?.docket_number || 'unknown';
+      emailContent = generateSeedDigest(user.email, docketNumber, filings, {
+        user_tier: user.user_tier,
+        unsubscribeBaseUrl: env.APP_URL || 'https://simpledcc.pages.dev'
       });
     } else {
       // Generate daily/weekly digest

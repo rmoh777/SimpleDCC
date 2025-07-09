@@ -1,5 +1,5 @@
 // Enhanced email templates with AI summary support
-import { formatDate, formatTimeAgo } from '$lib/utils/date-formatters.js';
+import { formatDate, formatTimeAgo } from '../utils/date-formatters.js';
 
 /**
  * Generate daily digest email with AI summaries
@@ -952,6 +952,276 @@ Upgrade: ${unsubscribeBaseUrl}/pricing
     // Pro users get full AI summaries
     return filing.ai_summary ? `AI Summary: ${filing.ai_summary}\n` : '';
   }
+}
+
+/**
+ * Generate seed digest email - Welcome experience for new subscribers
+ * @param {string} userEmail - Recipient email
+ * @param {string} docketNumber - Docket number being monitored
+ * @param {Array} filings - Array of 5 latest filings with AI summaries
+ * @param {Object} options - Email customization options
+ */
+export function generateSeedDigest(userEmail, docketNumber, filings, options = {}) {
+  const {
+    brandName = 'SimpleDCC',
+    supportEmail = 'support@simpledcc.com',
+    unsubscribeBaseUrl = 'https://simpledcc.pages.dev',
+    user_tier = 'free'
+  } = options;
+  
+  const filingCount = filings.length;
+  
+  return {
+    subject: `🎉 Welcome to ${brandName}! Your ${docketNumber} monitoring starts now`,
+    html: generateSeedDigestHTML(userEmail, docketNumber, filings, { brandName, supportEmail, unsubscribeBaseUrl, user_tier }),
+    text: generateSeedDigestText(userEmail, docketNumber, filings, { brandName, supportEmail, unsubscribeBaseUrl, user_tier })
+  };
+}
+
+/**
+ * Generate HTML template for seed digest (welcome experience)
+ */
+function generateSeedDigestHTML(userEmail, docketNumber, filings, options) {
+  const { brandName, supportEmail, unsubscribeBaseUrl, user_tier } = options;
+  
+  return `
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Welcome to ${brandName}</title>
+  <style>
+    body {
+      margin: 0;
+      padding: 0;
+      background-color: #f8fafc;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      line-height: 1.6;
+      color: #0f172a;
+    }
+    .email-container {
+      max-width: 600px;
+      margin: 0 auto;
+      background-color: #ffffff;
+      border-radius: 8px;
+      overflow: hidden;
+      box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+    }
+    .welcome-header {
+      background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+      color: white;
+      padding: 40px 24px;
+      text-align: center;
+    }
+    .welcome-icon {
+      font-size: 48px;
+      margin-bottom: 16px;
+    }
+    .welcome-title {
+      margin: 0;
+      font-size: 32px;
+      font-weight: 700;
+      letter-spacing: -0.025em;
+    }
+    .welcome-subtitle {
+      margin: 8px 0 0 0;
+      font-size: 18px;
+      opacity: 0.9;
+    }
+    .email-content {
+      padding: 32px 24px;
+    }
+    .welcome-message {
+      background-color: #f0fdf4;
+      border: 1px solid #bbf7d0;
+      border-radius: 8px;
+      padding: 24px;
+      margin-bottom: 32px;
+      text-align: center;
+    }
+    .seed-intro {
+      background-color: #fef3c7;
+      border: 1px solid #f59e0b;
+      border-radius: 8px;
+      padding: 20px;
+      margin-bottom: 32px;
+    }
+    .seed-intro h3 {
+      margin: 0 0 12px 0;
+      color: #92400e;
+      font-size: 18px;
+    }
+    .filing-card {
+      background-color: #f8fafc;
+      border: 1px solid #e5e7eb;
+      border-radius: 8px;
+      padding: 20px;
+      margin-bottom: 20px;
+    }
+    .filing-header {
+      margin-bottom: 16px;
+      padding-bottom: 12px;
+      border-bottom: 1px solid #e5e7eb;
+    }
+    .filing-title {
+      font-size: 16px;
+      font-weight: 600;
+      color: #0f172a;
+      margin: 0 0 8px 0;
+    }
+    .filing-meta {
+      font-size: 14px;
+      color: #6b7280;
+      margin: 0;
+    }
+    .ai-summary {
+      background-color: #f0f9ff;
+      border: 1px solid #0ea5e9;
+      border-radius: 6px;
+      padding: 16px;
+      margin-top: 16px;
+    }
+    .ai-summary h4 {
+      margin: 0 0 8px 0;
+      color: #0c4a6e;
+      font-size: 14px;
+      font-weight: 600;
+    }
+    .ai-summary p {
+      margin: 0;
+      font-size: 14px;
+      line-height: 1.5;
+    }
+    .next-steps {
+      background-color: #eff6ff;
+      border: 1px solid #3b82f6;
+      border-radius: 8px;
+      padding: 24px;
+      margin: 32px 0;
+      text-align: center;
+    }
+    .cta-button {
+      display: inline-block;
+      background-color: #10b981;
+      color: white;
+      text-decoration: none;
+      padding: 12px 24px;
+      border-radius: 6px;
+      font-weight: 600;
+      margin: 8px;
+    }
+    .footer {
+      text-align: center;
+      padding: 24px;
+      color: #6b7280;
+      font-size: 14px;
+      border-top: 1px solid #e5e7eb;
+    }
+  </style>
+</head>
+<body>
+  <div class="email-container">
+    <div class="welcome-header">
+      <div class="welcome-icon">🎉</div>
+      <h1 class="welcome-title">Welcome to ${brandName}!</h1>
+      <p class="welcome-subtitle">Your monitoring for docket ${docketNumber} is now active</p>
+    </div>
+    
+    <div class="email-content">
+      <div class="welcome-message">
+        <h2 style="margin: 0 0 12px 0; color: #065f46;">You're all set!</h2>
+        <p style="margin: 0; color: #374151;">We'll monitor docket ${docketNumber} and send you AI-powered summaries when new filings are submitted. Here are the 5 most recent filings to get you started:</p>
+      </div>
+      
+      <div class="seed-intro">
+        <h3>🚀 Getting You Up to Speed</h3>
+        <p style="margin: 0; color: #92400e;">These are the latest filings from docket ${docketNumber}. Each includes our AI-powered summary to help you quickly understand the key points and regulatory implications.</p>
+      </div>
+      
+      ${filings.map((filing, index) => `
+        <div class="filing-card">
+          <div class="filing-header">
+            <h3 class="filing-title">${escapeHtml(filing.title)}</h3>
+            <p class="filing-meta">
+              👤 ${escapeHtml(filing.author)} • 
+              📝 ${escapeHtml(filing.filing_type)} • 
+              📅 ${formatDate(filing.date_received)}
+            </p>
+          </div>
+          
+          ${filing.ai_summary ? `
+            <div class="ai-summary">
+              <h4>🤖 AI Summary</h4>
+              <p>${escapeHtml(filing.ai_summary)}</p>
+            </div>
+          ` : `
+            <div style="color: #6b7280; font-style: italic;">
+              <p>AI summary processing...</p>
+            </div>
+          `}
+        </div>
+      `).join('')}
+      
+      <div class="next-steps">
+        <h3 style="margin: 0 0 16px 0; color: #1e40af;">What happens next?</h3>
+        <p style="margin: 0 0 20px 0; color: #374151;">Going forward, we'll send you updates only when <strong>new</strong> filings are submitted to docket ${docketNumber}. You'll never miss important regulatory developments!</p>
+        <a href="${unsubscribeBaseUrl}/manage" class="cta-button">Manage Subscriptions</a>
+        <a href="https://publicapi.fcc.gov/ecfs/dockets/${docketNumber}" class="cta-button" target="_blank">View Docket</a>
+      </div>
+    </div>
+    
+    <div class="footer">
+      <p>You're receiving this because you subscribed to monitoring for docket ${docketNumber}.</p>
+      <p><a href="${unsubscribeBaseUrl}/unsubscribe?email=${encodeURIComponent(userEmail)}&docket=${docketNumber}" style="color: #6b7280;">Unsubscribe from this docket</a> | <a href="${unsubscribeBaseUrl}/manage" style="color: #6b7280;">Manage all subscriptions</a></p>
+    </div>
+  </div>
+</body>
+</html>`;
+}
+
+/**
+ * Generate text template for seed digest
+ */
+function generateSeedDigestText(userEmail, docketNumber, filings, options) {
+  const { brandName, supportEmail, unsubscribeBaseUrl, user_tier } = options;
+  
+  return `🎉 WELCOME TO ${brandName.toUpperCase()}!
+
+Your monitoring for docket ${docketNumber} is now active!
+
+${'-'.repeat(50)}
+
+You're all set! We'll monitor docket ${docketNumber} and send you AI-powered summaries when new filings are submitted. Here are the 5 most recent filings to get you started:
+
+GETTING YOU UP TO SPEED
+${'-'.repeat(25)}
+These are the latest filings from docket ${docketNumber}. Each includes our AI-powered summary to help you quickly understand the key points and regulatory implications.
+
+${filings.map((filing, index) => `
+FILING ${index + 1}
+${'-'.repeat(10)}
+Title: ${filing.title}
+Author: ${filing.author}
+Type: ${filing.filing_type}
+Date: ${formatDate(filing.date_received)}
+
+${filing.ai_summary ? `AI Summary: ${filing.ai_summary}` : 'AI summary processing...'}
+`).join('\n')}
+
+WHAT HAPPENS NEXT?
+${'-'.repeat(18)}
+Going forward, we'll send you updates only when NEW filings are submitted to docket ${docketNumber}. You'll never miss important regulatory developments!
+
+Manage subscriptions: ${unsubscribeBaseUrl}/manage
+View docket: https://publicapi.fcc.gov/ecfs/dockets/${docketNumber}
+
+${'-'.repeat(50)}
+
+You're receiving this because you subscribed to monitoring for docket ${docketNumber}.
+
+Unsubscribe from this docket: ${unsubscribeBaseUrl}/unsubscribe?email=${encodeURIComponent(userEmail)}&docket=${docketNumber}
+Manage all subscriptions: ${unsubscribeBaseUrl}/manage`;
 }
 
 // Helper functions

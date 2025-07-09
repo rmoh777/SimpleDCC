@@ -1,4 +1,4 @@
-import type { User } from '$lib/database/schema-types';
+import type { User } from '../database/schema-types';
 
 /**
  * Create or retrieve user account by email
