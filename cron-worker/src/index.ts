@@ -532,11 +532,38 @@ export default {
     const url = new URL(request.url);
     
     // Test Email Endpoint
-    if (url.pathname === '/test-email' && request.method === 'POST') {
+    if (url.pathname === '/test-email') {
+      // Handle preflight OPTIONS request
+      if (request.method === 'OPTIONS') {
+        return new Response(null, {
+          status: 204,
+          headers: {
+            'Access-Control-Allow-Origin': '*',
+            'Access-Control-Allow-Methods': 'POST, OPTIONS',
+            'Access-Control-Allow-Headers': 'Content-Type, X-Admin-Secret',
+            'Access-Control-Max-Age': '86400'
+          }
+        });
+      }
+
+      if (request.method !== 'POST') {
+        return new Response('Method Not Allowed', { 
+          status: 405,
+          headers: {
+            'Access-Control-Allow-Origin': '*'
+          }
+        });
+      }
+
       // Auth check
       const adminSecret = request.headers.get('X-Admin-Secret');
       if (!adminSecret || adminSecret !== env.CRON_SECRET) {
-        return new Response('Unauthorized', { status: 401 });
+        return new Response('Unauthorized', { 
+          status: 401,
+          headers: {
+            'Access-Control-Allow-Origin': '*'
+          }
+        });
       }
 
       try {
@@ -586,7 +613,12 @@ export default {
             break;
 
           default:
-            return new Response('Invalid template_type', { status: 400 });
+            return new Response('Invalid template_type', { 
+              status: 400,
+              headers: {
+                'Access-Control-Allow-Origin': '*'
+              }
+            });
         }
 
         // Send email
@@ -606,7 +638,12 @@ export default {
           email_id: result.id,
           error: result.error
         }), {
-          headers: { 'Content-Type': 'application/json' }
+          headers: { 
+            'Content-Type': 'application/json',
+            'Access-Control-Allow-Origin': '*',
+            'Access-Control-Allow-Methods': 'POST, OPTIONS',
+            'Access-Control-Allow-Headers': 'Content-Type, X-Admin-Secret'
+          }
         });
 
       } catch (error) {
@@ -615,7 +652,12 @@ export default {
           error: error.message
         }), { 
           status: 500,
-          headers: { 'Content-Type': 'application/json' }
+          headers: { 
+            'Content-Type': 'application/json',
+            'Access-Control-Allow-Origin': '*',
+            'Access-Control-Allow-Methods': 'POST, OPTIONS',
+            'Access-Control-Allow-Headers': 'Content-Type, X-Admin-Secret'
+          }
         });
       }
     }
