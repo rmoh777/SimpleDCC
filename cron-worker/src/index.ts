@@ -223,23 +223,10 @@ async function runDataPipeline(env: any, ctx: any, isManualTrigger = false, targ
           };
         }
         
-        // Check if docket exists in active dockets
-        const docketExists = activeDockets.find(d => d.docket_number === targetDocket);
-        if (!docketExists) {
-          addLog('error', 'Requested docket not found in active dockets', { 
-            requested: targetDocket,
-            available: activeDockets.map(d => d.docket_number)
-          });
-          return {
-            success: false,
-            error: `Docket ${targetDocket} not found in active dockets. Available: ${activeDockets.map(d => d.docket_number).join(', ')}`,
-            logs: logEntries
-          };
-        }
-        
-        // Use only the requested docket
-        testDockets = [docketExists];
-        addLog('info', `🎯 Manual trigger: Processing specific docket ${targetDocket}`);
+        // For manual triggers, bypass active dockets check and test any docket
+        // This allows testing/debugging of any docket that exists on FCC ECFS
+        testDockets = [{ docket_number: targetDocket }];
+        addLog('info', `🎯 Manual trigger: Testing docket ${targetDocket} (bypassing active dockets validation)`);
         
       } else {
         // Backward compatibility: default to 02-10 if no docket specified
