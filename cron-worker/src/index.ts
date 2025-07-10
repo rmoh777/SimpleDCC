@@ -124,9 +124,11 @@ async function processSeedSubscriptions(env: any) {
  * @param {Object} env - Environment variables from worker
  * @param {Object} ctx - Worker context
  * @param {boolean} isManualTrigger - Whether this is a manual trigger or scheduled run
+ * @param {string} targetDocket - Specific docket to process (for manual triggers)
+ * @param {number} filingLimit - Number of filings to process (for manual triggers)
  * @returns {Promise<Object>} Pipeline execution results
  */
-async function runDataPipeline(env: any, ctx: any, isManualTrigger = false) {
+async function runDataPipeline(env: any, ctx: any, isManualTrigger = false, targetDocket?: string, filingLimit?: number) {
   const startTime = Date.now();
   let logEntries: any[] = [];
   
@@ -145,6 +147,8 @@ async function runDataPipeline(env: any, ctx: any, isManualTrigger = false) {
   try {
     addLog('info', '🚀 Starting data pipeline execution', { 
       manual_trigger: isManualTrigger,
+      target_docket: targetDocket || 'all',
+      filing_limit: filingLimit || 'default',
       worker_env_keys: Object.keys(env).filter(key => !key.includes('SECRET'))
     });
 
@@ -200,10 +204,56 @@ async function runDataPipeline(env: any, ctx: any, isManualTrigger = false) {
       };
     }
 
-    // For manual trigger, test with single docket for detailed logging
-    const testDockets = isManualTrigger ? 
-      activeDockets.filter(d => d.docket_number === '02-10').slice(0, 1) : 
-      activeDockets;
+    // NEW: Configurable docket selection for manual triggers
+    let testDockets = activeDockets;
+    
+    if (isManualTrigger) {
+      if (targetDocket) {
+        // Validate docket format (XX-XX pattern)
+        const docketPattern = /^\d{2}-\d+$/;
+        if (!docketPattern.test(targetDocket)) {
+          addLog('error', 'Invalid docket format', { 
+            provided: targetDocket, 
+            expected_format: 'XX-XX (e.g., 11-42)' 
+          });
+          return {
+            success: false,
+            error: `Invalid docket format: ${targetDocket}. Expected format: XX-XX (e.g., 11-42)`,
+            logs: logEntries
+          };
+        }
+        
+        // Check if docket exists in active dockets
+        const docketExists = activeDockets.find(d => d.docket_number === targetDocket);
+        if (!docketExists) {
+          addLog('error', 'Requested docket not found in active dockets', { 
+            requested: targetDocket,
+            available: activeDockets.map(d => d.docket_number)
+          });
+          return {
+            success: false,
+            error: `Docket ${targetDocket} not found in active dockets. Available: ${activeDockets.map(d => d.docket_number).join(', ')}`,
+            logs: logEntries
+          };
+        }
+        
+        // Use only the requested docket
+        testDockets = [docketExists];
+        addLog('info', `🎯 Manual trigger: Processing specific docket ${targetDocket}`);
+        
+      } else {
+        // Backward compatibility: default to 02-10 if no docket specified
+        const defaultDocket = activeDockets.find(d => d.docket_number === '02-10');
+        if (defaultDocket) {
+          testDockets = [defaultDocket];
+          addLog('info', '🎯 Manual trigger: Using default docket 02-10 (backward compatibility)');
+        } else {
+          // If 02-10 doesn't exist, use first available docket
+          testDockets = activeDockets.slice(0, 1);
+          addLog('info', `🎯 Manual trigger: Default docket 02-10 not found, using ${testDockets[0].docket_number}`);
+        }
+      }
+    }
 
     // ==============================================
     // STEP 3: FETCH FILINGS FROM ECFS
@@ -213,10 +263,21 @@ async function runDataPipeline(env: any, ctx: any, isManualTrigger = false) {
     
     const { etHour } = getETTimeInfo();
     const processingStrategy = getProcessingStrategy();
-    // For manual testing, use smaller limit to see detailed AI processing
-    const smartLimit = isManualTrigger ? 
-      2 : 
-      Math.min(Math.max(Math.ceil(processingStrategy.lookbackHours * 5), 10), 50);
+    
+    // NEW: Configurable filing limit for manual triggers
+    let smartLimit: number;
+    if (isManualTrigger) {
+      // Use provided filing limit with safety constraints
+      smartLimit = Math.min(Math.max(filingLimit || 2, 1), 50); // Between 1-50 filings
+      addLog('info', `Manual trigger: Using filing limit ${smartLimit}`, {
+        requested: filingLimit,
+        applied: smartLimit,
+        max_allowed: 50
+      });
+    } else {
+      // Production logic unchanged
+      smartLimit = Math.min(Math.max(Math.ceil(processingStrategy.lookbackHours * 5), 10), 50);
+    }
     
     addLog('info', `Using processing strategy: ${processingStrategy.processingType}`, {
       et_hour: etHour,
@@ -283,8 +344,10 @@ async function runDataPipeline(env: any, ctx: any, isManualTrigger = false) {
       const storageStartTime = Date.now();
       
       try {
-        // For manual trigger, process limited filings for detailed logging
-        const filingsToProcess = isManualTrigger ? allFilings.slice(0, 2) : allFilings;
+        // For manual trigger, respect the filing limit for storage too
+        const filingsToProcess = isManualTrigger ? 
+          allFilings.slice(0, smartLimit) : 
+          allFilings;
         
         addLog('info', `🔍 Using storeFilingsEnhanced with AI processing enabled...`);
         const enhancedResults = await storeFilingsEnhanced(filingsToProcess, env.DB, env, {
@@ -378,6 +441,7 @@ async function runDataPipeline(env: any, ctx: any, isManualTrigger = false) {
     return {
       success: true,
       manual_trigger: isManualTrigger,
+      target_docket: targetDocket,
       pipeline_results: {
         dockets_processed: testDockets.length,
         filings_fetched: allFilings.length,
@@ -428,7 +492,7 @@ export default {
       const seedResult = await processSeedSubscriptions(env);
       console.log(`(INFO) 🌱 Seed processing completed: ${seedResult.processed} subscriptions processed`);
 
-      // Execute the real pipeline
+      // Execute the real pipeline (no target docket or filing limit for scheduled runs)
       const pipelineResult = await runDataPipeline(env, ctx, false);
       
       if (!pipelineResult.success) {
@@ -495,17 +559,50 @@ export default {
       return new Response('Unauthorized', { status: 401 });
     }
 
-    console.log(`🔍 Manual trigger: Authorized access - executing single filing pipeline test`);
+    console.log(`🔍 Manual trigger: Authorized access - executing configurable pipeline test`);
 
     try {
-      // Execute pipeline in manual mode (single filing, detailed logging)
-      const pipelineResult = await runDataPipeline(env, ctx, true);
+      // Parse request body for configuration parameters
+      let requestBody: any = {};
+      try {
+        const bodyText = await request.text();
+        if (bodyText) {
+          requestBody = JSON.parse(bodyText);
+        }
+      } catch (parseError) {
+        console.error('❌ Failed to parse request body:', parseError);
+        return new Response(JSON.stringify({
+          success: false,
+          error: 'Invalid JSON in request body',
+          timestamp: new Date().toISOString(),
+          test_mode: 'manual_trigger'
+        }, null, 2), {
+          status: 400,
+          headers: {
+            'Content-Type': 'application/json',
+            'Cache-Control': 'no-cache'
+          }
+        });
+      }
+
+      // Extract parameters with validation
+      const targetDocket = requestBody.docket || null;
+      const filingLimit = requestBody.filingLimit || requestBody.filing_limit || null;
+      
+      console.log(`🎯 Manual trigger configuration:`, {
+        target_docket: targetDocket || 'default (02-10)',
+        filing_limit: filingLimit || 'default (2)',
+        request_body: requestBody
+      });
+
+      // Execute pipeline in manual mode with configurable parameters
+      const pipelineResult = await runDataPipeline(env, ctx, true, targetDocket, filingLimit);
       
       // Return detailed JSON response for debugging
       return new Response(JSON.stringify({
         timestamp: new Date().toISOString(),
         test_mode: 'manual_trigger',
-        docket_tested: '02-10',
+        docket_tested: targetDocket || pipelineResult.target_docket || '02-10',
         ...pipelineResult
       }, null, 2), {
         headers: {
