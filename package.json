@@ -7,7 +7,7 @@
     "dev": "vite dev",
     "dev:pages": "npm run build && wrangler pages dev .svelte-kit/cloudflare --d1 DB=e5bfcb56-11ad-4288-a74c-3749f2ddfd1b",
     "dev:cf": "wrangler dev --d1 DB=e5bfcb56-11ad-4288-a74c-3749f2ddfd1b",
-    "dev:worker": "wrangler dev --config ./cron-worker/wrangler.toml --local",
+    "dev:worker": "wrangler dev --config ./cron-worker/wrangler.toml --env development --local",
     "dev:watch": "npm run build -- --watch",
     "build": "vite build",
     "preview": "vite preview",
