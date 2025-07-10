@@ -422,3 +422,49 @@ export async function sendWelcomeEmail(
     return { success: false, error: 'Email service error' };
   }
 } 
+
+/**
+ * Generic email sending function for cron-worker notifications
+ */
+export async function sendEmail(
+  to: string, 
+  subject: string, 
+  html: string, 
+  text: string, 
+  env: any
+): Promise<{ success: boolean; error?: string; id?: string }> {
+  if (!env.RESEND_API_KEY) {
+    console.warn('⚠️ RESEND_API_KEY not found. Skipping email send.');
+    return { success: false, error: 'No API key' };
+  }
+
+  try {
+    const response = await fetch('https://api.resend.com/emails', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${env.RESEND_API_KEY}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        from: `${env.FROM_NAME || 'DocketCC'} <${env.FROM_EMAIL || 'notifications@docketcc.com'}>`,
+        to: to,
+        subject: subject,
+        html: html,
+        text: text,
+      }),
+    });
+
+    if (response.ok) {
+      const result = await response.json();
+      console.log(`✅ Email sent to ${to}: ${subject} (ID: ${result.id})`);
+      return { success: true, id: result.id };
+    } else {
+      const error = await response.text();
+      console.error(`❌ Email failed to ${to}:`, response.status, error);
+      return { success: false, error: `Email delivery failed: ${response.status}` };
+    }
+  } catch (error) {
+    console.error(`❌ Email error for ${to}:`, error);
+    return { success: false, error: `Email service error: ${error.message}` };
+  }
+} 

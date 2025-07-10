@@ -531,6 +531,95 @@ export default {
   async fetch(request, env, ctx) {
     const url = new URL(request.url);
     
+    // Test Email Endpoint
+    if (url.pathname === '/test-email' && request.method === 'POST') {
+      // Auth check
+      const adminSecret = request.headers.get('X-Admin-Secret');
+      if (!adminSecret || adminSecret !== env.CRON_SECRET) {
+        return new Response('Unauthorized', { status: 401 });
+      }
+
+      try {
+        const { template_type, recipient_email, user_tier = 'pro' } = await request.json();
+
+        // Import existing template functions
+        const { generateDailyDigest, generateFilingAlert, generateWelcomeEmail } = 
+          await import('./lib/email/daily-digest.js');
+        const { sendEmail } = await import('./lib/email.ts');
+
+        // Create mock data
+        const mockFilings = [{
+          id: 'test123',
+          docket_number: '14-58',
+          title: 'USF Certification Filing - Test Communications',
+          author: 'Test Communications',
+          filing_type: 'COMPLIANCE FILING',
+          date_received: '2025-07-09T16:47:42.136Z',
+          ai_summary: 'Test filing submitted for compliance certification with universal service fund requirements.',
+          ai_key_points: ['USF compliance certification', 'Required by FCC regulations', 'Annual filing requirement'],
+          filing_url: 'https://www.fcc.gov/ecfs/filing/test123'
+        }];
+
+        let emailContent;
+        const baseUrl = env.APP_URL || 'https://simpledcc.pages.dev';
+
+        switch (template_type) {
+          case 'daily_digest':
+            emailContent = generateDailyDigest(recipient_email, mockFilings, {
+              user_tier,
+              digest_type: 'daily',
+              unsubscribeBaseUrl: baseUrl
+            });
+            break;
+
+          case 'filing_alert':
+            emailContent = generateFilingAlert(recipient_email, mockFilings[0], {
+              user_tier,
+              unsubscribeBaseUrl: baseUrl
+            });
+            break;
+
+          case 'welcome':
+            emailContent = generateWelcomeEmail(recipient_email, '14-58', {
+              unsubscribeBaseUrl: baseUrl
+            });
+            break;
+
+          default:
+            return new Response('Invalid template_type', { status: 400 });
+        }
+
+        // Send email
+        const result = await sendEmail(
+          recipient_email, 
+          emailContent.subject, 
+          emailContent.html, 
+          emailContent.text, 
+          env
+        );
+
+        return new Response(JSON.stringify({
+          success: result.success,
+          message: result.success ? 'Test email sent successfully' : 'Email failed',
+          template_type,
+          subject: emailContent.subject,
+          email_id: result.id,
+          error: result.error
+        }), {
+          headers: { 'Content-Type': 'application/json' }
+        });
+
+      } catch (error) {
+        return new Response(JSON.stringify({
+          success: false,
+          error: error.message
+        }), { 
+          status: 500,
+          headers: { 'Content-Type': 'application/json' }
+        });
+      }
+    }
+    
     if (url.pathname !== '/manual-trigger') {
       return new Response('Not Found', { status: 404 });
     }
