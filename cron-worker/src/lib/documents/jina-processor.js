@@ -271,16 +271,15 @@ export async function processFilingDocuments(filing, env) {
     let skippedCount = 0;
     let failedCount = 0;
     
-    console.log(`🔄 Processing ${filing.documents?.length || 0} documents for filing ${filing.id}`);
+    const pdfCount = filing.documents?.filter(doc => doc.type === 'pdf').length || 0;
+    const nonPdfCount = (filing.documents?.length || 0) - pdfCount;
+    console.log(`🔄 Processing filing ${filing.id}: ${pdfCount} PDFs, ${nonPdfCount} other files`);
     
     for (const doc of filing.documents || []) {
-      console.log(`🔍 Evaluating doc URL: ${doc.src}`);
-      
       if (doc.src && doc.type === 'pdf') {
         
         // Route A: FCC Direct PDFs → Jina API extraction (same as Route B)
         if (doc.src.startsWith('https://docs.fcc.gov/public/attachments/')) {
-          console.log('🟢 Route A: FCC Direct PDF → Jina API extraction');
           try {
             console.log(`📄 Processing FCC direct PDF: ${doc.src}`);
             
@@ -423,7 +422,10 @@ export async function processFilingDocuments(filing, env) {
       } else {
         // Non-PDF or no source URL
         const skipReason = !doc.src ? 'No source URL' : 
-                          doc.type !== 'pdf' ? `Not a PDF (type: ${doc.type})` : 
+                          doc.type === 'docx' ? 'Word document (not yet supported)' :
+                          doc.type === 'xlsx' ? 'Excel file (not yet supported)' :
+                          doc.type === 'txt' ? 'Text file (not yet supported)' :
+                          doc.type !== 'pdf' ? `File type '${doc.type}' not yet supported` : 
                           'Unknown reason';
         
         processedDocuments.push({
@@ -435,23 +437,11 @@ export async function processFilingDocuments(filing, env) {
         });
         
         skippedCount++;
-        console.log(`⏭️ Skipped document: ${doc.filename} - ${skipReason}`);
+        console.log(`⏭️ Skipped: ${doc.filename} - ${skipReason}`);
       }
     }
     
-    console.log(`📊 Document processing complete: ${processedCount} processed, ${skippedCount} skipped, ${failedCount} failed`);
-    
-    // Show summary of what was actually extracted for debugging
-    if (processedCount > 0) {
-      console.log(`🔍 EXTRACTION SUMMARY:`);
-      processedDocuments
-        .filter(doc => doc.status === 'processed' && doc.text_content)
-        .forEach(doc => {
-          const textLen = doc.text_content.length;
-          const method = doc.processing_method || 'unknown';
-          console.log(`  📄 ${doc.filename}: ${textLen} chars via ${method}`);
-        });
-    }
+    console.log(`📊 Filing ${filing.id} complete: ${processedCount} processed, ${skippedCount} skipped, ${failedCount} failed`);
     
     return {
       ...filing,
