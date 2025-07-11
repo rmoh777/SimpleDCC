@@ -13,6 +13,10 @@ import { processFilingBatchEnhanced } from './lib/ai/gemini-enhanced';
  * @returns {Promise<Object>} Seeding results
  */
 async function processSeedSubscriptions(env: any) {
+  // TEMPORARY FIX: Disable seed processing to prevent runaway API calls
+  console.log('🌱 Seed processing temporarily disabled to prevent subrequest limit issues');
+  return { processed: 0, sent: 0, errors: [] };
+  
   const startTime = Date.now();
   
   try {
