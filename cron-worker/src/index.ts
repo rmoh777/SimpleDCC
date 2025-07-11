@@ -104,7 +104,7 @@ async function processSeedSubscriptions(env: any) {
         }
         
         // Rate limiting between dockets
-        await new Promise(resolve => setTimeout(resolve, 2000));
+        await new Promise(resolve => setTimeout(resolve, 5000));
         
       } catch (docketError) {
         console.error(`🌱 Failed to process seed for docket ${docketNumber}:`, docketError);
@@ -313,8 +313,8 @@ async function runDataPipeline(env: any, ctx: any, isManualTrigger = false, targ
       
       // Rate limiting between dockets
       if (testDockets.length > 1 && testDockets.indexOf(docket) < testDockets.length - 1) {
-        addLog('info', '⏱️ Rate limiting: 2 second delay...');
-        await new Promise(resolve => setTimeout(resolve, 2000));
+        addLog('info', '⏱️ Rate limiting: 5 second delay...');
+        await new Promise(resolve => setTimeout(resolve, 5000));
       }
     }
     
