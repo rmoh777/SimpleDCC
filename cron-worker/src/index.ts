@@ -2,7 +2,7 @@
 import { processNotificationQueue } from './lib/notifications/queue-processor';
 import { getETTimeInfo, getProcessingStrategy } from './lib/utils/timezone';
 import { getActiveDockets } from './lib/database/db-operations';
-import { fetchLatestFilings } from './lib/fcc/ecfs-enhanced-client';
+import { fetchLatestFilings, smartFilingDetection, liftDelugeFlags } from './lib/fcc/ecfs-enhanced-client';
 import { storeFilingsEnhanced } from './lib/storage/filing-storage-enhanced';
 import { checkDatabaseSchema } from './lib/database/auto-migration';
 import { processFilingBatchEnhanced } from './lib/ai/gemini-enhanced';
@@ -284,34 +284,75 @@ async function runDataPipeline(env: any, ctx: any, isManualTrigger = false, targ
       addLog('info', `🎯 Processing docket ${docketNumber}...`);
       
       try {
-        const filings = await fetchLatestFilings(docketNumber, smartLimit, env);
-        addLog('info', `✅ ${docketNumber}: Found ${filings.length} filings`);
-        
-        if (isManualTrigger && filings.length > 0) {
-          // For manual trigger, include detailed filing info
-          addLog('info', `📋 Sample filing details for ${docketNumber}:`, {
-            first_filing: {
-              id: filings[0].id,
-              title: filings[0].title,
-              author: filings[0].author,
-              filing_type: filings[0].filing_type,
-              date_received: filings[0].date_received,
-              documents_count: filings[0].documents?.length || 0,
-              has_downloadable_docs: filings[0].documents?.some(doc => doc.downloadable) || false
-            }
-          });
+        // For manual triggers, use traditional approach to maintain debugging capability
+        if (isManualTrigger) {
+          const filings = await fetchLatestFilings(docketNumber, smartLimit, env);
+          addLog('info', `✅ ${docketNumber}: Found ${filings.length} filings (manual trigger mode)`);
+          
+          if (filings.length > 0) {
+            // For manual trigger, include detailed filing info
+            addLog('info', `📋 Sample filing details for ${docketNumber}:`, {
+              first_filing: {
+                id: filings[0].id,
+                title: filings[0].title,
+                author: filings[0].author,
+                filing_type: filings[0].filing_type,
+                date_received: filings[0].date_received,
+                documents_count: filings[0].documents?.length || 0,
+                has_downloadable_docs: filings[0].documents?.some(doc => doc.downloadable) || false
+              }
+            });
+          }
+          
+          allFilings.push(...filings);
+          docketResults.push({ docket_number: docketNumber, filings_count: filings.length, success: true });
+          
+        } else {
+          // For scheduled runs, use smart detection
+          const smartResult = await smartFilingDetection(docketNumber, env);
+          
+          // Handle different smart detection results
+          if (smartResult.status === 'no_new' || smartResult.status === 'no_filings') {
+            addLog('info', `✅ ${docketNumber}: No new filings`);
+            docketResults.push({ docket_number: docketNumber, filings_count: 0, success: true, smart_status: smartResult.status });
+            continue; // HUGE efficiency gain - skip processing!
+          }
+          
+          if (smartResult.status === 'deluge_active') {
+            addLog('info', `🚨 ${docketNumber}: In deluge mode - skipping`);
+            docketResults.push({ docket_number: docketNumber, filings_count: 0, success: true, smart_status: smartResult.status });
+            continue;
+          }
+          
+          if (smartResult.status === 'deluge') {
+            addLog('info', `🚨 ${docketNumber}: Deluge detected - suspended processing`);
+            docketResults.push({ docket_number: docketNumber, filings_count: 0, success: true, smart_status: smartResult.status });
+            continue;
+          }
+          
+          // Process new filings (existing logic)
+          const newFilings = smartResult.newFilings;
+          if (newFilings && newFilings.length > 0) {
+            addLog('info', `📄 ${docketNumber}: Processing ${newFilings.length} new filings`);
+            allFilings.push(...newFilings);
+            docketResults.push({ docket_number: docketNumber, filings_count: newFilings.length, success: true, smart_status: smartResult.status });
+          } else {
+            docketResults.push({ docket_number: docketNumber, filings_count: 0, success: true, smart_status: smartResult.status });
+          }
+          
+          // Log performance metrics
+          const apiCallsUsed = smartResult.status === 'fallback' ? 1 : 
+                              smartResult.status === 'new_found' ? 2 : 1;
+          addLog('info', `📊 ${docketNumber}: API calls used: ${apiCallsUsed} (smart detection: ${smartResult.status})`);
         }
-        
-        allFilings.push(...filings);
-        docketResults.push({ docket_number: docketNumber, filings_count: filings.length, success: true });
         
       } catch (docketError) {
         const errorMessage = docketError instanceof Error ? docketError.message : String(docketError);
-        addLog('error', `❌ ${docketNumber}: Failed to fetch filings`, { error: errorMessage });
+        addLog('error', `❌ ${docketNumber}: Failed to process docket`, { error: errorMessage });
         docketResults.push({ docket_number: docketNumber, filings_count: 0, success: false, error: errorMessage });
       }
       
-      // Rate limiting between dockets
+      // Preserve existing rate limiting
       if (testDockets.length > 1 && testDockets.indexOf(docket) < testDockets.length - 1) {
         addLog('info', '⏱️ Rate limiting: 5 second delay...');
         await new Promise(resolve => setTimeout(resolve, 5000));
@@ -468,6 +509,10 @@ export default {
 
     try {
       console.log("(INFO) ⏰ Scheduled cron job triggered - executing real pipeline.");
+
+      // Morning reset: Lift all deluge flags
+      console.log("(INFO) 🌅 Lifting deluge flags...");
+      await liftDelugeFlags(env);
 
       const { etHour } = getETTimeInfo();
       const processingStrategy = getProcessingStrategy();
