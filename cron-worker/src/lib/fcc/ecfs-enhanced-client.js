@@ -104,7 +104,7 @@ function transformFilingEnhanced(rawFiling, docketNumber) {
       rawFiling.type_of_filing ||
       'unknown'
     ),
-    date_received: rawFiling.date_submission || rawFiling.date_received || rawFiling.date_disseminated,
+    date_received: rawFiling.date_disseminated || rawFiling.date_submission || rawFiling.date_received,
     
     // Enhanced URLs
     filing_url: `https://www.fcc.gov/ecfs/filing/${rawFiling.id_submission}`,
@@ -135,20 +135,7 @@ function extractDocumentsEnhanced(rawFiling) {
   try {
     const documents = rawFiling.documents || [];
     
-    // 🔍 DEBUG: Log each document's raw structure  
-    documents.forEach((doc, index) => {
-      console.log(`🔍 DOCUMENT ${index + 1} RAW STRUCTURE:`);
-      console.log(`📄 All document fields:`, Object.keys(doc));
-      console.log(`📄 Document object:`, doc);
-      console.log(`📄 Filename:`, doc.filename);
-      console.log(`📄 Src field:`, doc.src);
-      console.log(`📄 URL field:`, doc.url);
-      console.log(`📄 Link field:`, doc.link);
-      console.log(`📄 Href field:`, doc.href);
-      console.log(`📄 File_location:`, doc.file_location);
-      console.log(`📄 Download_url:`, doc.download_url);
-      console.log(`---`);
-    });
+    // Document structure logging removed for production efficiency
     
     return documents.map(doc => ({
       filename: doc.filename,
