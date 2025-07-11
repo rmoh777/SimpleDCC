@@ -370,6 +370,7 @@ async function runDataPipeline(env: any, ctx: any, isManualTrigger = false, targ
     // STEP 4: ENHANCED STORAGE (REAL PRODUCTION PIPELINE)
     // ==============================================
     let storageResults: any = null;
+    const docketStorageResults: any = {}; // Track storage results by docket for notification queuing
     
     if (allFilings.length > 0) {
       addLog('info', `💾 Processing ${allFilings.length} filings through enhanced storage...`);
@@ -394,9 +395,32 @@ async function runDataPipeline(env: any, ctx: any, isManualTrigger = false, targ
           enhanced: true
         };
         
+        // Track storage results by docket for notification queuing
+        // Group filings by docket to track which dockets had new filings
+        const filingsByDocket = filingsToProcess.reduce((acc, filing) => {
+          if (!acc[filing.docket_number]) {
+            acc[filing.docket_number] = [];
+          }
+          acc[filing.docket_number].push(filing);
+          return acc;
+        }, {});
+        
+        // Create docket-specific storage results for notification queuing
+        for (const [docketNumber, docketFilings] of Object.entries(filingsByDocket)) {
+          docketStorageResults[docketNumber] = {
+            newFilings: enhancedResults?.newFilings || 0, // This will be refined per docket
+            duplicates: enhancedResults?.duplicates || 0,
+            errors: enhancedResults?.errors || 0,
+            totalProcessed: (docketFilings as any[]).length,
+            enhanced: enhancedResults?.enhanced || false,
+            aiProcessed: enhancedResults?.aiProcessed || 0
+          };
+        }
+        
         const storageEndTime = Date.now();
         addLog('info', '✅ Enhanced storage completed', {
           ...storageResults,
+          dockets_processed: Object.keys(docketStorageResults).length,
           processing_time_ms: storageEndTime - storageStartTime
         });
         
@@ -431,6 +455,58 @@ async function runDataPipeline(env: any, ctx: any, isManualTrigger = false, targ
       }
     } else {
       addLog('info', '⏭️ Skipping storage - no new filings to process');
+    }
+
+    // ==============================================
+    // STEP 4.5: QUEUE NOTIFICATIONS FOR NEW FILINGS
+    // ==============================================
+    if (Object.keys(docketStorageResults).length > 0 && !storageResults?.error) {
+      addLog('info', '📬 Queuing notifications for users subscribed to dockets with new filings...');
+      const notificationQueuingStartTime = Date.now();
+      
+      try {
+        const { queueNotificationsForNewFilings } = await import('./lib/storage/notification-integration.js');
+        const notificationResult = await queueNotificationsForNewFilings(docketStorageResults, env.DB);
+        
+        const notificationQueuingEndTime = Date.now();
+        addLog('info', `✅ Notification queuing complete: ${notificationResult.queued} queued`, {
+          queued: notificationResult.queued,
+          errors: notificationResult.errors.length,
+          duration_ms: notificationQueuingEndTime - notificationQueuingStartTime
+        });
+        
+        if (notificationResult.errors.length > 0) {
+          addLog('warning', 'Some notification queuing errors occurred', {
+            error_count: notificationResult.errors.length,
+            errors: notificationResult.errors.slice(0, 5) // Limit error logging
+          });
+        }
+        
+        // Add to storage results for tracking
+        storageResults.notification_queuing = {
+          queued: notificationResult.queued,
+          errors: notificationResult.errors.length,
+          duration_ms: notificationResult.duration_ms
+        };
+        
+      } catch (notificationError) {
+        const errorMessage = notificationError instanceof Error ? notificationError.message : String(notificationError);
+        addLog('error', 'Notification queuing failed', {
+          error: errorMessage,
+          stack: notificationError.stack
+        });
+        
+        // Don't fail the entire pipeline for notification errors
+        if (storageResults) {
+          storageResults.notification_queuing = {
+            queued: 0,
+            errors: 1,
+            error: errorMessage
+          };
+        }
+      }
+    } else {
+      addLog('info', '📬 Skipping notification queuing - no new filings or storage errors');
     }
 
     // ==============================================
