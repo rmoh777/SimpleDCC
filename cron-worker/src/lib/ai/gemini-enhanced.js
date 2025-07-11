@@ -1,15 +1,96 @@
 // Enhanced Gemini AI Processing with Document Content
 import { GoogleGenerativeAI } from '@google/generative-ai';
 
+// Circuit breaker state
+const circuitBreaker = {
+  failures: 0,
+  lastFailureTime: 0,
+  isOpen: false,
+  threshold: 3, // Open circuit after 3 failures
+  timeout: 300000 // 5 minutes
+};
+
 /**
- * Generate enhanced AI summary with document content integration
+ * Error classification for better handling
+ */
+function classifyError(error) {
+  const message = error.message.toLowerCase();
+  
+  if (message.includes('rate limit') || message.includes('quota')) {
+    return { type: 'RATE_LIMIT', retryable: true, backoff: 60000 };
+  }
+  
+  if (message.includes('timeout') || message.includes('network')) {
+    return { type: 'NETWORK', retryable: true, backoff: 10000 };
+  }
+  
+  if (message.includes('invalid') || message.includes('unauthorized')) {
+    return { type: 'AUTH', retryable: false, backoff: 0 };
+  }
+  
+  if (message.includes('content') || message.includes('safety')) {
+    return { type: 'CONTENT_POLICY', retryable: false, backoff: 0 };
+  }
+  
+  return { type: 'UNKNOWN', retryable: true, backoff: 30000 };
+}
+
+/**
+ * Check if circuit breaker should block requests
+ */
+function shouldBlockRequest() {
+  if (!circuitBreaker.isOpen) return false;
+  
+  const timeSinceLastFailure = Date.now() - circuitBreaker.lastFailureTime;
+  if (timeSinceLastFailure > circuitBreaker.timeout) {
+    // Reset circuit breaker
+    circuitBreaker.isOpen = false;
+    circuitBreaker.failures = 0;
+    console.log('🔄 Circuit breaker reset - attempting Gemini API calls');
+    return false;
+  }
+  
+  return true;
+}
+
+/**
+ * Record API failure and update circuit breaker
+ */
+function recordFailure(error) {
+  circuitBreaker.failures++;
+  circuitBreaker.lastFailureTime = Date.now();
+  
+  if (circuitBreaker.failures >= circuitBreaker.threshold) {
+    circuitBreaker.isOpen = true;
+    console.warn(`🚨 Circuit breaker OPEN - Gemini API calls blocked for ${circuitBreaker.timeout/1000}s`);
+  }
+}
+
+/**
+ * Record successful API call
+ */
+function recordSuccess() {
+  if (circuitBreaker.failures > 0) {
+    circuitBreaker.failures = 0;
+    console.log('✅ Circuit breaker reset - Gemini API healthy');
+  }
+}
+
+/**
+ * Generate enhanced AI summary with document content integration and circuit breaker
  * @param {Object} filing - Filing object with metadata
- * @param {Array} documentTexts - Array of extracted document texts
+ * @param {string} documentText - Combined document text content
  * @param {Object} env - Environment variables passed from caller
  * @returns {Promise<Object>} Enhanced AI summary with structured output
  */
-export async function generateEnhancedSummary(filing, documentTexts = [], env) {
+export async function generateEnhancedSummary(filing, documentText = '', env) {
   try {
+    // Check circuit breaker first
+    if (shouldBlockRequest()) {
+      console.log(`⚠️ Circuit breaker OPEN - skipping AI processing for filing ${filing.id}`);
+      throw new Error('Circuit breaker open - AI processing temporarily unavailable');
+    }
+
     // Use env object passed from the worker environment
     const apiKey = env?.GEMINI_API_KEY;
     
@@ -21,16 +102,19 @@ export async function generateEnhancedSummary(filing, documentTexts = [], env) {
     const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
     
     // Build enhanced prompt with document content
-    const prompt = buildEnhancedPrompt(filing, documentTexts);
+    const prompt = buildEnhancedPrompt(filing, documentText);
     
     console.log(`🤖 Generating enhanced AI summary for filing ${filing.id}`);
-    console.log(`📄 Processing ${documentTexts.length} documents`);
+    console.log(`📄 Processing ${documentText.length} characters of document content`);
     
     const result = await model.generateContent(prompt);
     const summaryText = result.response.text();
     
     // Parse structured output
     const structuredSummary = parseStructuredSummary(summaryText);
+    
+    // Record successful API call
+    recordSuccess();
     
     return {
       summary: structuredSummary.summary,
@@ -40,8 +124,7 @@ export async function generateEnhancedSummary(filing, documentTexts = [], env) {
       document_analysis: structuredSummary.document_analysis,
       ai_confidence: structuredSummary.confidence,
       processing_notes: {
-        documents_processed: documentTexts.length,
-        total_text_length: documentTexts.reduce((sum, text) => sum + text.length, 0),
+        document_length: documentText.length,
         enhanced_processing: true,
         generated_at: new Date().toISOString()
       }
@@ -49,6 +132,7 @@ export async function generateEnhancedSummary(filing, documentTexts = [], env) {
     
   } catch (error) {
     console.error('❌ Enhanced AI processing failed:', error);
+    recordFailure(error);
     throw error;
   }
 }
@@ -56,8 +140,8 @@ export async function generateEnhancedSummary(filing, documentTexts = [], env) {
 /**
  * Build enhanced prompt that leverages document content
  */
-function buildEnhancedPrompt(filing, documentTexts) {
-  const hasDocuments = documentTexts.length > 0;
+function buildEnhancedPrompt(filing, documentText) {
+  const hasDocuments = documentText && documentText.length > 0;
   
   let prompt = `
 Analyze this FCC filing and provide a comprehensive regulatory intelligence summary:
@@ -78,14 +162,9 @@ FILING METADATA:
 DOCUMENT CONTENT ANALYSIS:
 The following document content was extracted and should be analyzed for key insights:
 
-`;
-    documentTexts.forEach((text, index) => {
-      prompt += `
-Document ${index + 1}:
-${text.substring(0, 8000)}${text.length > 8000 ? '\n... [truncated]' : ''}
+${documentText.substring(0, 8000)}${documentText.length > 8000 ? '\n... [truncated]' : ''}
 
 `;
-    });
   } else {
     prompt += `
 NOTE: No documents were available for content analysis. Base summary on filing metadata only.
@@ -188,58 +267,150 @@ function parseStructuredSummary(rawSummary) {
   }
 }
 
+// Enhanced Filing Storage with AI Processing Integration
+import { processFilingDocuments } from '../documents/jina-processor.js';
+
 /**
- * Process complete filing with enhanced AI pipeline
- * @param {Object} filing - Filing from enhanced ECFS client
- * @param {Object} env - Environment variables
- * @returns {Promise<Object>} Filing with enhanced AI summary
+ * Enhanced filing processing with circuit breaker and graceful degradation
  */
 export async function processFilingEnhanced(filing, env) {
+  const startTime = Date.now();
+  
   try {
-    console.log(`🔄 Enhanced processing for filing ${filing.id}`);
+    // Check circuit breaker
+    if (shouldBlockRequest()) {
+      console.log(`⚠️ Circuit breaker OPEN - skipping AI processing for filing ${filing.id}`);
+      return {
+        ...filing,
+        status: 'completed_degraded',
+        ai_summary: 'AI processing temporarily unavailable due to service issues',
+        ai_enhanced: false,
+        processing_mode: 'circuit_breaker_open',
+        processed_at: Date.now()
+      };
+    }
+
+    console.log(`🤖 Enhanced processing filing: ${filing.id} - ${filing.title}`);
     
-    // Step 1: Process documents if available
-    let documentTexts = [];
-    let processedFiling = filing;
+    // Step 1: Document processing (with fallback)
+    let documentText = '';
+    let documentsProcessed = 0;
     
-    if (filing.documents?.some(d => d.src && d.src.includes('fcc.gov'))) {
-      const { processFilingDocuments } = await import('../documents/jina-processor.js');
-      processedFiling = await processFilingDocuments(filing, env);
-      
-      // Extract text content from processed documents
-      documentTexts = processedFiling.documents
-        ?.filter(d => d.text_content)
-        ?.map(d => d.text_content) || [];
+    try {
+      if (filing.documents && filing.documents.length > 0) {
+        console.log(`📄 Processing ${filing.documents.length} documents for filing ${filing.id}`);
+        const docResults = await processFilingDocuments(filing.documents, env);
+        
+        if (docResults.success && docResults.extractedText) {
+          documentText = docResults.extractedText;
+          documentsProcessed = docResults.documentsProcessed || 0;
+          console.log(`✅ Document processing successful: ${documentsProcessed} documents, ${documentText.length} chars`);
+        } else {
+          console.warn(`⚠️ Document processing failed for filing ${filing.id}:`, docResults.error);
+          // Continue with title/description only
+          documentText = `${filing.title}\n\n${filing.description || ''}`;
+        }
+      } else {
+        // No documents, use title and description
+        documentText = `${filing.title}\n\n${filing.description || ''}`;
+        console.log(`📝 No documents found, using title/description for filing ${filing.id}`);
+      }
+    } catch (docError) {
+      console.error(`❌ Document processing error for filing ${filing.id}:`, docError);
+      documentText = `${filing.title}\n\n${filing.description || ''}`;
     }
     
-    // Step 2: Generate enhanced AI summary
-    const enhancedSummary = await generateEnhancedSummary(processedFiling, documentTexts, env);
+    // Step 2: AI Analysis with circuit breaker
+    let aiResult;
+    try {
+      const enhancedSummary = await generateEnhancedSummary(filing, documentText, env);
+      
+      aiResult = {
+        summary: enhancedSummary.summary,
+        key_points: enhancedSummary.key_points,
+        stakeholders: enhancedSummary.stakeholders,
+        regulatory_impact: enhancedSummary.regulatory_impact,
+        confidence: enhancedSummary.ai_confidence,
+        document_analysis: enhancedSummary.document_analysis,
+        processing_note: null
+      };
+      
+    } catch (aiError) {
+      const errorClass = classifyError(aiError);
+      console.error(`❌ AI processing failed for filing ${filing.id}:`, {
+        error: aiError.message,
+        classification: errorClass,
+        filing_id: filing.id
+      });
+      
+      // Graceful degradation based on error type
+      if (errorClass.type === 'RATE_LIMIT') {
+        aiResult = {
+          summary: 'AI processing rate limited - summary generation temporarily unavailable',
+          key_points: ['Rate limit exceeded', 'Please check back later'],
+          stakeholders: 'System notification',
+          regulatory_impact: 'Unable to assess due to rate limiting',
+          confidence: 'low',
+          processing_note: 'Rate limited - degraded service'
+        };
+      } else if (errorClass.type === 'CONTENT_POLICY') {
+        aiResult = {
+          summary: 'Content policy restriction - automated summary not available',
+          key_points: ['Content policy restriction'],
+          stakeholders: 'Content review required',
+          regulatory_impact: 'Manual review required',
+          confidence: 'low',
+          processing_note: 'Content policy restriction'
+        };
+      } else {
+        // Generic fallback
+        aiResult = {
+          summary: `Filing submitted by ${filing.author} regarding ${filing.title}. AI analysis temporarily unavailable.`,
+          key_points: [filing.filing_type, `Author: ${filing.author}`],
+          stakeholders: filing.author,
+          regulatory_impact: 'Analysis pending',
+          confidence: 'low',
+          processing_note: `AI error: ${errorClass.type}`
+        };
+      }
+    }
     
-    // Step 3: Return enhanced filing
+    const processingTime = Date.now() - startTime;
+    console.log(`✅ Enhanced processing complete for filing ${filing.id} in ${processingTime}ms`);
+    
     return {
-      ...processedFiling,
-      ai_summary: enhancedSummary.summary,
-      ai_key_points: enhancedSummary.key_points,
-      ai_stakeholders: enhancedSummary.stakeholders,
-      ai_regulatory_impact: enhancedSummary.regulatory_impact,
-      ai_document_analysis: enhancedSummary.document_analysis,
-      ai_confidence: enhancedSummary.confidence,
+      ...filing,
+      ai_summary: aiResult.summary,
+      ai_key_points: JSON.stringify(aiResult.key_points),
+      ai_stakeholders: JSON.stringify(aiResult.stakeholders),
+      ai_regulatory_impact: aiResult.regulatory_impact,
+      ai_confidence: aiResult.confidence,
+      ai_document_analysis: documentText.length > 0 ? 'processed' : 'none',
+      documents_processed: documentsProcessed,
       ai_enhanced: true,
-      status: 'completed_enhanced',
-      processed_at: Date.now()
+      status: aiResult.processing_note ? 'completed_degraded' : 'completed_enhanced',
+      processed_at: Date.now(),
+      processing_time_ms: processingTime
     };
     
   } catch (error) {
-    console.error(`❌ Enhanced processing failed for filing ${filing.id}:`, error);
+    const errorClass = classifyError(error);
+    console.error(`❌ Enhanced processing failed for filing ${filing.id}:`, {
+      error: error.message,
+      classification: errorClass,
+      stack: error.stack
+    });
     
-    // Fallback to basic processing
+    recordFailure(error);
+    
+    // Return basic processed filing with error info
     return {
       ...filing,
-      ai_summary: `Enhanced processing failed: ${error.message}. Filing processed with basic metadata only.`,
+      ai_summary: `Processing error: ${error.message}`,
       ai_enhanced: false,
-      status: 'completed_basic',
+      status: 'completed_with_errors',
       processed_at: Date.now(),
-      processing_error: error.message
+      processing_error: errorClass.type
     };
   }
 }
