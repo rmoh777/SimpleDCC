@@ -1,12 +1,17 @@
 import { json } from '@sveltejs/kit';
-import { authenticateAdmin } from '$lib/api/auth.js';
 
-export async function GET({ request, platform }) {
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+  'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Admin-Key',
+};
+
+export async function GET({ platform, cookies }) {
   try {
-    // Authenticate admin request
-    const authResult = await authenticateAdmin(request, platform);
-    if (!authResult.success) {
-      return json({ error: authResult.error }, { status: 401 });
+    // Verify admin authentication (same as other admin endpoints)
+    const adminSession = cookies.get('admin_session');
+    if (adminSession !== 'authenticated') {
+      return json({ error: 'Unauthorized' }, { status: 401, headers: corsHeaders });
     }
 
     const db = platform.env.DB;
@@ -89,14 +94,14 @@ export async function GET({ request, platform }) {
       recent_failed: recentFailed.results || [],
       recent_logs: recentLogs.results || [],
       timestamp: Date.now()
-    });
+    }, { headers: corsHeaders });
     
   } catch (error) {
     console.error('Error getting notification monitoring data:', error);
     return json({ 
       error: 'Failed to get notification monitoring data',
       details: error.message 
-    }, { status: 500 });
+    }, { status: 500, headers: corsHeaders });
   }
 }
 
