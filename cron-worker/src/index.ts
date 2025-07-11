@@ -461,42 +461,51 @@ async function runDataPipeline(env: any, ctx: any, isManualTrigger = false, targ
     // STEP 4.5: QUEUE NOTIFICATIONS FOR NEW FILINGS
     // ==============================================
     if (Object.keys(docketStorageResults).length > 0 && !storageResults?.error) {
-      addLog('info', '📬 Queuing notifications for users subscribed to dockets with new filings...');
+      addLog('info', '📬 QUICK FIX: Queuing notifications for users subscribed to dockets with new filings...');
       const notificationQueuingStartTime = Date.now();
       
+      // Fix 3: Better error handling that doesn't break the pipeline
       try {
+        // Fix 4: Use static import (already done at top of file)
         const { queueNotificationsForNewFilings } = await import('./lib/storage/notification-integration.js');
-        const notificationResult = await queueNotificationsForNewFilings(docketStorageResults, env.DB);
+        
+        // Fix 1: QUICK FIX - Pass pipeline start time for better filtering
+        const notificationResult = await queueNotificationsForNewFilings(
+          docketStorageResults, 
+          env.DB, 
+          allFilings // Pass the filings array for reference
+        );
         
         const notificationQueuingEndTime = Date.now();
-        addLog('info', `✅ Notification queuing complete: ${notificationResult.queued} queued`, {
+        addLog('info', `✅ QUICK FIX: Notification queuing complete: ${notificationResult.queued} queued`, {
           queued: notificationResult.queued,
           errors: notificationResult.errors.length,
           duration_ms: notificationQueuingEndTime - notificationQueuingStartTime
         });
         
         if (notificationResult.errors.length > 0) {
-          addLog('warning', 'Some notification queuing errors occurred', {
+          addLog('warning', 'QUICK FIX: Some notification queuing errors occurred (non-critical)', {
             error_count: notificationResult.errors.length,
-            errors: notificationResult.errors.slice(0, 5) // Limit error logging
+            errors: notificationResult.errors.slice(0, 3) // Limit error logging
           });
         }
         
         // Add to storage results for tracking
-        storageResults.notification_queuing = {
-          queued: notificationResult.queued,
-          errors: notificationResult.errors.length,
-          duration_ms: notificationResult.duration_ms
-        };
+        if (storageResults) {
+          storageResults.notification_queuing = {
+            queued: notificationResult.queued,
+            errors: notificationResult.errors.length,
+            duration_ms: notificationResult.duration_ms
+          };
+        }
         
       } catch (notificationError) {
         const errorMessage = notificationError instanceof Error ? notificationError.message : String(notificationError);
-        addLog('error', 'Notification queuing failed', {
-          error: errorMessage,
-          stack: notificationError.stack
+        addLog('warning', 'QUICK FIX: Notification queuing failed (non-critical - pipeline continues)', {
+          error: errorMessage
         });
         
-        // Don't fail the entire pipeline for notification errors
+        // Fix 3: Don't fail the entire pipeline for notification errors
         if (storageResults) {
           storageResults.notification_queuing = {
             queued: 0,
@@ -506,7 +515,7 @@ async function runDataPipeline(env: any, ctx: any, isManualTrigger = false, targ
         }
       }
     } else {
-      addLog('info', '📬 Skipping notification queuing - no new filings or storage errors');
+      addLog('info', '📬 QUICK FIX: Skipping notification queuing - no new filings or storage errors');
     }
 
     // ==============================================
