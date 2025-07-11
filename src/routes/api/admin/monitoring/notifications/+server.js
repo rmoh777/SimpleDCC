@@ -11,12 +11,10 @@ export async function GET({ request, platform }) {
 
     const db = platform.env.DB;
     
-    // Get notification integration statistics
-    const { getNotificationIntegrationStats } = await import('../../../../../cron-worker/src/lib/storage/notification-integration.js');
+    // Get notification integration statistics (direct database queries)
     const integrationStats = await getNotificationIntegrationStats(db);
     
-    // Get queue statistics
-    const { getQueueStats } = await import('../../../../../cron-worker/src/lib/notifications/queue-processor.ts');
+    // Get queue statistics (direct database queries)
     const queueStats = await getQueueStats(db);
     
     // Get recent system logs for notifications
@@ -99,5 +97,120 @@ export async function GET({ request, platform }) {
       error: 'Failed to get notification monitoring data',
       details: error.message 
     }, { status: 500 });
+  }
+}
+
+/**
+ * Get notification integration statistics using direct database queries
+ * Replaces the cross-service import that was causing build failures
+ */
+async function getNotificationIntegrationStats(db) {
+  try {
+    // Get recent notification queuing events (including QUICK FIX messages)
+    const recentEvents = await db.prepare(`
+      SELECT details FROM system_logs 
+      WHERE component = 'notifications' 
+        AND message LIKE '%Notification queuing completed%'
+        AND created_at > ?
+      ORDER BY created_at DESC
+      LIMIT 10
+    `).bind(Date.now() - 86400000).all(); // Last 24 hours
+    
+    let totalQueued = 0;
+    let totalErrors = 0;
+    let avgDuration = 0;
+    
+    if (recentEvents.results && recentEvents.results.length > 0) {
+      for (const event of recentEvents.results) {
+        try {
+          const details = JSON.parse(event.details);
+          totalQueued += details.notifications_queued || 0;
+          totalErrors += details.errors || 0;
+          avgDuration += details.duration_ms || 0;
+        } catch (parseError) {
+          console.error('Error parsing notification event details:', parseError);
+        }
+      }
+      avgDuration = Math.round(avgDuration / recentEvents.results.length);
+    }
+    
+    return {
+      recent_events: recentEvents.results?.length || 0,
+      total_queued_24h: totalQueued,
+      total_errors_24h: totalErrors,
+      avg_duration_ms: avgDuration,
+      last_updated: Date.now()
+    };
+    
+  } catch (error) {
+    console.error('Error getting notification integration stats:', error);
+    return {
+      recent_events: 0,
+      total_queued_24h: 0,
+      total_errors_24h: 0,
+      avg_duration_ms: 0,
+      last_updated: Date.now(),
+      error: error.message
+    };
+  }
+}
+
+/**
+ * Get queue statistics using direct database queries
+ * Replaces the cross-service import that was causing build failures
+ */
+async function getQueueStats(db) {
+  try {
+    // Get total counts by status
+    const statusCounts = await db.prepare(`
+      SELECT status, COUNT(*) as count
+      FROM notification_queue
+      GROUP BY status
+    `).all();
+    
+    // Get pending notifications (ready to process)
+    const pendingCount = await db.prepare(`
+      SELECT COUNT(*) as count
+      FROM notification_queue
+      WHERE status = 'pending'
+    `).all();
+    
+    // Get processing statistics for last 24 hours
+    const last24hStats = await db.prepare(`
+      SELECT 
+        COUNT(*) as total_processed,
+        SUM(CASE WHEN status = 'sent' THEN 1 ELSE 0 END) as successful,
+        SUM(CASE WHEN status = 'failed' THEN 1 ELSE 0 END) as failed
+      FROM notification_queue
+      WHERE created_at > ?
+    `).bind(Math.floor(Date.now() / 1000) - 86400).all(); // Last 24 hours
+    
+    // Get oldest pending notification
+    const oldestPending = await db.prepare(`
+      SELECT created_at
+      FROM notification_queue
+      WHERE status = 'pending'
+      ORDER BY created_at ASC
+      LIMIT 1
+    `).all();
+    
+    return {
+      status_counts: statusCounts.results || [],
+      pending_count: pendingCount.results?.[0]?.count || 0,
+      last_24h: last24hStats.results?.[0] || { total_processed: 0, successful: 0, failed: 0 },
+      oldest_pending_timestamp: oldestPending.results?.[0]?.created_at || null,
+      last_updated: Date.now()
+    };
+    
+  } catch (error) {
+    console.error('Error getting queue stats:', error);
+    return {
+      status_counts: [],
+      pending_count: 0,
+      last_24h: { total_processed: 0, successful: 0, failed: 0 },
+      oldest_pending_timestamp: null,
+      last_updated: Date.now(),
+      error: error.message
+    };
   }
 } 
