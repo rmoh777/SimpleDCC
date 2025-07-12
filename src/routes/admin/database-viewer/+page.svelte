@@ -279,8 +279,8 @@
 			
 			const data = await response.json();
 			tableData = data.data || [];
-			totalPages = data.pagination?.totalPages || 1;
-			totalRows = data.pagination?.totalRows || 0;
+			totalPages = data.totalPages || 1;
+			totalRows = data.total || 0;
 			lastRefreshTime = new Date();
 		} catch (err) {
 			error = err.message;
