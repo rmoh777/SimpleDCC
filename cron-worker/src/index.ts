@@ -1,6 +1,6 @@
 // cron-worker/src/index.ts - Real Production Pipeline Implementation
 import { processNotificationQueue } from './lib/notifications/queue-processor';
-import { getETTimeInfo, getProcessingStrategy } from './lib/utils/timezone';
+import { getETTimeInfo, getProcessingStrategy, isBusinessHoursStart } from './lib/utils/timezone';
 import { getActiveDockets } from './lib/database/db-operations';
 import { fetchLatestFilings, smartFilingDetection, liftDelugeFlags } from './lib/fcc/ecfs-enhanced-client';
 import { storeFilingsEnhanced } from './lib/storage/filing-storage-enhanced';
@@ -595,13 +595,15 @@ export default {
     try {
       console.log("(INFO) ⏰ Scheduled cron job triggered - executing real pipeline.");
 
-      // Morning reset: Lift all deluge flags
-      console.log("(INFO) 🌅 Lifting deluge flags...");
-      await liftDelugeFlags(env);
-
       const { etHour } = getETTimeInfo();
       const processingStrategy = getProcessingStrategy();
       console.log(`(INFO) ET hour is ${etHour}. Using strategy: ${processingStrategy.processingType}`);
+
+      // Daily reset: Lift deluge flags only at start of business hours (8 AM ET)
+      if (isBusinessHoursStart()) {
+        console.log("(INFO) 🌅 Lifting deluge flags at start of business hours...");
+        await liftDelugeFlags(env);
+      }
 
       if (!processingStrategy.shouldProcess) {
         console.log("(INFO) 😴 Skipping processing during quiet hours.");

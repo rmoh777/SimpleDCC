@@ -3,6 +3,11 @@
  * Integrates with existing cron system to add timezone awareness
  */
 
+// Configuration constants
+const BUSINESS_HOURS_START = 8; // 8 AM ET
+const BUSINESS_HOURS_END = 18;  // 6 PM ET
+const EVENING_HOURS_END = 22;   // 10 PM ET
+
 /**
  * Get current Eastern Time information
  */
@@ -31,7 +36,16 @@ export function getETTimeInfo() {
  */
 export function isFCCBusinessHours(): boolean {
   const etHour = getETTimeInfo().etHour;
-  return etHour >= 8 && etHour < 18; // 8 AM to 6 PM ET
+  return etHour >= BUSINESS_HOURS_START && etHour < BUSINESS_HOURS_END;
+}
+
+/**
+ * Check if current time is the start of business hours (8 AM ET)
+ * Used for daily reset operations like lifting deluge flags
+ */
+export function isBusinessHoursStart(): boolean {
+  const etHour = getETTimeInfo().etHour;
+  return etHour === BUSINESS_HOURS_START;
 }
 
 /**
@@ -40,7 +54,7 @@ export function isFCCBusinessHours(): boolean {
  */
 export function isEveningHours(): boolean {
   const etHour = getETTimeInfo().etHour;
-  return etHour >= 18 && etHour < 22; // 6 PM to 10 PM ET
+  return etHour >= BUSINESS_HOURS_END && etHour < EVENING_HOURS_END;
 }
 
 /**
@@ -48,7 +62,7 @@ export function isEveningHours(): boolean {
  */
 export function isQuietHours(): boolean {
   const etHour = getETTimeInfo().etHour;
-  return etHour >= 22 || etHour < 8; // 10 PM through 7:59 AM
+  return etHour >= EVENING_HOURS_END || etHour < BUSINESS_HOURS_START;
 }
 
 /**
@@ -62,8 +76,8 @@ export function getProcessingStrategy(): {
 } {
   const etHour = getETTimeInfo().etHour;
   
-  if (etHour === 8) {
-    // 8 AM catch-up processing
+  if (etHour === BUSINESS_HOURS_START) {
+    // Business hours start - morning catch-up processing
     return {
       shouldProcess: true,
       processingType: 'morning_catchup',
@@ -103,10 +117,10 @@ export function getProcessingStrategy(): {
 export function getNextProcessingTime(): string {
   const etHour = getETTimeInfo().etHour;
   
-  if (isQuietHours() && etHour < 8) {
-    return '8:00 AM ET (morning catch-up)';
-  } else if (isQuietHours() && etHour >= 22) {
-    return '8:00 AM ET (next day)';
+  if (isQuietHours() && etHour < BUSINESS_HOURS_START) {
+    return `${BUSINESS_HOURS_START}:00 AM ET (morning catch-up)`;
+  } else if (isQuietHours() && etHour >= EVENING_HOURS_END) {
+    return `${BUSINESS_HOURS_START}:00 AM ET (next day)`;
   } else {
     const nextHour = ((etHour + 2) % 24); // Every 2 hours
     const period = nextHour < 12 ? 'AM' : 'PM';
