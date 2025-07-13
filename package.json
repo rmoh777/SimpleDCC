@@ -41,6 +41,7 @@
     "@google/generative-ai": "^0.24.1",
     "bcryptjs": "^3.0.2",
     "dotenv": "^17.2.0",
+    "gsap": "^3.13.0",
     "node-fetch": "^3.3.2"
   }
 }
