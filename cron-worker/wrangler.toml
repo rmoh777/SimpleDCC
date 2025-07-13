@@ -11,6 +11,17 @@ compatibility_date = "2024-03-08"
 [triggers]
 crons = ["0 * * * *"]
 
+# --- PERSISTENT LOGGING CONFIGURATION ---
+# This ensures that logging settings are preserved on every deploy
+# and prevents the need to manually re-enable logs in the dashboard
+[log]
+# Enable logging for all requests and cron triggers
+all = true 
+# Include system-generated logs about the request, response, and exceptions
+include_invocation_logs = true
+# Sample 100% of all requests/invocations for logging
+sampling_rate = 1.0
+
 [[d1_databases]]
 binding = "DB"
 database_name = "simple-docketcc-db"
