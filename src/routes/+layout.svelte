@@ -3,6 +3,7 @@
   import '$lib/styles/component-base.css';
   import '$lib/styles/globals.css';
   import { page } from '$app/stores';
+  import HidingNavbar from '$lib/components/layout/HidingNavbar.svelte';
   
   $: isAdminRoute = $page.url.pathname.startsWith('/admin');
   $: isTestRoute = $page.url.pathname.startsWith('/test-');
@@ -19,42 +20,8 @@
 {:else}
   <!-- Public routes get the new DocketCC layout -->
   <div class="app">
-    <!-- Government Banner -->
-    <div class="gov-banner">
-      <div class="container">
-        🇺🇸 An FCC docket monitoring service - Not affiliated with the Federal Communications Commission
-      </div>
-    </div>
-    
-    <!-- Header -->
-    <header class="header">
-      <div class="container">
-        <nav class="nav">
-          <div class="logo-section">
-            <a href="/" class="logo-link">
-              <div class="logo-graphic">
-                <div class="logo-icon">📡</div>
-                <div class="logo-text">
-                  Docket<span class="logo-cc">CC</span>
-                </div>
-              </div>
-            </a>
-          </div>
-          
-          <div class="nav-links">
-            <a href="/about" class="nav-link" class:active={$page.url.pathname === '/about'}>
-              About
-            </a>
-            <a href="/manage" class="nav-link" class:active={$page.url.pathname === '/manage'}>
-              My Subscriptions
-            </a>
-            <a href="/pricing" class="nav-link" class:active={$page.url.pathname === '/pricing'}>
-              Pricing
-            </a>
-          </div>
-        </nav>
-      </div>
-    </header>
+    <!-- New Hiding Navbar Component -->
+    <HidingNavbar />
     
     <!-- Main Content -->
     <main class="main">
@@ -131,87 +98,7 @@
     flex-direction: column;
   }
   
-  .gov-banner {
-    background: var(--color-secondary);
-    color: white;
-    padding: 0.5rem 0;
-    font-size: var(--font-size-sm);
-    text-align: center;
-    border-bottom: 1px solid #334155;
-  }
-  
-  .header {
-    background: rgba(255, 255, 255, 0.98);
-    backdrop-filter: blur(20px);
-    padding: 1rem 0;
-    box-shadow: var(--shadow-lg);
-    position: sticky;
-    top: 0;
-    z-index: 100;
-    border-bottom: 4px solid var(--color-primary);
-  }
-  
-  .nav {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-  }
-  
-  .logo-link {
-    text-decoration: none;
-  }
-  
-  .logo-graphic {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-  }
-  
-  .logo-icon {
-    width: 36px;
-    height: 36px;
-    background: linear-gradient(135deg, var(--color-primary), var(--color-primary-hover));
-    border-radius: var(--border-radius);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 1.3rem;
-    box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
-  }
-  
-  .logo-text {
-    font-size: 1.6rem;
-    font-weight: var(--font-weight-black);
-    color: var(--color-secondary);
-    letter-spacing: -0.5px;
-  }
-  
-  .logo-cc {
-    color: var(--color-primary);
-  }
-  
-  .nav-links {
-    display: flex;
-    gap: 2rem;
-    list-style: none;
-  }
-  
-  .nav-link {
-    color: #374151;
-    text-decoration: none;
-    font-weight: var(--font-weight-semibold);
-    padding: 0.75rem 1.5rem;
-    border-radius: 12px;
-    transition: all var(--transition-normal);
-  }
-  
-  .nav-link:hover,
-  .nav-link.active {
-    background: var(--color-secondary);
-    color: white;
-    transform: translateY(-2px);
-    box-shadow: var(--shadow-lg);
-  }
+
   
   .main {
     flex: 1;
