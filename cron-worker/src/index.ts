@@ -8,7 +8,7 @@ import { checkDatabaseSchema } from './lib/database/auto-migration';
 import { processFilingBatchEnhanced } from './lib/ai/gemini-enhanced';
 
 /**
- * Process seed subscriptions - Simplified single-filing welcome experience
+ * Process seed subscriptions - Fallback for any immediate seeding failures
  * @param {Object} env - Environment variables from worker
  * @returns {Promise<Object>} Seeding results
  */
@@ -16,114 +16,63 @@ async function processSeedSubscriptions(env: any) {
   const startTime = Date.now();
   
   try {
-    console.log('🌱 Starting simplified seed processing...');
+    console.log('🌱 Starting fallback seed processing...');
     
-    // Find subscriptions that need seeding
+    // Find subscriptions that still need seeding (fallback for immediate seeding failures)
     const seedSubscriptions = await env.DB.prepare(`
-      SELECT s.id as subscription_id, s.docket_number, u.id as user_id, u.email, u.user_tier
+      SELECT s.id as subscription_id, s.docket_number, u.email, u.user_tier
       FROM subscriptions s
       JOIN users u ON s.user_id = u.id
       WHERE s.needs_seed = 1
-      LIMIT 10
+      LIMIT 5
     `).all();
     
     if (!seedSubscriptions.results || seedSubscriptions.results.length === 0) {
-      console.log('🌱 No subscriptions need seeding');
+      console.log('🌱 No subscriptions need fallback seeding');
       return { processed: 0, sent: 0, errors: [] };
     }
     
-    console.log(`🌱 Found ${seedSubscriptions.results.length} subscriptions needing seed`);
+    console.log(`🌱 Found ${seedSubscriptions.results.length} subscriptions needing fallback seeding`);
     
     let processed = 0;
     const errors: any[] = [];
     
-    // Group by docket to process efficiently
-    const docketGroups = seedSubscriptions.results.reduce((groups, sub) => {
-      if (!groups[sub.docket_number]) {
-        groups[sub.docket_number] = [];
-      }
-      groups[sub.docket_number].push(sub);
-      return groups;
-    }, {} as any);
+    // Use shared seeding utilities for consistency
+    const { handleImmediateSeeding, markSubscriptionSeeded } = await import('./lib/seeding/seed-operations.js');
     
-    for (const [docketNumber, subscriptions] of Object.entries(docketGroups)) {
+    for (const subscription of seedSubscriptions.results) {
       try {
-        console.log(`🌱 Processing seed for docket ${docketNumber}...`);
+        console.log(`🌱 Fallback seeding for ${subscription.email} on docket ${subscription.docket_number}`);
         
-        // Use existing smart detection (proven, efficient)
-        const smartResult = await smartFilingDetection(docketNumber, env);
+        const seedingResult = await handleImmediateSeeding(
+          subscription.docket_number,
+          subscription.email,
+          subscription.user_tier,
+          env.DB,
+          env
+        );
         
-        let seedFiling = null;
-        
-        if (smartResult.status === 'new_found' && smartResult.newFilings.length > 0) {
-          // Use the latest new filing (already processed by smart detection)
-          seedFiling = smartResult.newFilings[0];
-          console.log(`🌱 Using new filing ${seedFiling.id} for ${docketNumber}`);
+        if (seedingResult.success) {
+          // Mark subscription as seeded
+          await markSubscriptionSeeded(subscription.subscription_id, env.DB);
+          console.log(`🌱 Fallback seeding completed for ${subscription.email}: ${seedingResult.scenario}`);
+          processed++;
         } else {
-          // Fallback: Get most recent filing from database
-          const recentFiling = await env.DB.prepare(`
-            SELECT * FROM filings 
-            WHERE docket_number = ? 
-            ORDER BY date_received DESC 
-            LIMIT 1
-          `).bind(docketNumber).first();
-          
-          if (recentFiling) {
-            seedFiling = {
-              ...recentFiling,
-              documents: recentFiling.documents ? JSON.parse(recentFiling.documents) : null,
-              raw_data: recentFiling.raw_data ? JSON.parse(recentFiling.raw_data) : null
-            };
-            console.log(`🌱 Using existing filing ${seedFiling.id} for ${docketNumber}`);
-          }
+          console.error(`🌱 Fallback seeding failed for ${subscription.email}:`, seedingResult.error);
+          errors.push({ email: subscription.email, error: seedingResult.error });
         }
         
-        if (!seedFiling) {
-          console.log(`🌱 No filings available for docket ${docketNumber}, skipping`);
-          continue;
-        }
+        // Rate limiting between subscriptions
+        await new Promise(resolve => setTimeout(resolve, 1000));
         
-        // Queue seed digest for each subscription (existing notification system)
-        for (const subscription of subscriptions as any[]) {
-          try {
-            await env.DB.prepare(`
-              INSERT INTO notification_queue (user_email, docket_number, digest_type, filing_data, created_at)
-              VALUES (?, ?, 'seed_digest', ?, ?)
-            `).bind(
-              subscription.email,
-              docketNumber,
-              JSON.stringify({ 
-                filings: [seedFiling], 
-                tier: subscription.user_tier 
-              }),
-              Date.now()
-            ).run();
-            
-            // Mark subscription as seeded
-            await env.DB.prepare(`
-              UPDATE subscriptions SET needs_seed = 0 WHERE id = ?
-            `).bind(subscription.subscription_id).run();
-            
-            console.log(`🌱 Queued seed digest for ${subscription.email} on docket ${docketNumber}`);
-            processed++;
-            
-          } catch (subError) {
-            console.error(`🌱 Failed to process seed for ${subscription.email}:`, subError);
-            errors.push({ email: subscription.email, error: subError.message });
-          }
-        }
-        
-        // Rate limiting between dockets (reduced from 5000ms to 2000ms)
-        await new Promise(resolve => setTimeout(resolve, 2000));
-        
-      } catch (docketError) {
-        console.error(`🌱 Failed to process seed for docket ${docketNumber}:`, docketError);
-        errors.push({ docket: docketNumber, error: docketError.message });
+      } catch (subError) {
+        console.error(`🌱 Failed fallback seeding for ${subscription.email}:`, subError);
+        errors.push({ email: subscription.email, error: subError.message });
       }
     }
     
     const duration = Date.now() - startTime;
-    console.log(`🌱 Seed processing completed: ${processed} processed in ${duration}ms`);
+    console.log(`🌱 Fallback seed processing completed: ${processed} processed in ${duration}ms`);
     
     return { processed, sent: 0, errors, duration_ms: duration };
     
@@ -718,7 +667,7 @@ export default {
         // Import existing template functions
         const { generateDailyDigest, generateFilingAlert, generateWelcomeEmail } = 
           await import('./lib/email/daily-digest.js');
-        const { sendEmail } = await import('./lib/email.ts');
+        const { sendEmail } = await import('./lib/email');
 
         // Create mock data
         const mockFilings = [{

@@ -199,7 +199,7 @@ async function generateAndSendNotificationEmail(
   try {
     // Import existing email generation functions
     const { generateDailyDigest, generateFilingAlert, generateSeedDigest } = await import('../email/daily-digest.js');
-    const { sendEmail } = await import('../email.ts');
+    const { sendEmail } = await import('../email');
     
     let emailContent;
     
