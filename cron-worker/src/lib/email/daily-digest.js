@@ -958,7 +958,7 @@ Upgrade: ${unsubscribeBaseUrl}/pricing
  * Generate seed digest email - Welcome experience for new subscribers
  * @param {string} userEmail - Recipient email
  * @param {string} docketNumber - Docket number being monitored
- * @param {Array} filings - Array of 5 latest filings with AI summaries
+ * @param {Array} filings - Array of filings (now supports single filing)
  * @param {Object} options - Email customization options
  */
 export function generateSeedDigest(userEmail, docketNumber, filings, options = {}) {
@@ -969,12 +969,17 @@ export function generateSeedDigest(userEmail, docketNumber, filings, options = {
     user_tier = 'free'
   } = options;
   
-  const filingCount = filings.length;
+  // Handle single filing or array (backward compatibility)
+  const filingsArray = Array.isArray(filings) ? filings : [filings];
+  
+  if (!filingsArray.length || !filingsArray[0]) {
+    throw new Error('No filing provided for seed digest');
+  }
   
   return {
     subject: `🎉 Welcome to ${brandName}! Your ${docketNumber} monitoring starts now`,
-    html: generateSeedDigestHTML(userEmail, docketNumber, filings, { brandName, supportEmail, unsubscribeBaseUrl, user_tier }),
-    text: generateSeedDigestText(userEmail, docketNumber, filings, { brandName, supportEmail, unsubscribeBaseUrl, user_tier })
+    html: generateSeedDigestHTML(userEmail, docketNumber, filingsArray, { brandName, supportEmail, unsubscribeBaseUrl, user_tier }),
+    text: generateSeedDigestText(userEmail, docketNumber, filingsArray, { brandName, supportEmail, unsubscribeBaseUrl, user_tier })
   };
 }
 
@@ -1131,12 +1136,12 @@ function generateSeedDigestHTML(userEmail, docketNumber, filings, options) {
     <div class="email-content">
       <div class="welcome-message">
         <h2 style="margin: 0 0 12px 0; color: #065f46;">You're all set!</h2>
-        <p style="margin: 0; color: #374151;">We'll monitor docket ${docketNumber} and send you AI-powered summaries when new filings are submitted. Here are the 5 most recent filings to get you started:</p>
+        <p style="margin: 0; color: #374151;">We'll monitor docket ${docketNumber} and send you AI-powered summaries when new filings are submitted. Here's the most recent filing to get you started:</p>
       </div>
       
       <div class="seed-intro">
         <h3>🚀 Getting You Up to Speed</h3>
-        <p style="margin: 0; color: #92400e;">These are the latest filings from docket ${docketNumber}. Each includes our AI-powered summary to help you quickly understand the key points and regulatory implications.</p>
+        <p style="margin: 0; color: #92400e;">This is the latest filing from docket ${docketNumber}. It includes our AI-powered summary to help you quickly understand the key points and regulatory implications.</p>
       </div>
       
       ${filings.map((filing, index) => `
@@ -1157,7 +1162,7 @@ function generateSeedDigestHTML(userEmail, docketNumber, filings, options) {
             </div>
           ` : `
             <div style="color: #6b7280; font-style: italic;">
-              <p>AI summary processing...</p>
+              <p>AI summary will be available when new filings are processed.</p>
             </div>
           `}
         </div>
@@ -1185,6 +1190,7 @@ function generateSeedDigestHTML(userEmail, docketNumber, filings, options) {
  */
 function generateSeedDigestText(userEmail, docketNumber, filings, options) {
   const { brandName, supportEmail, unsubscribeBaseUrl, user_tier } = options;
+  const filing = filings[0]; // Use first filing (single filing approach)
   
   return `🎉 WELCOME TO ${brandName.toUpperCase()}!
 
@@ -1192,22 +1198,20 @@ Your monitoring for docket ${docketNumber} is now active!
 
 ${'-'.repeat(50)}
 
-You're all set! We'll monitor docket ${docketNumber} and send you AI-powered summaries when new filings are submitted. Here are the 5 most recent filings to get you started:
+You're all set! We'll monitor docket ${docketNumber} and send you AI-powered summaries when new filings are submitted. Here's the most recent filing to get you started:
 
 GETTING YOU UP TO SPEED
 ${'-'.repeat(25)}
-These are the latest filings from docket ${docketNumber}. Each includes our AI-powered summary to help you quickly understand the key points and regulatory implications.
+This is the latest filing from docket ${docketNumber}. It includes our AI-powered summary to help you quickly understand the key points and regulatory implications.
 
-${filings.map((filing, index) => `
-FILING ${index + 1}
-${'-'.repeat(10)}
+LATEST FILING
+${'-'.repeat(13)}
 Title: ${filing.title}
 Author: ${filing.author}
 Type: ${filing.filing_type}
 Date: ${formatDate(filing.date_received)}
 
-${filing.ai_summary ? `AI Summary: ${filing.ai_summary}` : 'AI summary processing...'}
-`).join('\n')}
+${filing.ai_summary ? `AI Summary: ${filing.ai_summary}` : 'AI summary will be available when new filings are processed.'}
 
 WHAT HAPPENS NEXT?
 ${'-'.repeat(18)}

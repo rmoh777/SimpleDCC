@@ -8,117 +8,193 @@ import { checkDatabaseSchema } from './lib/database/auto-migration';
 import { processFilingBatchEnhanced } from './lib/ai/gemini-enhanced';
 
 /**
- * Process seed subscriptions - Welcome experience for new users
+ * Dedicated Seed Cron - Handles new subscription seeding
+ * Runs at :45 every hour, 15 minutes before BAU cron
  * @param {Object} env - Environment variables from worker
  * @returns {Promise<Object>} Seeding results
  */
-async function processSeedSubscriptions(env: any) {
-  // TEMPORARY FIX: Disable seed processing to prevent runaway API calls
-  console.log('🌱 Seed processing temporarily disabled to prevent subrequest limit issues');
-  return { processed: 0, sent: 0, errors: [] };
-  
+async function runSeedCron(env: any) {
   const startTime = Date.now();
   
   try {
-    console.log('🌱 Starting seed subscription processing...');
+    console.log('🌱 SEED CRON: Starting dedicated seed processing...');
     
     // Find subscriptions that need seeding
     const seedSubscriptions = await env.DB.prepare(`
-      SELECT s.id as subscription_id, s.docket_number, u.id as user_id, u.email, u.user_tier
+      SELECT s.id as subscription_id, s.docket_number, u.email, u.user_tier, s.created_at
       FROM subscriptions s
       JOIN users u ON s.user_id = u.id
       WHERE s.needs_seed = 1
-      LIMIT 25
+      ORDER BY s.created_at ASC
     `).all();
     
     if (!seedSubscriptions.results || seedSubscriptions.results.length === 0) {
-      console.log('🌱 No subscriptions need seeding');
+      console.log('🌱 SEED CRON: No subscriptions need seeding');
       return { processed: 0, sent: 0, errors: [] };
     }
     
-    console.log(`🌱 Found ${seedSubscriptions.results.length} subscriptions needing seed digest`);
+    console.log(`🌱 SEED CRON: Found ${seedSubscriptions.results.length} subscriptions needing seeding`);
     
     let processed = 0;
     let sent = 0;
     const errors: any[] = [];
     
-    // Group by docket to process efficiently
-    const docketGroups = seedSubscriptions.results.reduce((groups, sub) => {
-      if (!groups[sub.docket_number]) {
-        groups[sub.docket_number] = [];
-      }
-      groups[sub.docket_number].push(sub);
-      return groups;
-    }, {} as any);
+    // Import seeding utilities
+    const { handleImmediateSeeding, markSubscriptionSeeded } = await import('./lib/seeding/seed-operations.js');
     
-    for (const [docketNumber, subscriptions] of Object.entries(docketGroups)) {
+    for (const subscription of seedSubscriptions.results) {
       try {
-        console.log(`🌱 Processing seed for docket ${docketNumber}...`);
+        console.log(`🌱 SEED CRON: Processing ${subscription.email} on docket ${subscription.docket_number}`);
         
-        // Fetch latest 5 filings for this docket
-        const filings = await fetchLatestFilings(docketNumber, 5, env);
+        // Attempt seeding with retry logic
+        let seedingResult: any = null;
+        let attemptCount = 0;
         
-        if (filings.length === 0) {
-          console.log(`🌱 No filings found for docket ${docketNumber}, skipping seed`);
-          continue;
-        }
-        
-        console.log(`🌱 Found ${filings.length} filings for docket ${docketNumber}, processing with AI...`);
-        
-        // Process filings through AI pipeline
-        const processedFilings = await processFilingBatchEnhanced(filings, env, {
-          maxConcurrent: 2,
-          delayBetween: 1000
-        });
-        
-        console.log(`🌱 AI processing completed for ${processedFilings.length} filings`);
-        
-        // Create seed digest notifications for each subscription
-        for (const subscription of subscriptions as any[]) {
+        while (attemptCount < 2 && (!seedingResult || !seedingResult.success)) {
+          attemptCount++;
+          
           try {
-            // Queue seed digest notification
-            await env.DB.prepare(`
-              INSERT INTO notification_queue (user_email, docket_number, digest_type, filing_data, created_at)
-              VALUES (?, ?, 'seed_digest', ?, ?)
-            `).bind(
+            seedingResult = await handleImmediateSeeding(
+              subscription.docket_number,
               subscription.email,
-              docketNumber,
-              JSON.stringify({ filings: processedFilings, tier: subscription.user_tier }),
-              Date.now()
-            ).run();
+              subscription.user_tier,
+              env.DB,
+              env
+            );
             
-            // Mark subscription as seeded
-            await env.DB.prepare(`
-              UPDATE subscriptions 
-              SET needs_seed = 0 
-              WHERE id = ?
-            `).bind(subscription.subscription_id).run();
+            if (seedingResult?.success) {
+              console.log(`🌱 SEED CRON: Seeding successful for ${subscription.email} (attempt ${attemptCount})`);
+              break;
+            }
+          } catch (error: any) {
+            console.error(`🌱 SEED CRON: Attempt ${attemptCount} failed for ${subscription.email}:`, error.message);
             
-            console.log(`🌱 Queued seed digest for ${subscription.email} on docket ${docketNumber}`);
-            processed++;
-            
-          } catch (subError) {
-            console.error(`🌱 Failed to process seed for ${subscription.email}:`, subError);
-            errors.push({ email: subscription.email, error: subError.message });
+            if (attemptCount === 1) {
+              // Wait 5 seconds before retry
+              console.log('🌱 SEED CRON: Waiting 5 seconds before retry...');
+              await new Promise(resolve => setTimeout(resolve, 5000));
+            }
           }
         }
         
-        // Rate limiting between dockets
-        await new Promise(resolve => setTimeout(resolve, 5000));
+        if (seedingResult?.success) {
+          // Mark subscription as seeded
+          await markSubscriptionSeeded(subscription.subscription_id, env.DB);
+          processed++;
+          if (seedingResult.emailSent) sent++;
+        } else {
+          // Failed after retry - log error for BAU cron to handle
+          const errorMsg = `Failed to seed ${subscription.email} on docket ${subscription.docket_number} after 2 attempts`;
+          console.error(`🌱 SEED CRON: ${errorMsg}`);
+          errors.push({
+            subscription_id: subscription.subscription_id,
+            email: subscription.email,
+            docket: subscription.docket_number,
+            error: errorMsg
+          });
+        }
         
-      } catch (docketError) {
-        console.error(`🌱 Failed to process seed for docket ${docketNumber}:`, docketError);
-        errors.push({ docket: docketNumber, error: docketError.message });
+      } catch (error) {
+        console.error(`🌱 SEED CRON: Unexpected error processing ${subscription.email}:`, error);
+        errors.push({
+          subscription_id: subscription.subscription_id,
+          email: subscription.email,
+          docket: subscription.docket_number,
+          error: error.message
+        });
       }
     }
     
-    const duration = Date.now() - startTime;
-    console.log(`🌱 Seed processing completed: ${processed} processed in ${duration}ms`);
+    const durationMs = Date.now() - startTime;
+    console.log(`🌱 SEED CRON: Completed in ${durationMs}ms. Processed: ${processed}, Sent: ${sent}, Errors: ${errors.length}`);
     
-    return { processed, sent: 0, errors, duration_ms: duration };
+    return { processed, sent, errors, duration: durationMs };
     
   } catch (error) {
-    console.error('🌱 Seed processing failed:', error);
+    console.error('🌱 SEED CRON: Fatal error:', error);
+    throw error;
+  }
+}
+
+/**
+ * Process seed subscriptions - BAU Cron Fallback (max 3 at a time)
+ * @param {Object} env - Environment variables from worker
+ * @returns {Promise<Object>} Seeding results
+ */
+async function processSeedSubscriptions(env: any) {
+  const startTime = Date.now();
+  
+  try {
+    console.log('🌱 BAU CRON: Starting fallback seed processing...');
+    
+    // Find subscriptions that still need seeding (limit to 3 for BAU safety)
+    const seedSubscriptions = await env.DB.prepare(`
+      SELECT s.id as subscription_id, s.docket_number, u.email, u.user_tier
+      FROM subscriptions s
+      JOIN users u ON s.user_id = u.id
+      WHERE s.needs_seed = 1
+      ORDER BY s.created_at ASC
+      LIMIT 3
+    `).all();
+    
+    if (!seedSubscriptions.results || seedSubscriptions.results.length === 0) {
+      console.log('🌱 BAU CRON: No subscriptions need fallback seeding');
+      return { processed: 0, sent: 0, errors: [] };
+    }
+    
+    console.log(`🌱 BAU CRON: Found ${seedSubscriptions.results.length} subscriptions needing fallback seeding`);
+    
+    let processed = 0;
+    let sent = 0;
+    const errors: any[] = [];
+    
+    // Use shared seeding utilities for consistency
+    const { handleImmediateSeeding, markSubscriptionSeeded } = await import('./lib/seeding/seed-operations.js');
+    
+    for (const subscription of seedSubscriptions.results) {
+      try {
+        console.log(`🌱 BAU CRON: Fallback seeding for ${subscription.email} on docket ${subscription.docket_number}`);
+        
+        const seedingResult = await handleImmediateSeeding(
+          subscription.docket_number,
+          subscription.email,
+          subscription.user_tier,
+          env.DB,
+          env
+        );
+        
+        if (seedingResult.success) {
+          await markSubscriptionSeeded(subscription.subscription_id, env.DB);
+          processed++;
+          if (seedingResult.emailSent) sent++;
+          console.log(`🌱 BAU CRON: Fallback seeding successful for ${subscription.email}`);
+        } else {
+          errors.push({
+            subscription_id: subscription.subscription_id,
+            email: subscription.email,
+            docket: subscription.docket_number,
+            error: seedingResult.error || 'Unknown seeding error'
+          });
+        }
+        
+      } catch (error) {
+        console.error(`🌱 BAU CRON: Error in fallback seeding for ${subscription.email}:`, error);
+        errors.push({
+          subscription_id: subscription.subscription_id,
+          email: subscription.email,
+          docket: subscription.docket_number,
+          error: error.message
+        });
+      }
+    }
+    
+    const durationMs = Date.now() - startTime;
+    console.log(`🌱 BAU CRON: Fallback seeding completed in ${durationMs}ms. Processed: ${processed}, Sent: ${sent}, Errors: ${errors.length}`);
+    
+    return { processed, sent, errors, duration: durationMs };
+    
+  } catch (error) {
+    console.error('🌱 BAU CRON: Fatal error in fallback seeding:', error);
     return { processed: 0, sent: 0, errors: [{ error: error.message }] };
   }
 }
@@ -610,19 +686,44 @@ export default {
         return;
       }
 
-      // Process seed subscriptions first (welcome experience)
-      console.log("(INFO) 🌱 Processing seed subscriptions...");
-      const seedResult = await processSeedSubscriptions(env);
-      console.log(`(INFO) 🌱 Seed processing completed: ${seedResult.processed} subscriptions processed`);
+      // Detect which cron triggered the scheduled run based on minute
+      const currentMinute = new Date().getMinutes();
+      const isSeedCron = currentMinute === 45; // Runs at :45
+      const isBauCron = currentMinute === 0;   // Runs at :00
 
-      // Execute the real pipeline (no target docket or filing limit for scheduled runs)
-      const pipelineResult = await runDataPipeline(env, ctx, false);
-      
-      if (!pipelineResult.success) {
-        throw new Error(`Pipeline failed: ${pipelineResult.error}`);
+      if (isSeedCron) {
+        console.log("(INFO) 🌱 Running dedicated seed cron at :45...");
+        const seedResult = await runSeedCron(env);
+        console.log(`(INFO) 🌱 Seed cron completed: ${seedResult.processed} subscriptions processed, ${seedResult.errors.length} errors`);
+        
+      } else if (isBauCron) {
+        console.log("(INFO) 🔄 Running BAU cron at :00...");
+        
+        // First, handle any failed seeds from seed cron (max 3)
+        const seedResult = await processSeedSubscriptions(env);
+        console.log(`(INFO) 🌱 BAU fallback seeding completed: ${seedResult.processed} subscriptions processed`);
+        
+        // Then execute the real pipeline (no target docket or filing limit for scheduled runs)
+        const pipelineResult = await runDataPipeline(env, ctx, false);
+        
+        if (!pipelineResult.success) {
+          throw new Error(`Pipeline failed: ${pipelineResult.error}`);
+        }
+
+        console.log(`(INFO) ✅ BAU pipeline execution completed successfully. Processed ${pipelineResult.pipeline_results?.dockets_processed || 0} dockets, ${pipelineResult.pipeline_results?.filings_fetched || 0} filings.`);
+        
+      } else {
+        console.log("(INFO) ⚠️ Unexpected cron timing - running BAU pipeline as fallback");
+        
+        // Fallback to BAU pipeline if timing is unexpected
+        const pipelineResult = await runDataPipeline(env, ctx, false);
+        
+        if (!pipelineResult.success) {
+          throw new Error(`Pipeline failed: ${pipelineResult.error}`);
+        }
+
+        console.log(`(INFO) ✅ Fallback pipeline execution completed successfully. Processed ${pipelineResult.pipeline_results?.dockets_processed || 0} dockets, ${pipelineResult.pipeline_results?.filings_fetched || 0} filings.`);
       }
-
-      console.log(`(INFO) ✅ Real pipeline execution completed successfully. Processed ${pipelineResult.pipeline_results?.dockets_processed || 0} dockets, ${pipelineResult.pipeline_results?.filings_fetched || 0} filings.`);
 
     } catch (error) {
       status = 'FAILURE';
@@ -708,7 +809,7 @@ export default {
         // Import existing template functions
         const { generateDailyDigest, generateFilingAlert, generateWelcomeEmail } = 
           await import('./lib/email/daily-digest.js');
-        const { sendEmail } = await import('./lib/email.ts');
+        const { sendEmail } = await import('./lib/email');
 
         // Create mock data
         const mockFilings = [{

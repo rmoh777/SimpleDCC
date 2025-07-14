@@ -62,12 +62,39 @@ export const POST: RequestHandler = async ({ request, platform }) => {
     }
 
     // Insert new subscription linked to user (maintaining backward compatibility with email column)
+    // Set needs_seed = 1 for immediate seeding process
     const result = await platform.env.DB
-      .prepare('INSERT INTO subscriptions (user_id, email, docket_number, frequency, created_at) VALUES (?, ?, ?, ?, ?)')
-      .bind(user.id, normalizedEmail, docket_number, 'daily', Math.floor(Date.now() / 1000))
+      .prepare('INSERT INTO subscriptions (user_id, email, docket_number, frequency, created_at, needs_seed) VALUES (?, ?, ?, ?, ?, ?)')
+      .bind(user.id, normalizedEmail, docket_number, 'daily', Math.floor(Date.now() / 1000), 1)
       .run();
 
     if (result.success) {
+      // Trigger immediate seeding process
+      try {
+        const { handleImmediateSeeding, markSubscriptionSeeded } = await import('$lib/seeding/seed-operations.js');
+        
+        console.log(`🌱 Starting immediate seeding for ${normalizedEmail} on docket ${docket_number}`);
+        const seedingResult = await handleImmediateSeeding(
+          docket_number, 
+          normalizedEmail, 
+          user.user_tier, 
+          platform.env.DB, 
+          platform.env
+        );
+
+        if (seedingResult.success) {
+          // Mark subscription as seeded
+          await markSubscriptionSeeded(result.meta.last_row_id, platform.env.DB);
+          console.log(`🌱 Immediate seeding completed for ${normalizedEmail}: ${seedingResult.scenario}`);
+        } else {
+          console.error(`🌱 Immediate seeding failed for ${normalizedEmail}:`, seedingResult.error);
+          // Don't fail subscription - cron-worker will handle as fallback
+        }
+      } catch (seedingError) {
+        console.error('Failed to process immediate seeding:', seedingError);
+        // Don't fail subscription - cron-worker will handle as fallback
+      }
+
       // Send welcome email (don't fail subscription if email fails)
       try {
         const { sendWelcomeEmail } = await import('$lib/email');
