@@ -9,7 +9,7 @@ main = "src/index.ts"
 compatibility_date = "2024-03-08"
 
 [triggers]
-crons = ["0 * * * *"]
+crons = ["45 * * * *", "0 * * * *"]
 
 # --- PERSISTENT LOGGING CONFIGURATION ---
 # This ensures that logging settings are preserved on every deploy

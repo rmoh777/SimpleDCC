@@ -50,8 +50,8 @@ export async function setupNewDocketMonitoring(docketNumber, userEmail, userTier
   try {
     console.log(`🌱 Setting up new docket monitoring for ${docketNumber}`);
 
-    // Import ECFS client functions
-    const { fetchSingleLatestFiling } = await import('../../cron-worker/src/lib/fcc/ecfs-enhanced-client.js');
+    // Import ECFS client functions (need to create website version)
+    const { fetchSingleLatestFiling } = await import('../fcc/ecfs-client.js');
     
     // Fetch latest filing from ECFS
     const latestFiling = await fetchSingleLatestFiling(docketNumber, env);
@@ -61,8 +61,8 @@ export async function setupNewDocketMonitoring(docketNumber, userEmail, userTier
       return { success: false, error: 'No filings found for this docket' };
     }
 
-    // Store the filing in our database
-    const { storeFilingsEnhanced } = await import('../../cron-worker/src/lib/storage/filing-storage-enhanced.js');
+    // Store the filing in our database (need to create website version)
+    const { storeFilingsEnhanced } = await import('../storage/filing-storage.js');
     await storeFilingsEnhanced([latestFiling], db, env, {
       enableAIProcessing: true,
       enableJinaProcessing: true
@@ -184,7 +184,7 @@ export async function handleImmediateSeeding(docketNumber, userEmail, userTier, 
         console.log(`🌱 ${docketNumber}: Found historical filing ${historicalFiling.id} - checking if current`);
         
         // Import ECFS client to check current status
-        const { fetchSingleLatestFiling } = await import('../../cron-worker/src/lib/fcc/ecfs-enhanced-client.js');
+        const { fetchSingleLatestFiling } = await import('../fcc/ecfs-client.js');
         const currentFiling = await fetchSingleLatestFiling(docketNumber, env);
         
         if (currentFiling && currentFiling.id === historicalFiling.id) {
