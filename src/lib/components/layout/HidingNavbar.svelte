@@ -14,52 +14,53 @@
 
   onMount(() => {
     // Ensure navbar exists
-    if (!navbar) return;
+    if (!navbar) {
+      console.error('Navbar element not found!');
+      return;
+    }
 
-    // Set initial state with enhanced properties for smooth animations
+    console.log('Navbar element found:', navbar);
+
+    // Set initial state
     gsap.set(navbar, {
       y: 0,
       opacity: 1,
-      scale: 1,
       transformOrigin: "center top"
     });
 
     function updateNavbar() {
       const scrollY = window.scrollY;
-      const scrollThreshold = 100; // Start hiding after 100px scroll
-      const scrollDelta = scrollY - lastScrollY;
-      const scrollSpeed = Math.abs(scrollDelta);
+      const scrollThreshold = 80; // Start hiding after 80px scroll
+      
+      console.log('Scroll Y:', scrollY, 'Last:', lastScrollY, 'Hidden:', isHidden); // Debug log
 
-      // Enhanced logic for smoother transitions
+      // Simplified and more reliable logic
       if (scrollY > scrollThreshold) {
-        if (scrollY > lastScrollY && !isHidden && scrollSpeed > 2) {
-          // Scrolling down - hide navbar with smooth animation
+        if (scrollY > lastScrollY && !isHidden) {
+          // Scrolling down - hide navbar
+          console.log('Hiding navbar'); // Debug log
           gsap.to(navbar, {
-            y: -navbar.offsetHeight - 10,
-            opacity: 0.8,
-            scale: 0.95,
-            duration: 0.6,
-            ease: "power3.out"
+            y: -navbar.offsetHeight,
+            duration: 0.4,
+            ease: "power2.out"
           });
           isHidden = true;
         } else if (scrollY < lastScrollY && isHidden) {
-          // Scrolling up - show navbar with bounce-back effect
+          // Scrolling up - show navbar
+          console.log('Showing navbar'); // Debug log
           gsap.to(navbar, {
             y: 0,
-            opacity: 1,
-            scale: 1,
-            duration: 0.7,
-            ease: "back.out(1.2)"
+            duration: 0.4,
+            ease: "power2.out"
           });
           isHidden = false;
         }
       } else if (isHidden) {
-        // Near the top - always show with smooth transition
+        // Near the top - always show
+        console.log('Near top, showing navbar'); // Debug log
         gsap.to(navbar, {
           y: 0,
-          opacity: 1,
-          scale: 1,
-          duration: 0.5,
+          duration: 0.4,
           ease: "power2.out"
         });
         isHidden = false;
@@ -87,139 +88,107 @@
   });
 </script>
 
-<!-- Navigation HTML -->
-<nav 
-  bind:this={navbar} 
-  class="navbar"
->
-  <!-- Government Banner inside navbar -->
-  <div class="gov-banner">
-    <div class="container">
-      🇺🇸 An FCC docket monitoring service - Not affiliated with the Federal Communications Commission
-    </div>
+<!-- Government Banner (separate from navbar) - DISABLED FOR NOW -->
+<!-- <div class="gov-banner">
+  <div class="container">
+    🇺🇸 An FCC docket monitoring service - Not affiliated with the Federal Communications Commission
   </div>
-  <div class="nav-container">
-    <!-- Logo -->
-    <div class="logo-section">
-      <a href="/" class="logo-link">
-        <div class="logo-graphic">
-          <div class="logo-icon">📡</div>
-          <div class="logo-text">
-            Docket<span class="logo-cc">CC</span>
+</div> -->
+
+<!-- Header with original styling -->
+<header bind:this={navbar} class="header">
+  <div class="container">
+    <nav class="nav">
+      <div class="logo-section">
+        <a href="/" class="logo-link">
+          <div class="logo-graphic">
+            <div class="logo-icon">📡</div>
+            <div class="logo-text">
+              Docket<span class="logo-cc">CC</span>
+            </div>
           </div>
-        </div>
-      </a>
-    </div>
-
-    <!-- Navigation Links -->
-    <div class="nav-links">
-      <a href="/about" class="nav-link" class:active={$page.url.pathname === '/about'}>
-        About
-      </a>
-      <a href="/manage" class="nav-link" class:active={$page.url.pathname === '/manage'}>
-        My Subscriptions
-      </a>
-      <a href="/pricing" class="nav-link" class:active={$page.url.pathname === '/pricing'}>
-        Pricing
-      </a>
-    </div>
-
-    <!-- CTA Button -->
-    <div class="nav-cta">
-      <a href="/" class="btn-primary">Get Started</a>
-    </div>
+        </a>
+      </div>
+      
+      <div class="nav-links">
+        <a href="/about" class="nav-link" class:active={$page.url.pathname === '/about'}>
+          About
+        </a>
+        <a href="/manage" class="nav-link" class:active={$page.url.pathname === '/manage'}>
+          My Subscriptions
+        </a>
+        <a href="/pricing" class="nav-link" class:active={$page.url.pathname === '/pricing'}>
+          Pricing
+        </a>
+      </div>
+    </nav>
   </div>
-</nav>
+</header>
 
 <style>
-  /* Government Banner */
-  .gov-banner {
+  /* Government Banner - DISABLED */
+  /* .gov-banner {
     background: var(--color-secondary);
     color: white;
     padding: 0.5rem 0;
     font-size: var(--font-size-sm);
     text-align: center;
     border-bottom: 1px solid #334155;
-  }
+  } */
 
-  .navbar {
+  .header {
+    background: rgba(255, 255, 255, 0.98);
+    backdrop-filter: blur(20px);
+    padding: 1rem 0;
+    box-shadow: var(--shadow-lg);
     position: fixed;
     top: 0;
     left: 0;
     right: 0;
     z-index: 1000;
-    background: rgba(255, 255, 255, 0.95);
-    backdrop-filter: blur(20px);
-    -webkit-backdrop-filter: blur(20px);
-    border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+    border-bottom: 4px solid var(--color-primary);
+    will-change: transform;
     transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-    will-change: transform, opacity;
   }
 
-  .navbar::before {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background: linear-gradient(135deg, rgba(255, 255, 255, 0.1) 0%, rgba(255, 255, 255, 0.05) 100%);
-    pointer-events: none;
+  .nav {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
   }
 
-  .nav-container {
+  .container {
     max-width: var(--max-width-content);
     margin: 0 auto;
-    padding: var(--spacing-4) var(--spacing-8);
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    position: relative;
-  }
-
-  .logo-section {
-    display: flex;
-    align-items: center;
+    padding: 0 var(--spacing-8);
   }
 
   .logo-link {
     text-decoration: none;
-    color: inherit;
-    transition: transform 0.3s ease;
-  }
-
-  .logo-link:hover {
-    transform: translateY(-1px);
   }
 
   .logo-graphic {
     display: flex;
     align-items: center;
-    gap: 0.75rem;
+    gap: 0.5rem;
   }
 
   .logo-icon {
-    width: 40px;
-    height: 40px;
+    width: 36px;
+    height: 36px;
     background: linear-gradient(135deg, var(--color-primary), var(--color-primary-hover));
-    border-radius: var(--border-radius-lg);
+    border-radius: var(--border-radius);
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 1.2rem;
-    box-shadow: 0 4px 15px rgba(16, 185, 129, 0.3);
-    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  }
-
-  .logo-icon:hover {
-    transform: scale(1.05);
-    box-shadow: 0 8px 25px rgba(16, 185, 129, 0.4);
+    font-size: 1.3rem;
+    box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
   }
 
   .logo-text {
-    font-size: var(--font-size-2xl);
-    font-weight: 800;
-    color: var(--color-text-primary);
+    font-size: 1.6rem;
+    font-weight: var(--font-weight-black);
+    color: var(--color-secondary);
     letter-spacing: -0.5px;
   }
 
@@ -229,98 +198,28 @@
 
   .nav-links {
     display: flex;
-    align-items: center;
-    gap: var(--spacing-8);
+    gap: 2rem;
+    list-style: none;
   }
 
   .nav-link {
+    color: #374151;
     text-decoration: none;
-    color: var(--color-text-secondary);
-    font-weight: 500;
-    font-size: var(--font-size-base);
-    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-    position: relative;
-    padding: var(--spacing-3) var(--spacing-5);
-    border-radius: var(--border-radius-lg);
+    font-weight: var(--font-weight-semibold);
+    padding: 0.75rem 1.5rem;
+    border-radius: 12px;
+    transition: all var(--transition-normal);
   }
 
-  .nav-link:hover {
-    color: var(--color-primary);
-    background: rgba(16, 185, 129, 0.08);
-    transform: translateY(-1px);
-  }
-
+  .nav-link:hover,
   .nav-link.active {
-    color: var(--color-primary);
-    background: rgba(16, 185, 129, 0.12);
-    font-weight: 600;
-  }
-
-  .nav-link::after {
-    content: '';
-    position: absolute;
-    bottom: -2px;
-    left: 50%;
-    width: 0;
-    height: 2px;
-    background: var(--color-primary);
-    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-    transform: translateX(-50%);
-  }
-
-  .nav-link:hover::after,
-  .nav-link.active::after {
-    width: 80%;
-  }
-
-  .nav-cta {
-    display: flex;
-    align-items: center;
-  }
-
-  .btn-primary {
-    background: linear-gradient(135deg, var(--color-primary), var(--color-primary-hover));
+    background: var(--color-secondary);
     color: white;
-    padding: var(--spacing-3) var(--spacing-6);
-    border-radius: var(--border-radius-xl);
-    text-decoration: none;
-    font-weight: 600;
-    font-size: var(--font-size-sm);
-    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-    box-shadow: 0 4px 15px rgba(16, 185, 129, 0.3);
-    position: relative;
-    overflow: hidden;
-  }
-
-  .btn-primary::before {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: -100%;
-    width: 100%;
-    height: 100%;
-    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
-    transition: left 0.5s;
-  }
-
-  .btn-primary:hover::before {
-    left: 100%;
-  }
-
-  .btn-primary:hover {
     transform: translateY(-2px);
-    box-shadow: 0 8px 25px rgba(16, 185, 129, 0.4);
+    box-shadow: var(--shadow-lg);
   }
 
-  .btn-primary:active {
-    transform: translateY(0);
-  }
 
-  .container {
-    max-width: var(--max-width-content);
-    margin: 0 auto;
-    padding: 0 var(--spacing-8);
-  }
 
   /* Mobile responsive */
   @media (max-width: 768px) {
@@ -355,6 +254,6 @@
 
   /* Add top margin to body content to account for fixed navbar */
   :global(body) {
-    padding-top: 120px;
+    padding-top: 80px; /* Reduced since no government banner */
   }
 </style> 
