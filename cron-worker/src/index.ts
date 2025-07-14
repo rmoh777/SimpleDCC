@@ -8,19 +8,15 @@ import { checkDatabaseSchema } from './lib/database/auto-migration';
 import { processFilingBatchEnhanced } from './lib/ai/gemini-enhanced';
 
 /**
- * Process seed subscriptions - Welcome experience for new users
+ * Process seed subscriptions - Simplified single-filing welcome experience
  * @param {Object} env - Environment variables from worker
  * @returns {Promise<Object>} Seeding results
  */
 async function processSeedSubscriptions(env: any) {
-  // TEMPORARY FIX: Disable seed processing to prevent runaway API calls
-  console.log('🌱 Seed processing temporarily disabled to prevent subrequest limit issues');
-  return { processed: 0, sent: 0, errors: [] };
-  
   const startTime = Date.now();
   
   try {
-    console.log('🌱 Starting seed subscription processing...');
+    console.log('🌱 Starting simplified seed processing...');
     
     // Find subscriptions that need seeding
     const seedSubscriptions = await env.DB.prepare(`
@@ -28,7 +24,7 @@ async function processSeedSubscriptions(env: any) {
       FROM subscriptions s
       JOIN users u ON s.user_id = u.id
       WHERE s.needs_seed = 1
-      LIMIT 25
+      LIMIT 10
     `).all();
     
     if (!seedSubscriptions.results || seedSubscriptions.results.length === 0) {
@@ -36,10 +32,9 @@ async function processSeedSubscriptions(env: any) {
       return { processed: 0, sent: 0, errors: [] };
     }
     
-    console.log(`🌱 Found ${seedSubscriptions.results.length} subscriptions needing seed digest`);
+    console.log(`🌱 Found ${seedSubscriptions.results.length} subscriptions needing seed`);
     
     let processed = 0;
-    let sent = 0;
     const errors: any[] = [];
     
     // Group by docket to process efficiently
@@ -55,43 +50,58 @@ async function processSeedSubscriptions(env: any) {
       try {
         console.log(`🌱 Processing seed for docket ${docketNumber}...`);
         
-        // Fetch latest 5 filings for this docket
-        const filings = await fetchLatestFilings(docketNumber, 5, env);
+        // Use existing smart detection (proven, efficient)
+        const smartResult = await smartFilingDetection(docketNumber, env);
         
-        if (filings.length === 0) {
-          console.log(`🌱 No filings found for docket ${docketNumber}, skipping seed`);
+        let seedFiling = null;
+        
+        if (smartResult.status === 'new_found' && smartResult.newFilings.length > 0) {
+          // Use the latest new filing (already processed by smart detection)
+          seedFiling = smartResult.newFilings[0];
+          console.log(`🌱 Using new filing ${seedFiling.id} for ${docketNumber}`);
+        } else {
+          // Fallback: Get most recent filing from database
+          const recentFiling = await env.DB.prepare(`
+            SELECT * FROM filings 
+            WHERE docket_number = ? 
+            ORDER BY date_received DESC 
+            LIMIT 1
+          `).bind(docketNumber).first();
+          
+          if (recentFiling) {
+            seedFiling = {
+              ...recentFiling,
+              documents: recentFiling.documents ? JSON.parse(recentFiling.documents) : null,
+              raw_data: recentFiling.raw_data ? JSON.parse(recentFiling.raw_data) : null
+            };
+            console.log(`🌱 Using existing filing ${seedFiling.id} for ${docketNumber}`);
+          }
+        }
+        
+        if (!seedFiling) {
+          console.log(`🌱 No filings available for docket ${docketNumber}, skipping`);
           continue;
         }
         
-        console.log(`🌱 Found ${filings.length} filings for docket ${docketNumber}, processing with AI...`);
-        
-        // Process filings through AI pipeline
-        const processedFilings = await processFilingBatchEnhanced(filings, env, {
-          maxConcurrent: 2,
-          delayBetween: 1000
-        });
-        
-        console.log(`🌱 AI processing completed for ${processedFilings.length} filings`);
-        
-        // Create seed digest notifications for each subscription
+        // Queue seed digest for each subscription (existing notification system)
         for (const subscription of subscriptions as any[]) {
           try {
-            // Queue seed digest notification
             await env.DB.prepare(`
               INSERT INTO notification_queue (user_email, docket_number, digest_type, filing_data, created_at)
               VALUES (?, ?, 'seed_digest', ?, ?)
             `).bind(
               subscription.email,
               docketNumber,
-              JSON.stringify({ filings: processedFilings, tier: subscription.user_tier }),
+              JSON.stringify({ 
+                filings: [seedFiling], 
+                tier: subscription.user_tier 
+              }),
               Date.now()
             ).run();
             
             // Mark subscription as seeded
             await env.DB.prepare(`
-              UPDATE subscriptions 
-              SET needs_seed = 0 
-              WHERE id = ?
+              UPDATE subscriptions SET needs_seed = 0 WHERE id = ?
             `).bind(subscription.subscription_id).run();
             
             console.log(`🌱 Queued seed digest for ${subscription.email} on docket ${docketNumber}`);
@@ -103,8 +113,8 @@ async function processSeedSubscriptions(env: any) {
           }
         }
         
-        // Rate limiting between dockets
-        await new Promise(resolve => setTimeout(resolve, 5000));
+        // Rate limiting between dockets (reduced from 5000ms to 2000ms)
+        await new Promise(resolve => setTimeout(resolve, 2000));
         
       } catch (docketError) {
         console.error(`🌱 Failed to process seed for docket ${docketNumber}:`, docketError);
