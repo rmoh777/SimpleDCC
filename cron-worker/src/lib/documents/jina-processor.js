@@ -389,20 +389,20 @@ export async function processFilingDocuments(filing, env) {
               processing_method: 'jina_fallback_extraction'
           });
           
-            processedCount++;
-            console.log(`✅ Fallback Jina processing successful: ${doc.filename} (${sanitizedText.length} chars) via ${extractionResult.extraction_strategy}`);
-            
+          processedCount++;
+          console.log(`✅ Fallback Jina processing successful: ${doc.filename} (${sanitizedText.length} chars) via ${extractionResult.extraction_strategy}`);
+          
         } catch (error) {
-            console.error(`❌ Fallback Jina processing failed for ${doc.filename}:`, error);
+          console.error(`❌ Fallback Jina processing failed for ${doc.filename}:`, error);
           processedDocuments.push({
             ...doc,
             status: 'failed',
             error: error.message,
-              processed_at: Date.now(),
-              processing_method: 'jina_fallback_extraction'
-            });
-            failedCount++;
-          }
+            processed_at: Date.now(),
+            processing_method: 'jina_fallback_extraction'
+          });
+          failedCount++;
+        }
         }
         
         // Unsupported: Non-FCC URLs
