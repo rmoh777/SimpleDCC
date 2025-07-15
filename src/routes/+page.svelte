@@ -19,6 +19,7 @@
     time: string;
   } | null = null;
   let currentStep = 1; // 1: Search, 2: Select, 3: Subscribe, 4: Success
+  let debounceTimer: ReturnType<typeof setTimeout> | null = null;
   
   const mockSuggestions = [
     { number: '02-6', name: 'Schools and Libraries Universal Service Support Mechanism' },
@@ -26,7 +27,16 @@
     { number: '11-42', name: 'Connect America Fund/Universal Service Reform' }
   ];
   
+  function isValidDocketNumber(docket: string): boolean {
+    const docketRegex = /^\d{2,4}-\d{1,4}$/;
+    return docketRegex.test(docket.trim());
+  }
+
   function handleSearchInput() {
+    if (debounceTimer) clearTimeout(debounceTimer);
+    
+    const isMock = mockSuggestions.some(s => s.number === docketSearch.trim());
+    
     if (docketSearch.length > 0) {
       showSuggestions = true;
       hidePreview();
@@ -35,6 +45,12 @@
       showSuggestions = false;
       hidePreview();
       currentStep = 1;
+    }
+
+    if (isValidDocketNumber(docketSearch) && !isMock) {
+      debounceTimer = setTimeout(() => {
+        selectCustomDocket(docketSearch);
+      }, 1000);
     }
   }
   
@@ -48,6 +64,16 @@
     currentStep = 2;
   }
   
+  function selectCustomDocket(docketNumber: string) {
+    docketSearch = docketNumber;
+    selectedDocket = docketNumber;
+    selectedName = '';
+    showSuggestions = false;
+    showPreview = true;
+    showEmailSection = true;
+    currentStep = 2;
+  }
+
   function hidePreview() {
     showPreview = false;
     showEmailSection = false;
@@ -195,8 +221,11 @@
     {#if showPreview}
       <div class="preview-card show">
         <div class="preview-header">
+          <div class="status">✓ DOCKET MONITORING ACTIVATED</div>
           <h3>Proceeding {selectedDocket}</h3>
-          <div class="selected-name">{selectedName}</div>
+          {#if selectedName}
+            <div class="selected-name">{selectedName}</div>
+          {/if}
         </div>
         
         <div class="benefits">
@@ -685,6 +714,12 @@
   .preview-header h3 {
     font-size: 1.3rem;
     margin-bottom: 0.5rem;
+  }
+
+  .preview-title {
+    font-size: 1.1rem;
+    color: rgba(255,255,255,0.9);
+    margin-top: 0.5rem;
   }
 
   .selected-name {
