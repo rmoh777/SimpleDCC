@@ -247,28 +247,26 @@ function parseStructuredSummary(rawSummary) {
       summary: sections.summary || 'Summary not available',
       key_points: sections.key_points || [],
       stakeholders: sections.stakeholders || 'Stakeholder analysis not available',
-      regulatory_impact: sections.regulatory_impact || 'Impact analysis not available', 
-      document_analysis: sections.document_analysis || null,
-      confidence: sections.confidence || 'Medium',
-      raw_response: rawSummary
+      regulatory_impact: sections.regulatory_impact || 'Impact analysis not available',
+      document_analysis: sections.document_analysis || 'Document analysis not available',
+      confidence: sections.confidence || 'Confidence not available'
     };
     
   } catch (error) {
-    console.error('❌ Error parsing structured summary:', error);
+    console.error('❌ Failed to parse structured summary:', error);
     return {
-      summary: rawSummary,
+      summary: rawSummary, // Return raw summary on parsing failure
       key_points: [],
-      stakeholders: 'Parse error',
-      regulatory_impact: 'Parse error',
-      document_analysis: null,
-      confidence: 'Low',
-      raw_response: rawSummary
+      stakeholders: 'Parsing failed',
+      regulatory_impact: 'Parsing failed',
+      document_analysis: 'Parsing failed',
+      confidence: 'Low'
     };
   }
 }
 
 // Enhanced Filing Storage with AI Processing Integration
-import { processFilingDocuments } from '../documents/jina-processor.js';
+import { extractDocumentContent } from '../documents/jina-processor.js';
 
 /**
  * Enhanced filing processing with circuit breaker and graceful degradation
@@ -299,8 +297,6 @@ export async function processFilingEnhanced(filing, env) {
     if (filing.documents && Array.isArray(filing.documents) && filing.documents.length > 0) {
       console.log(`📄 Processing ${filing.documents.length} documents for filing ${filing.id}`);
       
-      const { extractDocumentContent } = await import('../documents/jina-processor.js');
-      
       for (const doc of filing.documents) {
         if (doc.src && doc.type === 'pdf') {
           try {
@@ -320,90 +316,68 @@ export async function processFilingEnhanced(filing, env) {
     
     // Generate AI summary with filing object and document text
     const aiResult = await generateEnhancedSummary(filing, documentText, env);
-    const processingTime = Date.now() - startTime;
-    
-    console.log(`✅ Enhanced processing complete for filing ${filing.id} in ${processingTime}ms`);
-    
-    // Return enhanced filing WITHOUT overwriting critical fields
+
     return {
       ...filing,
-      // Preserve original fields
-      id: filing.id,
-      docket_number: filing.docket_number,
-      filing_url: filing.filing_url,
-      documents: filing.documents, // PRESERVE original documents array
-      raw_data: filing.raw_data,
-      // Add AI enhancements
-      ai_summary: aiResult.summary,
-      ai_key_points: JSON.stringify(aiResult.key_points),
-      ai_stakeholders: JSON.stringify(aiResult.stakeholders),
-      ai_regulatory_impact: aiResult.regulatory_impact,
-      ai_confidence: aiResult.confidence,
-      ai_document_analysis: documentText.length > 0 ? 'processed' : 'none',
-      documents_processed: documentsProcessed,
       ai_enhanced: true,
-      status: aiResult.processing_note ? 'completed_degraded' : 'completed_enhanced',
-      processed_at: Date.now(),
-      processing_time_ms: processingTime
+      ai_summary: aiResult.summary,
+      ai_key_points: aiResult.key_points,
+      ai_stakeholders: aiResult.stakeholders,
+      ai_regulatory_impact: aiResult.regulatory_impact,
+      ai_document_analysis: aiResult.document_analysis,
+      ai_confidence: aiResult.ai_confidence,
+      documents_processed: documentsProcessed,
+      status: 'completed_enhanced',
+      processing_notes: aiResult.processing_notes
     };
     
   } catch (error) {
-    const errorClass = classifyError(error);
-    console.error(`❌ Enhanced processing failed for filing ${filing.id}:`, {
-      error: error.message,
-      classification: errorClass,
-      stack: error.stack
-    });
+    console.error(`❌ AI processing failed for filing ${filing.id}:`, error.message);
     
-    recordFailure(error);
-    
-    // Return basic processed filing with error info
     return {
       ...filing,
-      ai_summary: `Processing error: ${error.message}`,
+      status: 'failed_ai_processing',
+      ai_summary: `AI processing failed: ${error.message}`,
       ai_enhanced: false,
-      status: 'completed_with_errors',
-      processed_at: Date.now(),
-      processing_error: errorClass.type
+      processed_at: Date.now()
     };
   }
 }
 
 /**
- * Batch process multiple filings with enhanced AI
+ * Batch process filings with concurrency and delay
+ * @param {Array} filings - Array of filings to process
+ * @param {Object} env - Environment variables
+ * @param {Object} options - Batch processing options
+ * @returns {Promise<Array>} Array of processed filings
  */
 export async function processFilingBatchEnhanced(filings, env, options = {}) {
   const { maxConcurrent = 2, delayBetween = 1000 } = options;
   const results = [];
+  const queue = [...filings];
   
-  console.log(`🚀 Enhanced batch processing: ${filings.length} filings`);
-  
-  // Process in batches to avoid rate limiting
-  for (let i = 0; i < filings.length; i += maxConcurrent) {
-    const batch = filings.slice(i, i + maxConcurrent);
+  async function processNext() {
+    if (queue.length === 0) return;
     
-    const batchPromises = batch.map(filing => 
-      processFilingEnhanced(filing, env).catch(error => ({
-        ...filing,
-        status: 'failed',
-        error: error.message,
-        processed_at: Date.now()
-      }))
-    );
-    
-    const batchResults = await Promise.all(batchPromises);
-    results.push(...batchResults);
-    
-    console.log(`✅ Enhanced batch ${Math.floor(i/maxConcurrent) + 1}: ${batchResults.length} filings processed`);
-    
-    // Delay between batches
-    if (i + maxConcurrent < filings.length) {
-      await new Promise(resolve => setTimeout(resolve, delayBetween));
+    const filing = queue.shift();
+    if (filing) {
+      try {
+        const processed = await processFilingEnhanced(filing, env);
+        results.push(processed);
+      } catch (error) {
+        console.error(`❌ Batch processing failed for filing ${filing.id}:`, error);
+        results.push({ ...filing, status: 'failed_batch' });
+      } finally {
+        if (delayBetween > 0) {
+          await new Promise(resolve => setTimeout(resolve, delayBetween));
+        }
+        await processNext();
+      }
     }
   }
   
-  const successful = results.filter(r => r.status?.includes('completed')).length;
-  console.log(`🎯 Enhanced batch complete: ${successful}/${results.length} successful`);
+  const workers = Array(maxConcurrent).fill(null).map(processNext);
+  await Promise.all(workers);
   
   return results;
 } 
