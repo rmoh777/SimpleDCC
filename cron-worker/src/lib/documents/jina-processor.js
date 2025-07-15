@@ -2,6 +2,29 @@
 // UNIFIED JINA APPROACH: Robust handling of both JSON and plain text responses
 
 /**
+ * WRAPPER FUNCTION FOR AI PROCESSING COMPATIBILITY
+ * Extract text content from a single document URL - used by AI processing
+ * @param {string} url - Document URL to extract text from
+ * @param {Object} env - Environment variables object
+ * @returns {Promise<string>} Extracted text content
+ */
+export async function extractDocumentContent(url, env) {
+  try {
+    console.log(`🔗 AI Processing: Extracting content from ${url}`);
+    const result = await extractTextFromHTML(url, env);
+    
+    // Sanitize text to remove "undefined" artifacts
+    const sanitizedText = result.text.replace(/undefined/g, '');
+    console.log(`✅ AI Processing: Extracted ${sanitizedText.length} characters via ${result.extraction_strategy}`);
+    
+    return sanitizedText;
+  } catch (error) {
+    console.error(`❌ AI Processing: Failed to extract content from ${url}:`, error.message);
+    throw error;
+  }
+}
+
+/**
  * Extract text from any URL using unified Jina approach with intelligent response handling
  * Handles both direct PDFs and HTML viewer URLs
  * @param {string} url - URL like "https://docs.fcc.gov/public/attachments/file.pdf" or "https://www.fcc.gov/ecfs/document/ID/1"
