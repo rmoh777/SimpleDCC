@@ -740,12 +740,13 @@ export default {
         duration_ms: durationMs,
         metrics: JSON.stringify({}),
         error_message: errorMessage,
-        error_stack: errorStack
+        error_stack: errorStack,
+        timestamp: Math.floor(Date.now() / 1000)
       };
 
       try {
         const stmt = env.DB.prepare(
-          'INSERT INTO system_health_logs (service_name, status, run_timestamp, duration_ms, metrics, error_message, error_stack) VALUES (?, ?, ?, ?, ?, ?, ?)'
+          'INSERT INTO system_health_logs (service_name, status, run_timestamp, duration_ms, metrics, error_message, error_stack, timestamp) VALUES (?, ?, ?, ?, ?, ?, ?, ?)'
         ).bind(
           logEntry.service_name,
           logEntry.status,
@@ -753,7 +754,8 @@ export default {
           logEntry.duration_ms,
           logEntry.metrics,
           logEntry.error_message,
-          logEntry.error_stack
+          logEntry.error_stack,
+          logEntry.timestamp
         );
         
         ctx.waitUntil(stmt.run());
