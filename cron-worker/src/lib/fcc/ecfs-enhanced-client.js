@@ -254,7 +254,7 @@ async function sendDelugeNotification(email, docketNumber, env) {
     const text = `
 High Activity Alert - Docket ${docketNumber}
 
-Hi ${firstName || 'there'},
+Hi there,
 
 We've detected unusually high filing activity for docket ${docketNumber} that you're subscribed to.
 
