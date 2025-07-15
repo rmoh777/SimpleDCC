@@ -309,11 +309,19 @@ export async function queueNotificationForUser(
     let scheduledFor = Math.floor(Date.now() / 1000);
     
     if (digestType === 'daily') {
-      // Schedule for next 9 AM (adjust for your timezone preference)
-      const tomorrow = new Date();
-      tomorrow.setDate(tomorrow.getDate() + 1);
-      tomorrow.setHours(9, 0, 0, 0);
-      scheduledFor = Math.floor(tomorrow.getTime() / 1000);
+      // Schedule for 1 PM ET today (or next day if past 1 PM)
+      const now = new Date();
+      const etTime = new Date(now.toLocaleString("en-US", {timeZone: "America/New_York"}));
+      
+      let scheduledDate = new Date(etTime);
+      scheduledDate.setHours(13, 0, 0, 0); // 1 PM ET
+      
+      // If it's already past 1 PM ET today, schedule for 1 PM ET tomorrow
+      if (etTime.getHours() >= 13) {
+        scheduledDate.setDate(scheduledDate.getDate() + 1);
+      }
+      
+      scheduledFor = Math.floor(scheduledDate.getTime() / 1000);
     } else if (digestType === 'weekly') {
       // Schedule for next Monday 9 AM
       const nextMonday = new Date();
