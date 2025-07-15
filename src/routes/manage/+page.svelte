@@ -1,8 +1,10 @@
 <script lang="ts">
   import { onMount } from 'svelte';
+  import FrequencyToggle from '$lib/components/FrequencyToggle.svelte';
   
   let email = '';
   let subscriptions: any[] = [];
+  let userTier = 'free';
   let isLoading = false;
   let errorMessage = '';
   let showEmailForm = true;
@@ -21,6 +23,7 @@
       
       if (response.ok) {
         subscriptions = data.subscriptions || [];
+        userTier = data.user_tier || 'free';
         showEmailForm = false;
       } else {
         errorMessage = data.error || 'Failed to load subscriptions';
@@ -78,6 +81,15 @@
       month: 'short',
       day: 'numeric'
     }).format(new Date(timestamp * 1000));
+  }
+
+  function handleFrequencyChange(event: CustomEvent<{frequency: string}>, docketNumber: string) {
+    // Update the local subscription data
+    subscriptions = subscriptions.map(sub => 
+      sub.docket_number === docketNumber 
+        ? { ...sub, frequency: event.detail.frequency }
+        : sub
+    );
   }
 </script>
 
@@ -209,8 +221,14 @@
                         Subscribed {formatDate(subscription.created_at)}
                       </div>
                     </div>
-                    <div class="subscription-status">
-                      <span class="status-badge active">Active</span>
+                    <div class="frequency-controls">
+                      <FrequencyToggle 
+                        frequency={subscription.frequency || 'daily'}
+                        {userTier}
+                        {email}
+                        docketNumber={subscription.docket_number}
+                        on:change={(event) => handleFrequencyChange(event, subscription.docket_number)}
+                      />
                     </div>
                   </div>
                   
@@ -651,6 +669,11 @@
     color: #059669;
   }
 
+  .frequency-controls {
+    display: flex;
+    align-items: center;
+  }
+
   .features {
     display: flex;
     gap: 1.5rem;
@@ -772,6 +795,11 @@
     .subscription-header {
       flex-direction: column;
       gap: 0.5rem;
+    }
+
+    .frequency-controls {
+      justify-content: center;
+      margin: 0.5rem 0;
     }
 
     .status-notification {
