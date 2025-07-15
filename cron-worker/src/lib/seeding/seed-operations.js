@@ -115,9 +115,9 @@ export async function handleImmediateSeeding(docketNumber, userEmail, userTier, 
 
     // Store filing in database first (Option 1)
     try {
-      const { storeFilings } = await import('../storage/filing-storage.js');
-      const storageResult = await storeFilings([seedFiling], db);
-      console.log(`🌱 Stored filing ${seedFiling.id} in database: ${storageResult.newFilings} new, ${storageResult.duplicates} duplicates`);
+      const { storeFilingsEnhanced } = await import('../storage/filing-storage-enhanced.js');
+      const storageResult = await storeFilingsEnhanced([seedFiling], db, env);
+      console.log(`🌱 Stored filing ${seedFiling.id} in database with AI enhancement: ${storageResult.newFilings} new, ${storageResult.duplicates} duplicates`);
     } catch (storeError) {
       console.error(`🌱 Failed to store filing ${seedFiling.id}:`, storeError);
       // Continue with notification even if storage fails

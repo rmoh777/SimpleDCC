@@ -315,28 +315,39 @@
               
               <div class="subscription-controls">
                 <div class="frequency-control">
-                  <label class="frequency-label">Frequency:</label>
-                  <select 
-                    class="frequency-select"
-                    value={subscription.frequency}
-                    disabled={isFrequencyUpdating(subscription.id)}
-                    on:change={(e) => handleFrequencyUpdate(subscription.id, subscription.docket_number, (e.target as HTMLSelectElement).value)}
+                  <label 
+                    class="frequency-label" 
+                    for="frequency-toggle-{subscription.id}"
                   >
-                    {#each getFrequencyOptions(userTier) as option}
-                      <option value={option.value} disabled={!option.available}>
-                        {option.label}
-                      </option>
-                    {/each}
-                  </select>
+                    Notification Frequency
+                  </label>
+                  <div 
+                    class="frequency-toggle-wrap"
+                    title={userTier === 'free' ? 'Upgrade to Pro for Immediate alerts' : ''}
+                  >
+                    <label class="toggle-switch" for="frequency-toggle-{subscription.id}">
+                      <input 
+                        type="checkbox" 
+                        id="frequency-toggle-{subscription.id}"
+                        checked={subscription.frequency === 'immediate'}
+                        disabled={isFrequencyUpdating(subscription.id) || userTier === 'free'}
+                        on:change={(e) => handleFrequencyUpdate(subscription.id, subscription.docket_number, e.currentTarget.checked ? 'immediate' : 'daily')}
+                      />
+                      <span class="slider">
+                        <span class="toggle-text-daily">Daily</span>
+                        <span class="toggle-text-immediate">Immediate</span>
+                      </span>
+                    </label>
+                  </div>
                   {#if isFrequencyUpdating(subscription.id)}
                     <span class="frequency-updating">Updating...</span>
                   {/if}
                 </div>
                 
-                {#if userTier === 'free' && subscription.frequency !== 'daily'}
+                {#if userTier === 'free'}
                   <div class="frequency-upgrade-note">
                     <span class="upgrade-icon">⭐</span>
-                    <span>Pro required for this frequency</span>
+                    <a href="/pricing">Upgrade to Pro</a> for Immediate alerts
                   </div>
                 {/if}
               </div>
@@ -624,43 +635,55 @@
   }
   
   .frequency-label {
-    font-size: var(--font-size-xs);
-    color: var(--color-text-secondary);
-    font-weight: var(--font-weight-medium);
+    font-size: 0.9rem;
+    font-weight: 500;
+    color: var(--color-gray-300);
+    margin-bottom: 0.5rem;
+    display: block;
   }
-  
+
   .frequency-select {
-    padding: 0.25rem 0.5rem;
-    border: 1px solid var(--color-border);
+    background-color: var(--color-gray-800);
+    color: var(--color-text);
+    border: 1px solid var(--color-gray-600);
     border-radius: var(--border-radius);
-    font-size: var(--font-size-sm);
-    background: var(--color-surface);
-    color: var(--color-text-primary);
-    transition: border-color var(--transition-normal);
-  }
-  
-  .frequency-select:focus {
-    outline: none;
-    border-color: var(--color-primary);
+    padding: 0.5rem 0.75rem;
+    font-size: 0.9rem;
+    transition: all 0.2s ease;
   }
   
   .frequency-select:disabled {
     opacity: 0.6;
     cursor: not-allowed;
   }
-  
+
   .frequency-updating {
-    font-size: var(--font-size-xs);
-    color: var(--color-text-muted);
-    font-style: italic;
+    font-size: 0.8rem;
+    color: var(--color-primary);
+    margin-left: 0.5rem;
   }
-  
+
   .frequency-upgrade-note {
+    font-size: 0.85rem;
+    color: var(--color-gray-400);
+    margin-top: 0.5rem;
     display: flex;
     align-items: center;
-    gap: 0.25rem;
-    font-size: var(--font-size-xs);
-    color: var(--color-text-muted);
+    gap: 0.35rem;
+  }
+
+  .upgrade-icon {
+    color: #ffc107;
+  }
+
+  .frequency-upgrade-note a {
+    color: var(--color-primary);
+    text-decoration: none;
+    font-weight: 600;
+  }
+
+  .frequency-upgrade-note a:hover {
+    text-decoration: underline;
   }
   
   .subscription-actions {
@@ -780,4 +803,83 @@
       text-align: center;
     }
   }
+
+  .frequency-toggle-wrap {
+    position: relative;
+  }
+
+  .toggle-switch {
+    position: relative;
+    display: inline-block;
+    width: 140px;
+    height: 34px;
+    cursor: pointer;
+  }
+
+  .toggle-switch input {
+    opacity: 0;
+    width: 0;
+    height: 0;
+  }
+
+  .slider {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: var(--color-gray-700);
+    transition: 0.4s;
+    border-radius: 34px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 4px;
+  }
+
+  .slider:before {
+    position: absolute;
+    content: "";
+    height: 26px;
+    width: 66px;
+    left: 4px;
+    bottom: 4px;
+    background-color: var(--color-primary);
+    transition: 0.4s;
+    border-radius: 34px;
+    box-shadow: 0 0 4px rgba(0,0,0,0.2);
+  }
+  
+  input:disabled + .slider {
+    cursor: not-allowed;
+    background-color: var(--color-gray-800);
+  }
+  
+  input:disabled + .slider:before {
+    background-color: var(--color-gray-600);
+  }
+
+  input:checked + .slider:before {
+    transform: translateX(62px);
+  }
+
+  .toggle-text-daily, .toggle-text-immediate {
+    font-size: 0.85rem;
+    font-weight: 600;
+    z-index: 1;
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    color: white;
+    text-shadow: 1px 1px 2px rgba(0,0,0,0.2);
+  }
+
+  .toggle-text-daily {
+    left: 22px;
+  }
+
+  .toggle-text-immediate {
+    right: 12px;
+  }
+
 </style> 
