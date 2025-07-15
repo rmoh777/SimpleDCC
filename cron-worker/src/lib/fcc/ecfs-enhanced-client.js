@@ -75,7 +75,12 @@ export async function fetchLatestFilings(docketNumber, limit = DEFAULT_LIMIT, en
  * Transform raw ECFS filing to enhanced format with direct document URLs
  */
 function transformFilingEnhanced(rawFiling, docketNumber) {
-  return {
+  // Validate raw filing structure
+  if (!rawFiling.id_submission) {
+    console.warn('⚠️ Filing missing id_submission:', rawFiling);
+  }
+
+  const filing = {
     // Use id_submission for perfect deduplication (key improvement!)
     id: rawFiling.id_submission,
     
@@ -106,7 +111,7 @@ function transformFilingEnhanced(rawFiling, docketNumber) {
     ),
     date_received: rawFiling.date_disseminated || rawFiling.date_submission || rawFiling.date_received,
     
-    // Enhanced URLs
+    // Enhanced URLs - VALIDATE this is a proper URL
     filing_url: `https://www.fcc.gov/ecfs/filing/${rawFiling.id_submission}`,
     
     // 🔥 GAME CHANGER: Direct document URLs from successful API test
@@ -126,6 +131,19 @@ function transformFilingEnhanced(rawFiling, docketNumber) {
     status: 'pending',
     enhanced: true // Mark as enhanced processing
   };
+
+  // Validate critical fields
+  if (!filing.filing_url || !filing.filing_url.startsWith('https://')) {
+    console.error('❌ Invalid filing_url generated:', filing.filing_url);
+    filing.filing_url = `https://www.fcc.gov/ecfs/filing/${filing.id}`;
+  }
+
+  if (!Array.isArray(filing.documents)) {
+    console.error('❌ Documents is not an array:', filing.documents);
+    filing.documents = [];
+  }
+
+  return filing;
 }
 
 /**

@@ -292,94 +292,57 @@ export async function processFilingEnhanced(filing, env) {
 
     console.log(`🤖 Enhanced processing filing: ${filing.id} - ${filing.title}`);
     
-    // Step 1: Document processing (with fallback)
+    // Process documents if available
     let documentText = '';
     let documentsProcessed = 0;
     
-    try {
-      if (filing.documents && filing.documents.length > 0) {
-        console.log(`📄 Processing ${filing.documents.length} documents for filing ${filing.id}`);
-        const docResults = await processFilingDocuments(filing.documents, env);
-        
-        if (docResults.success && docResults.extractedText) {
-          documentText = docResults.extractedText;
-          documentsProcessed = docResults.documentsProcessed || 0;
-          console.log(`✅ Document processing successful: ${documentsProcessed} documents, ${documentText.length} chars`);
-        } else {
-          console.warn(`⚠️ Document processing failed for filing ${filing.id}:`, docResults.error);
-          // Continue with title/description only
-          documentText = `${filing.title}\n\n${filing.description || ''}`;
+    if (filing.documents && Array.isArray(filing.documents) && filing.documents.length > 0) {
+      console.log(`📄 Processing ${filing.documents.length} documents for filing ${filing.id}`);
+      
+      const { extractDocumentContent } = await import('../documents/jina-processor.js');
+      
+      for (const doc of filing.documents) {
+        if (doc.src && doc.type === 'pdf') {
+          try {
+            const content = await extractDocumentContent(doc.src, env);
+            if (content && content.length > 100) {
+              documentText += `\n\n[Document: ${doc.filename}]\n${content}`;
+              documentsProcessed++;
+            }
+          } catch (docError) {
+            console.warn(`⚠️ Document processing failed for ${doc.filename}:`, docError.message);
+          }
         }
-      } else {
-        // No documents, use title and description
-        documentText = `${filing.title}\n\n${filing.description || ''}`;
-        console.log(`📝 No documents found, using title/description for filing ${filing.id}`);
       }
-    } catch (docError) {
-      console.error(`❌ Document processing error for filing ${filing.id}:`, docError);
-      documentText = `${filing.title}\n\n${filing.description || ''}`;
+      
+      console.log(`✅ Processed ${documentsProcessed}/${filing.documents.length} documents`);
     }
     
-    // Step 2: AI Analysis with circuit breaker
-    let aiResult;
-    try {
-      const enhancedSummary = await generateEnhancedSummary(filing, documentText, env);
-      
-      aiResult = {
-        summary: enhancedSummary.summary,
-        key_points: enhancedSummary.key_points,
-        stakeholders: enhancedSummary.stakeholders,
-        regulatory_impact: enhancedSummary.regulatory_impact,
-        confidence: enhancedSummary.ai_confidence,
-        document_analysis: enhancedSummary.document_analysis,
-        processing_note: null
-      };
-      
-    } catch (aiError) {
-      const errorClass = classifyError(aiError);
-      console.error(`❌ AI processing failed for filing ${filing.id}:`, {
-        error: aiError.message,
-        classification: errorClass,
-        filing_id: filing.id
-      });
-      
-      // Graceful degradation based on error type
-      if (errorClass.type === 'RATE_LIMIT') {
-        aiResult = {
-          summary: 'AI processing rate limited - summary generation temporarily unavailable',
-          key_points: ['Rate limit exceeded', 'Please check back later'],
-          stakeholders: 'System notification',
-          regulatory_impact: 'Unable to assess due to rate limiting',
-          confidence: 'low',
-          processing_note: 'Rate limited - degraded service'
-        };
-      } else if (errorClass.type === 'CONTENT_POLICY') {
-        aiResult = {
-          summary: 'Content policy restriction - automated summary not available',
-          key_points: ['Content policy restriction'],
-          stakeholders: 'Content review required',
-          regulatory_impact: 'Manual review required',
-          confidence: 'low',
-          processing_note: 'Content policy restriction'
-        };
-      } else {
-        // Generic fallback
-        aiResult = {
-          summary: `Filing submitted by ${filing.author} regarding ${filing.title}. AI analysis temporarily unavailable.`,
-          key_points: [filing.filing_type, `Author: ${filing.author}`],
-          stakeholders: filing.author,
-          regulatory_impact: 'Analysis pending',
-          confidence: 'low',
-          processing_note: `AI error: ${errorClass.type}`
-        };
-      }
-    }
+    // Generate AI summary with all available context
+    const fullContext = `
+Filing Title: ${filing.title}
+Author: ${filing.author}
+Type: ${filing.filing_type}
+Date: ${filing.date_received}
+
+${documentText ? `Document Content:\n${documentText}` : 'No document content available'}
+`.trim();
     
+    const aiResult = await generateEnhancedSummary(fullContext, env);
     const processingTime = Date.now() - startTime;
+    
     console.log(`✅ Enhanced processing complete for filing ${filing.id} in ${processingTime}ms`);
     
+    // Return enhanced filing WITHOUT overwriting critical fields
     return {
       ...filing,
+      // Preserve original fields
+      id: filing.id,
+      docket_number: filing.docket_number,
+      filing_url: filing.filing_url,
+      documents: filing.documents, // PRESERVE original documents array
+      raw_data: filing.raw_data,
+      // Add AI enhancements
       ai_summary: aiResult.summary,
       ai_key_points: JSON.stringify(aiResult.key_points),
       ai_stakeholders: JSON.stringify(aiResult.stakeholders),

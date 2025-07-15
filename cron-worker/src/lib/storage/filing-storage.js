@@ -117,6 +117,47 @@ async function storeBatch(db, filings) {
   
   for (const filing of filings) {
     try {
+      // Validate and prepare data before storage
+      const filingToStore = {
+        id: filing.id,
+        docket_number: filing.docket_number,
+        title: filing.title?.substring(0, 500) || 'Untitled',
+        author: filing.author?.substring(0, 500) || 'Unknown',
+        filing_type: filing.filing_type?.substring(0, 100) || 'unknown',
+        date_received: filing.date_received,
+        filing_url: filing.filing_url?.substring(0, 500) || '',
+        // Ensure documents is properly stringified (it should be an array of document objects)
+        documents: filing.documents ? JSON.stringify(filing.documents) : '[]',
+        // Ensure raw_data is properly stringified
+        raw_data: filing.raw_data ? JSON.stringify(filing.raw_data) : '{}',
+        status: filing.status || 'pending',
+        ai_summary: filing.ai_summary?.substring(0, 5000) || null,
+        // Handle pre-stringified fields from AI processing
+        ai_key_points: typeof filing.ai_key_points === 'string' 
+          ? filing.ai_key_points 
+          : (filing.ai_key_points ? JSON.stringify(filing.ai_key_points) : null),
+        ai_stakeholders: typeof filing.ai_stakeholders === 'string'
+          ? filing.ai_stakeholders
+          : (filing.ai_stakeholders ? JSON.stringify(filing.ai_stakeholders) : null),
+        ai_regulatory_impact: filing.ai_regulatory_impact?.substring(0, 5000) || null,
+        ai_document_analysis: filing.ai_document_analysis?.substring(0, 1000) || null,
+        ai_confidence: filing.ai_confidence?.substring(0, 50) || null,
+        ai_enhanced: filing.ai_enhanced ? 1 : 0,
+        documents_processed: filing.documents_processed || 0,
+        processed_at: filing.processed_at || null
+      };
+
+      // Log data structure for debugging
+      if (filing.id && filing.id.includes('107')) { // Log sample filing
+        console.log(`📊 Storing filing ${filing.id}:`, {
+          id: filingToStore.id,
+          filing_url_length: filingToStore.filing_url.length,
+          documents_type: typeof filingToStore.documents,
+          documents_sample: filingToStore.documents.substring(0, 100),
+          ai_key_points_type: typeof filingToStore.ai_key_points
+        });
+      }
+
       await db.prepare(`
         INSERT INTO filings (
           id, docket_number, title, author, filing_type, 
@@ -126,25 +167,25 @@ async function storeBatch(db, filings) {
           documents_processed, processed_at
         ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       `).bind(
-        filing.id,
-        filing.docket_number,
-        filing.title,
-        filing.author,
-        filing.filing_type,
-        filing.date_received,
-        filing.filing_url,
-        filing.documents ? JSON.stringify(filing.documents) : null,
-        JSON.stringify(filing.raw_data),
-        filing.status || 'pending',
-        filing.ai_summary || null,
-        filing.ai_key_points ? JSON.stringify(filing.ai_key_points) : null,
-        filing.ai_stakeholders || null,
-        filing.ai_regulatory_impact || null,
-        filing.ai_document_analysis || null,
-        filing.ai_confidence || null,
-        filing.ai_enhanced ? 1 : 0,
-        filing.documents_processed || 0,
-        filing.processed_at || null
+        filingToStore.id,
+        filingToStore.docket_number,
+        filingToStore.title,
+        filingToStore.author,
+        filingToStore.filing_type,
+        filingToStore.date_received,
+        filingToStore.filing_url,
+        filingToStore.documents,
+        filingToStore.raw_data,
+        filingToStore.status,
+        filingToStore.ai_summary,
+        filingToStore.ai_key_points,
+        filingToStore.ai_stakeholders,
+        filingToStore.ai_regulatory_impact,
+        filingToStore.ai_document_analysis,
+        filingToStore.ai_confidence,
+        filingToStore.ai_enhanced,
+        filingToStore.documents_processed,
+        filingToStore.processed_at
       ).run();
       
       stored++;
