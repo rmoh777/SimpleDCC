@@ -315,40 +315,33 @@
               
               <div class="subscription-controls">
                 <div class="frequency-control">
-                  <label 
-                    class="frequency-label" 
-                    for="frequency-toggle-{subscription.id}"
-                  >
-                    Notification Frequency
-                  </label>
                   <div 
                     class="frequency-toggle-wrap"
-                    title={userTier === 'free' ? 'Upgrade to Pro for Immediate alerts' : ''}
+                    title={userTier === 'free' ? 'Upgrade to Pro or start a Trial for Hourly alerts' : ''}
                   >
-                    <label class="toggle-switch" for="frequency-toggle-{subscription.id}">
-                      <input 
-                        type="checkbox" 
-                        id="frequency-toggle-{subscription.id}"
-                        checked={subscription.frequency === 'immediate'}
-                        disabled={isFrequencyUpdating(subscription.id) || userTier === 'free'}
-                        on:change={(e) => handleFrequencyUpdate(subscription.id, subscription.docket_number, e.currentTarget.checked ? 'immediate' : 'daily')}
-                      />
-                      <span class="slider">
-                        <span class="toggle-text-daily">Daily</span>
-                        <span class="toggle-text-immediate">Immediate</span>
-                      </span>
-                    </label>
+                    <div class="frequency-toggle">
+                      <button
+                        class="toggle-option"
+                        class:active={subscription.frequency === 'daily'}
+                        on:click={() => handleFrequencyUpdate(subscription.id, subscription.docket_number, 'daily')}
+                        disabled={userTier === 'free' || isFrequencyUpdating(subscription.id)}
+                      >
+                        Daily
+                      </button>
+                      <button
+                        class="toggle-option"
+                        class:active={subscription.frequency === 'hourly'}
+                        on:click={() => handleFrequencyUpdate(subscription.id, subscription.docket_number, 'hourly')}
+                        disabled={userTier === 'free' || isFrequencyUpdating(subscription.id)}
+                      >
+                        Hourly
+                      </button>
+                    </div>
                   </div>
-                  {#if isFrequencyUpdating(subscription.id)}
-                    <span class="frequency-updating">Updating...</span>
-                  {/if}
                 </div>
                 
-                {#if userTier === 'free'}
-                  <div class="frequency-upgrade-note">
-                    <span class="upgrade-icon">⭐</span>
-                    <a href="/pricing">Upgrade to Pro</a> for Immediate alerts
-                  </div>
+                {#if isFrequencyUpdating(subscription.id)}
+                  <span class="frequency-updating">Updating...</span>
                 {/if}
               </div>
               
@@ -606,61 +599,66 @@
   }
   
   .subscription-info {
-    flex: 1;
+    flex-grow: 1;
   }
   
   .docket-number {
     font-weight: var(--font-weight-semibold);
-    color: var(--color-text-primary);
-    font-size: var(--font-size-base);
-    margin-bottom: 0.25rem;
+    color: var(--color-text-light);
   }
-  
-  .subscribe-date {
-    color: var(--color-text-muted);
-    font-size: var(--font-size-sm);
+
+  .subscription-date {
+    font-size: 0.85rem;
+    color: var(--color-gray-400);
   }
-  
+
   .subscription-controls {
     display: flex;
     flex-direction: column;
+    align-items: center;
     gap: var(--spacing-xs);
     min-width: 150px;
   }
-  
-  .frequency-control {
+
+  .frequency-toggle-wrap {
+    position: relative;
+  }
+
+  .frequency-toggle {
     display: flex;
-    flex-direction: column;
-    gap: 0.25rem;
-  }
-  
-  .frequency-label {
-    font-size: 0.9rem;
-    font-weight: 500;
-    color: var(--color-gray-300);
-    margin-bottom: 0.5rem;
-    display: block;
-  }
-
-  .frequency-select {
     background-color: var(--color-gray-800);
-    color: var(--color-text);
-    border: 1px solid var(--color-gray-600);
-    border-radius: var(--border-radius);
-    padding: 0.5rem 0.75rem;
-    font-size: 0.9rem;
-    transition: all 0.2s ease;
-  }
-  
-  .frequency-select:disabled {
-    opacity: 0.6;
-    cursor: not-allowed;
+    border-radius: var(--border-radius-full);
+    padding: 4px;
+    border: 1px solid var(--color-gray-700);
   }
 
+  .toggle-option {
+    padding: 0.3rem 0.8rem;
+    border: none;
+    background-color: transparent;
+    border-radius: var(--border-radius-full);
+    color: var(--color-gray-300);
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s ease-in-out;
+    white-space: nowrap; /* Prevents text from wrapping */
+  }
+
+  .toggle-option.active {
+    background-color: var(--color-gray-600);
+    color: white;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.3);
+  }
+  
+  .toggle-option:disabled {
+     color: var(--color-gray-500);
+     cursor: not-allowed;
+  }
+  
   .frequency-updating {
     font-size: 0.8rem;
     color: var(--color-primary);
-    margin-left: 0.5rem;
+    margin-top: 4px;
   }
 
   .frequency-upgrade-note {
@@ -802,84 +800,6 @@
     .subscriptions-footer {
       text-align: center;
     }
-  }
-
-  .frequency-toggle-wrap {
-    position: relative;
-  }
-
-  .toggle-switch {
-    position: relative;
-    display: inline-block;
-    width: 140px;
-    height: 34px;
-    cursor: pointer;
-  }
-
-  .toggle-switch input {
-    opacity: 0;
-    width: 0;
-    height: 0;
-  }
-
-  .slider {
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background-color: var(--color-gray-700);
-    transition: 0.4s;
-    border-radius: 34px;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 0 4px;
-  }
-
-  .slider:before {
-    position: absolute;
-    content: "";
-    height: 26px;
-    width: 66px;
-    left: 4px;
-    bottom: 4px;
-    background-color: var(--color-primary);
-    transition: 0.4s;
-    border-radius: 34px;
-    box-shadow: 0 0 4px rgba(0,0,0,0.2);
-  }
-  
-  input:disabled + .slider {
-    cursor: not-allowed;
-    background-color: var(--color-gray-800);
-  }
-  
-  input:disabled + .slider:before {
-    background-color: var(--color-gray-600);
-  }
-
-  input:checked + .slider:before {
-    transform: translateX(62px);
-  }
-
-  .toggle-text-daily, .toggle-text-immediate {
-    font-size: 0.85rem;
-    font-weight: 600;
-    z-index: 1;
-    position: absolute;
-    top: 50%;
-    transform: translateY(-50%);
-    color: white;
-    text-shadow: 1px 1px 2px rgba(0,0,0,0.2);
-  }
-
-  .toggle-text-daily {
-    left: 22px;
-  }
-
-  .toggle-text-immediate {
-    right: 12px;
   }
 
 </style> 
