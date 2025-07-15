@@ -130,14 +130,27 @@ async function processUserNotificationBatch(
   let filings: Filing[] = [];
   
   if (digestType === 'seed_digest') {
-    // For seed digest, filing data is stored in the filing_data column
+    // For seed digest, get filing IDs from stored data but fetch fresh data from database
     const seedData = queueItems.find(item => item.filing_data);
     if (seedData) {
       try {
         const parsedData = JSON.parse(seedData.filing_data);
-        filings = parsedData.filings || [];
+        const storedFilings = parsedData.filings || [];
+        const filingIds = storedFilings.map(f => f.id);
+        
+        // Fetch fresh data from database (includes latest AI processing)
+        if (filingIds.length > 0) {
+          filings = await getFilingsForNotification(filingIds, db);
+          console.log(`📧 Fetched ${filings.length} fresh filings for seed digest (${user.email})`);
+        }
+        
+        // Fallback to stored data if database fetch fails or returns no results
+        if (filings.length === 0) {
+          filings = storedFilings;
+          console.log(`📧 Using fallback stored data for seed digest (${user.email})`);
+        }
       } catch (error) {
-        console.error(`Failed to parse seed digest data for ${user.email}:`, error);
+        console.error(`Failed to process seed digest data for ${user.email}:`, error);
         return;
       }
     }
