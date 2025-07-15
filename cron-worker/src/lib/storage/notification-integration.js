@@ -77,16 +77,9 @@ export async function queueNotificationsForNewFilings(storageResults, db, allFil
         const docketsToProcess = Array.from(group.dockets).slice(0, SAFETY_LIMITS.maxDocketsPerUser);
         
         for (const docket of docketsToProcess) {
-          // Fix 2: QUICK FIX - Get filing IDs from recent database entries (simplified approach)
-          const recentFilings = await db.prepare(`
-            SELECT id FROM filings 
-            WHERE docket_number = ? 
-              AND created_at > ?
-            ORDER BY created_at DESC
-            LIMIT 10
-          `).bind(docket, startTime - 3600000).all(); // Last hour instead of 24 hours
-          
-          const filingIds = recentFilings.results?.map(row => row.id) || [];
+          // Use the actual filings that were just processed (eliminates timing issues)
+          const docketFilings = allFilings.filter(filing => filing.docket_number === docket);
+          const filingIds = docketFilings.map(filing => filing.id);
           
           if (filingIds.length > 0) {
             const filingsToNotify = filingIds.slice(0, SAFETY_LIMITS.maxFilingsPerNotification);
@@ -100,7 +93,7 @@ export async function queueNotificationsForNewFilings(storageResults, db, allFil
             );
             totalQueued++;
             
-            console.log(`📬 QUICK FIX: Queued ${group.user.frequency} notification for ${group.user.email}: ${filingsToNotify.length} filings from ${docket}`);
+            console.log(`📬 Queued ${group.user.frequency} notification for ${group.user.email}: ${filingsToNotify.length} filings from ${docket}`);
           }
         }
         
