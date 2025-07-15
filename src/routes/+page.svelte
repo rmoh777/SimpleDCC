@@ -31,7 +31,7 @@
     const docketRegex = /^\d{2,4}-\d{1,4}$/;
     return docketRegex.test(docket.trim());
   }
-
+  
   function handleSearchInput() {
     if (debounceTimer) clearTimeout(debounceTimer);
     
@@ -73,7 +73,7 @@
     showEmailSection = true;
     currentStep = 2;
   }
-
+  
   function hidePreview() {
     showPreview = false;
     showEmailSection = false;
@@ -224,7 +224,7 @@
           <div class="status">✓ DOCKET MONITORING ACTIVATED</div>
           <h3>Proceeding {selectedDocket}</h3>
           {#if selectedName}
-            <div class="selected-name">{selectedName}</div>
+          <div class="selected-name">{selectedName}</div>
           {/if}
         </div>
         
