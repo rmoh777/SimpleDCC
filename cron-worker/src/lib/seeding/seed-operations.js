@@ -113,11 +113,14 @@ export async function handleImmediateSeeding(docketNumber, userEmail, userTier, 
       return { success: false, error: 'No filings available for this docket' };
     }
 
-    // Store filing in database first (Option 1)
+    // Store filing in database with AI enhancement (Critical Fix)
     try {
-      const { storeFilings } = await import('../storage/filing-storage.js');
-      const storageResult = await storeFilings([seedFiling], db);
-      console.log(`🌱 Stored filing ${seedFiling.id} in database: ${storageResult.newFilings} new, ${storageResult.duplicates} duplicates`);
+      const { storeFilingsEnhanced } = await import('../storage/filing-storage-enhanced.js');
+      const storageResult = await storeFilingsEnhanced([seedFiling], db, env, {
+        enableAIProcessing: true,
+        enableJinaProcessing: true
+      });
+      console.log(`🌱 Enhanced storage complete for filing ${seedFiling.id}: ${storageResult.newFilings} new, ${storageResult.duplicates} duplicates, ${storageResult.aiProcessed} AI processed`);
     } catch (storeError) {
       console.error(`🌱 Failed to store filing ${seedFiling.id}:`, storeError);
       // Continue with notification even if storage fails
