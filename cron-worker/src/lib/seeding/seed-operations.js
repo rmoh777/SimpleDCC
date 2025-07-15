@@ -113,10 +113,22 @@ export async function handleImmediateSeeding(docketNumber, userEmail, userTier, 
       return { success: false, error: 'No filings available for this docket' };
     }
 
-    // Queue seed digest
+    // Store filing in database first (Option 1)
+    try {
+      const { storeFilings } = await import('../storage/filing-storage.js');
+      const storageResult = await storeFilings([seedFiling], db);
+      console.log(`🌱 Stored filing ${seedFiling.id} in database: ${storageResult.newFilings} new, ${storageResult.duplicates} duplicates`);
+    } catch (storeError) {
+      console.error(`🌱 Failed to store filing ${seedFiling.id}:`, storeError);
+      // Continue with notification even if storage fails
+    }
+
+    // Queue seed digest with scheduled_for
+    const scheduledFor = Math.floor(Date.now() / 1000); // Schedule for immediate processing
+    
     await db.prepare(`
-      INSERT INTO notification_queue (user_email, docket_number, digest_type, filing_ids, filing_data, created_at)
-      VALUES (?, ?, 'seed_digest', ?, ?, ?)
+      INSERT INTO notification_queue (user_email, docket_number, digest_type, filing_ids, filing_data, scheduled_for, created_at)
+      VALUES (?, ?, 'seed_digest', ?, ?, ?, ?)
     `).bind(
       userEmail,
       docketNumber,
@@ -125,7 +137,8 @@ export async function handleImmediateSeeding(docketNumber, userEmail, userTier, 
         filings: [seedFiling], 
         tier: userTier 
       }),
-      Date.now()
+      scheduledFor,
+      Math.floor(Date.now() / 1000)
     ).run();
 
     console.log(`🌱 Queued seed digest for ${userEmail} on docket ${docketNumber}`);

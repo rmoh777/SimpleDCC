@@ -741,12 +741,14 @@ export default {
         metrics: JSON.stringify({}),
         error_message: errorMessage,
         error_stack: errorStack,
-        timestamp: Math.floor(Date.now() / 1000)
+        timestamp: Math.floor(Date.now() / 1000),
+        level: status === 'SUCCESS' ? 'info' : 'error',
+        message: `Cron job ${status === 'SUCCESS' ? 'completed successfully' : 'failed'} in ${durationMs}ms`
       };
 
       try {
         const stmt = env.DB.prepare(
-          'INSERT INTO system_health_logs (service_name, status, run_timestamp, duration_ms, metrics, error_message, error_stack, timestamp) VALUES (?, ?, ?, ?, ?, ?, ?, ?)'
+          'INSERT INTO system_health_logs (service_name, status, run_timestamp, duration_ms, metrics, error_message, error_stack, timestamp, level, message) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
         ).bind(
           logEntry.service_name,
           logEntry.status,
@@ -755,7 +757,9 @@ export default {
           logEntry.metrics,
           logEntry.error_message,
           logEntry.error_stack,
-          logEntry.timestamp
+          logEntry.timestamp,
+          logEntry.level,
+          logEntry.message
         );
         
         ctx.waitUntil(stmt.run());
