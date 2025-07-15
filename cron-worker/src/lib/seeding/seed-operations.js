@@ -115,11 +115,12 @@ export async function handleImmediateSeeding(docketNumber, userEmail, userTier, 
 
     // Queue seed digest
     await db.prepare(`
-      INSERT INTO notification_queue (user_email, docket_number, digest_type, filing_data, created_at)
-      VALUES (?, ?, 'seed_digest', ?, ?)
+      INSERT INTO notification_queue (user_email, docket_number, digest_type, filing_ids, filing_data, created_at)
+      VALUES (?, ?, 'seed_digest', ?, ?, ?)
     `).bind(
       userEmail,
       docketNumber,
+      JSON.stringify([seedFiling.id]), // Include filing ID for consistency
       JSON.stringify({ 
         filings: [seedFiling], 
         tier: userTier 

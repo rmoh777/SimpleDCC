@@ -10,6 +10,7 @@ const REQUIRED_SCHEMA = {
   filings: ['id', 'docket_number', 'title', 'author', 'filing_type', 'date_received', 'filing_url', 'documents', 'raw_data', 'ai_summary', 'status', 'created_at', 'processed_at'],
   active_dockets: ['docket_number', 'last_checked', 'total_filings', 'subscribers_count', 'status', 'error_count', 'created_at', 'updated_at'],
   system_logs: ['id', 'level', 'message', 'component', 'details', 'docket_number', 'filing_id', 'created_at'],  // Added missing columns!
+  system_health_logs: ['id', 'timestamp', 'level', 'message', 'category', 'details', 'docket_number', 'filing_id', 'created_at', 'service_name', 'status', 'run_timestamp', 'duration_ms', 'metrics', 'error_message', 'error_stack'],  // Health monitoring table
   notification_queue: ['id', 'email', 'docket_number', 'filing_ids', 'digest_type', 'status', 'created_at', 'sent_at', 'error_message']
 };
 
@@ -379,6 +380,15 @@ function getColumnType(tableName, columnName) {
     'system_logs': {
       'docket_number': 'TEXT',           // Optional docket context
       'filing_id': 'TEXT'                // Optional filing context
+    },
+    'system_health_logs': {
+      'service_name': 'TEXT',
+      'status': 'TEXT',
+      'run_timestamp': 'INTEGER',
+      'duration_ms': 'INTEGER',
+      'metrics': 'TEXT',
+      'error_message': 'TEXT',
+      'error_stack': 'TEXT'
     },
     'subscriptions': {
       'frequency': 'TEXT DEFAULT \'daily\'',
