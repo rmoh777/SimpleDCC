@@ -202,14 +202,14 @@ async function markDocketAsDeluged(docketNumber, env) {
     
     // Get all users subscribed to this docket
     const users = await env.DB.prepare(`
-      SELECT DISTINCT u.email, u.first_name FROM subscriptions s 
+      SELECT DISTINCT u.email FROM subscriptions s 
       JOIN users u ON s.user_id = u.id 
       WHERE s.docket_number = ? AND s.status = 'active'
     `).bind(docketNumber).all();
     
     // Send notifications to all subscribers
     for (const user of users.results || []) {
-      await sendDelugeNotification(user.email, user.first_name, docketNumber, env);
+      await sendDelugeNotification(user.email, docketNumber, env);
     }
     
     console.log(`📧 Deluge notifications sent to ${users.results?.length || 0} users for docket ${docketNumber}`);
@@ -222,11 +222,10 @@ async function markDocketAsDeluged(docketNumber, env) {
 /**
  * Send deluge notification email to user
  * @param {string} email - User's email address
- * @param {string} firstName - User's first name
  * @param {string} docketNumber - The docket number
  * @param {Object} env - Environment object
  */
-async function sendDelugeNotification(email, firstName, docketNumber, env) {
+async function sendDelugeNotification(email, docketNumber, env) {
   try {
     const subject = `High Activity Alert - Docket ${docketNumber}`;
     const fccUrl = `https://www.fcc.gov/ecfs/search/search-filings/results?q=(proceedings.name:(%22${docketNumber}%22))`;
@@ -234,7 +233,7 @@ async function sendDelugeNotification(email, firstName, docketNumber, env) {
     const html = `
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
         <h2 style="color: #d97706;">⚠️ High Activity Alert</h2>
-        <p>Hi ${firstName || 'there'},</p>
+        <p>Hi there,</p>
         <p>We've detected unusually high filing activity for docket <strong>${docketNumber}</strong> that you're subscribed to.</p>
         <p>To prevent system overload, we've temporarily paused automated monitoring for this docket. You can still view all filings directly on the FCC website:</p>
         <p style="text-align: center; margin: 20px 0;">

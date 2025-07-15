@@ -51,17 +51,17 @@ export async function handleImmediateSeeding(docketNumber, userEmail, userTier, 
         `).bind(Date.now(), docketNumber).run();
       }
     } else {
-      // Docket not actively monitored - use smart detection
-      console.log(`🌱 ${docketNumber}: Not actively monitored - using smart detection`);
+      // Docket not actively monitored - fetch latest filing directly (bypass smart detection to avoid deluge)
+      console.log(`🌱 ${docketNumber}: Not actively monitored - fetching latest filing directly`);
       
-      const { smartFilingDetection } = await import('../fcc/ecfs-enhanced-client.js');
-      const smartResult = await smartFilingDetection(docketNumber, env);
+      const { fetchSingleLatestFiling } = await import('../fcc/ecfs-enhanced-client.js');
+      const latestFiling = await fetchSingleLatestFiling(docketNumber, env);
       
-      if (smartResult.status === 'new_found' && smartResult.newFilings.length > 0) {
-        seedFiling = smartResult.newFilings[0];
-        console.log(`🌱 Using new filing ${seedFiling.id} for docket ${docketNumber}`);
-      } else if (smartResult.status === 'no_new' || smartResult.status === 'no_filings') {
-        // Check if we have any existing filings
+      if (latestFiling) {
+        seedFiling = latestFiling;
+        console.log(`🌱 Using latest filing ${seedFiling.id} for seeding docket ${docketNumber}`);
+      } else {
+        // Fallback: Check if we have any existing filings in database
         const recentFiling = await db.prepare(`
           SELECT * FROM filings 
           WHERE docket_number = ? 
