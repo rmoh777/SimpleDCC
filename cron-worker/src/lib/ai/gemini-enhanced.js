@@ -318,17 +318,8 @@ export async function processFilingEnhanced(filing, env) {
       console.log(`✅ Processed ${documentsProcessed}/${filing.documents.length} documents`);
     }
     
-    // Generate AI summary with all available context
-    const fullContext = `
-Filing Title: ${filing.title}
-Author: ${filing.author}
-Type: ${filing.filing_type}
-Date: ${filing.date_received}
-
-${documentText ? `Document Content:\n${documentText}` : 'No document content available'}
-`.trim();
-    
-    const aiResult = await generateEnhancedSummary(fullContext, env);
+    // Generate AI summary with filing object and document text
+    const aiResult = await generateEnhancedSummary(filing, documentText, env);
     const processingTime = Date.now() - startTime;
     
     console.log(`✅ Enhanced processing complete for filing ${filing.id} in ${processingTime}ms`);
