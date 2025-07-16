@@ -261,17 +261,24 @@ async function runDataPipeline(env: any, ctx: any, isManualTrigger = false, targ
     }
 
     // ==============================================
-    // STEP 2: GET ACTIVE DOCKETS
+    // STEP 2: GET ACTIVE DOCKETS (BAU OPTIMIZATION)
     // ==============================================
     addLog('info', '📊 Fetching active dockets from database...');
     const docketStartTime = Date.now();
     
-    const activeDockets = await getActiveDockets(env.DB);
+    // BAU Optimization: Only process dockets with active subscribers
+    // This prevents wasting API calls on dockets with no subscribers
+    const { getActiveDocketsWithSubscribers } = await import('./lib/database/db-operations');
+    const activeDockets = isManualTrigger ? 
+      await getActiveDockets(env.DB) : // Manual triggers process all active dockets
+      await getActiveDocketsWithSubscribers(env.DB); // BAU only processes dockets with subscribers
+    
     const docketEndTime = Date.now();
     
-    addLog('info', `✅ Retrieved ${activeDockets.length} active dockets`, {
+    addLog('info', `✅ Retrieved ${activeDockets.length} active dockets${isManualTrigger ? '' : ' with subscribers'}`, {
       dockets: activeDockets.map(d => d.docket_number),
-      query_time_ms: docketEndTime - docketStartTime
+      query_time_ms: docketEndTime - docketStartTime,
+      optimization_applied: !isManualTrigger
     });
 
     if (activeDockets.length === 0) {

@@ -141,7 +141,7 @@ async function storeBatch(db, filings) {
           : (filing.ai_stakeholders ? JSON.stringify(filing.ai_stakeholders) : null),
         ai_regulatory_impact: filing.ai_regulatory_impact?.substring(0, 5000) || null,
         ai_document_analysis: filing.ai_document_analysis?.substring(0, 1000) || null,
-        ai_confidence: filing.ai_confidence?.substring(0, 50) || null,
+        ai_confidence: filing.ai_confidence?.substring(0, 500) || null,
         ai_enhanced: filing.ai_enhanced ? 1 : 0,
         documents_processed: filing.documents_processed || 0,
         processed_at: filing.processed_at || null

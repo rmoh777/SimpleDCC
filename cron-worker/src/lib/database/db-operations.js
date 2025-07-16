@@ -46,6 +46,31 @@ export async function getActiveDockets(db) {
 }
 
 /**
+ * Get active dockets that have current subscribers (BAU optimization)
+ * This prevents processing dockets with no active subscribers
+ * @param {Object} db - Database connection
+ * @returns {Promise<Array>} Array of active dockets with current subscribers
+ */
+export async function getActiveDocketsWithSubscribers(db) {
+  try {
+    const result = await db.prepare(`
+      SELECT ad.* FROM active_dockets ad
+      WHERE ad.status = 'active' 
+      AND EXISTS (
+        SELECT 1 FROM subscriptions s 
+        WHERE s.docket_number = ad.docket_number
+      )
+      ORDER BY ad.subscribers_count DESC, ad.last_checked ASC
+    `).all();
+    
+    return result.results || [];
+  } catch (error) {
+    console.error('Failed to get active dockets with subscribers:', error);
+    return [];
+  }
+}
+
+/**
  * Update docket statistics after checking for new filings
  * @param {Object} db - Database connection
  * @param {string} docketNumber - Docket number to update
