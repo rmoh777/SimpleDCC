@@ -80,7 +80,7 @@ export async function fetchLatestFilings(docketNumber, limit = DEFAULT_LIMIT, pa
  */
 function transformFilingEnhanced(rawFiling, docketNumber) {
   // Parse viewing status for confidential document handling
-  const viewingStatus = rawFiling.viewingstatus || [];
+  const viewingStatus = rawFiling.viewingstatus;
   const isRestricted = isFilingRestricted(viewingStatus);
 
   return {
@@ -123,7 +123,7 @@ function transformFilingEnhanced(rawFiling, docketNumber) {
     // NEW: Viewing status and confidentiality handling
     viewing_status: viewingStatus,
     is_filing_restricted: isRestricted,
-    restriction_reason: isRestricted ? viewingStatus.map(vs => vs.description || 'Unknown restriction').join(', ') : null,
+    restriction_reason: isRestricted ? viewingStatus?.description || 'Unknown restriction' : null,
     
     // Enhanced metadata
     submitter_info: {
@@ -143,23 +143,45 @@ function transformFilingEnhanced(rawFiling, docketNumber) {
 
 /**
  * Helper function to determine if filing has restricted viewing status
- * @param {Array} viewingStatus - Array of viewing status objects from ECFS API
+ * @param {Object|Array} viewingStatus - Viewing status object or array from ECFS API
  * @returns {boolean} True if filing is restricted/confidential
  */
 function isFilingRestricted(viewingStatus) {
-  if (!viewingStatus || !Array.isArray(viewingStatus) || viewingStatus.length === 0) {
+  // Handle the case where viewingStatus is null/undefined
+  if (!viewingStatus) {
     return false;
   }
   
-  return viewingStatus.some(status => {
-    if (!status.description) return false;
-    
-    const description = status.description.toLowerCase();
-    return description.includes('confidential') || 
-           description.includes('restricted') || 
-           description.includes('sealed') ||
-           description.includes('private');
-  });
+  // Based on real API data, viewingStatus is a single object, not an array
+  // Handle both single object and array cases for robustness
+  let statusToCheck;
+  
+  if (Array.isArray(viewingStatus)) {
+    // If it's an array, check the first element
+    statusToCheck = viewingStatus[0];
+  } else if (typeof viewingStatus === 'object') {
+    // If it's a single object (which is the actual API format)
+    statusToCheck = viewingStatus;
+  } else {
+    return false;
+  }
+  
+  // Check if the status object has a description
+  if (!statusToCheck || !statusToCheck.description) {
+    return false;
+  }
+  
+  const description = statusToCheck.description.toLowerCase();
+  
+  // Check for positive restriction indicators, but exclude "unrestricted"
+  if (description === 'unrestricted' || description === 'public') {
+    return false;
+  }
+  
+  return description.includes('confidential') || 
+         description.includes('restricted') || 
+         description.includes('sealed') ||
+         description.includes('private');
 }
 
 /**
@@ -169,16 +191,9 @@ function extractDocumentsEnhanced(rawFiling) {
   try {
     const documents = rawFiling.documents || [];
     
-    // Check if filing has restricted viewing status
-    const viewingStatus = rawFiling.viewingstatus || [];
-    const isFilingRestricted = viewingStatus.some(status => {
-      if (!status.description) return false;
-      const description = status.description.toLowerCase();
-      return description.includes('confidential') || 
-             description.includes('restricted') || 
-             description.includes('sealed') ||
-             description.includes('private');
-    });
+    // Check if filing has restricted viewing status using the helper function
+    const viewingStatus = rawFiling.viewingstatus;
+    const isRestricted = isFilingRestricted(viewingStatus);
     
     // 🔍 DEBUG: Log each document's raw structure  
     documents.forEach((doc, index) => {
@@ -200,13 +215,13 @@ function extractDocumentsEnhanced(rawFiling) {
       src: doc.src, // 🎯 DIRECT PDF URL! (e.g., "https://docs.fcc.gov/public/attachments/DA-25-567A1.pdf")
       description: doc.description || '',
       type: getFileType(doc.filename),
-      downloadable: !!doc.src && doc.src.includes('fcc.gov') && !isFilingRestricted,
+      downloadable: !!doc.src && doc.src.includes('fcc.gov') && !isRestricted,
       
       // NEW: Confidentiality markers
-      is_confidential: isFilingRestricted,
-      access_restricted: !doc.src || isFilingRestricted,
-      restriction_reason: isFilingRestricted ? 
-        viewingStatus.map(vs => vs.description || 'Unknown restriction').join(', ') : 
+      is_confidential: isRestricted,
+      access_restricted: !doc.src || isRestricted,
+      restriction_reason: isRestricted ? 
+        (viewingStatus?.description || 'Unknown restriction') : 
         (!doc.src ? 'No source URL provided' : null),
       
       size_estimate: estimateFileSize(doc.filename)
