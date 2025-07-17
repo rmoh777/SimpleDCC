@@ -158,11 +158,17 @@ FILING METADATA:
 `;
 
   if (hasDocuments) {
+    // Use up to 60K characters for comprehensive analysis
+    const maxChars = 60000;
+    const truncatedText = documentText.length > maxChars 
+        ? documentText.substring(0, maxChars) + '\n\n... [Content truncated for length]'
+        : documentText;
+    
     prompt += `
 DOCUMENT CONTENT ANALYSIS:
 The following document content was extracted and should be analyzed for key insights:
 
-${documentText.substring(0, 8000)}${documentText.length > 8000 ? '\n... [truncated]' : ''}
+${truncatedText}
 
 `;
   } else {
