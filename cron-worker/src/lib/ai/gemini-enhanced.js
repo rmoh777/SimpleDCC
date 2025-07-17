@@ -288,6 +288,30 @@ export async function processFilingEnhanced(filing, env) {
       };
     }
 
+    // Early detection: Handle confidential/restricted filings
+    if (filing.is_filing_restricted) {
+      console.log(`🔒 Filing ${filing.id} marked as restricted (${filing.restriction_reason}) - providing confidential filing response`);
+      
+      return {
+        ...filing,
+        ai_enhanced: true,
+        ai_summary: `This filing (${filing.title}) contains confidential documents that are not publicly accessible.`,
+        ai_key_points: [
+          `Filing marked as: ${filing.restriction_reason}`,
+          "Document content not available for public analysis",
+          "Filing details may only be viewable by authorized parties"
+        ],
+        ai_stakeholders: "Cannot determine - confidential filing restrictions apply",
+        ai_regulatory_impact: "Cannot assess - document content restricted from public access",
+        ai_document_analysis: "Document analysis not possible due to confidentiality restrictions",
+        ai_confidence: `This filing is marked as "${filing.restriction_reason}" in the FCC ECFS system, making document content inaccessible for AI analysis. Filing metadata and basic information remain publicly viewable.`,
+        documents_processed: 0,
+        status: 'completed_restricted',
+        processing_mode: 'confidential_handling',
+        processed_at: Date.now()
+      };
+    }
+
     console.log(`🤖 Enhanced processing filing: ${filing.id} - ${filing.title}`);
     
     // Process documents if available

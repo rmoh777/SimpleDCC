@@ -79,6 +79,10 @@ export async function fetchLatestFilings(docketNumber, limit = DEFAULT_LIMIT, pa
  * Transform raw ECFS filing to enhanced format with direct document URLs
  */
 function transformFilingEnhanced(rawFiling, docketNumber) {
+  // Parse viewing status for confidential document handling
+  const viewingStatus = rawFiling.viewingstatus || [];
+  const isRestricted = isFilingRestricted(viewingStatus);
+
   return {
     // Use id_submission for perfect deduplication (key improvement!)
     id: rawFiling.id_submission,
@@ -116,6 +120,11 @@ function transformFilingEnhanced(rawFiling, docketNumber) {
     // 🔥 GAME CHANGER: Direct document URLs from successful API test
     documents: extractDocumentsEnhanced(rawFiling),
     
+    // NEW: Viewing status and confidentiality handling
+    viewing_status: viewingStatus,
+    is_filing_restricted: isRestricted,
+    restriction_reason: isRestricted ? viewingStatus.map(vs => vs.description || 'Unknown restriction').join(', ') : null,
+    
     // Enhanced metadata
     submitter_info: {
       name: rawFiling.name_of_filer || rawFiling.filer_name,
@@ -133,11 +142,43 @@ function transformFilingEnhanced(rawFiling, docketNumber) {
 }
 
 /**
+ * Helper function to determine if filing has restricted viewing status
+ * @param {Array} viewingStatus - Array of viewing status objects from ECFS API
+ * @returns {boolean} True if filing is restricted/confidential
+ */
+function isFilingRestricted(viewingStatus) {
+  if (!viewingStatus || !Array.isArray(viewingStatus) || viewingStatus.length === 0) {
+    return false;
+  }
+  
+  return viewingStatus.some(status => {
+    if (!status.description) return false;
+    
+    const description = status.description.toLowerCase();
+    return description.includes('confidential') || 
+           description.includes('restricted') || 
+           description.includes('sealed') ||
+           description.includes('private');
+  });
+}
+
+/**
  * Extract documents with direct download URLs (proven from API test)
  */
 function extractDocumentsEnhanced(rawFiling) {
   try {
     const documents = rawFiling.documents || [];
+    
+    // Check if filing has restricted viewing status
+    const viewingStatus = rawFiling.viewingstatus || [];
+    const isFilingRestricted = viewingStatus.some(status => {
+      if (!status.description) return false;
+      const description = status.description.toLowerCase();
+      return description.includes('confidential') || 
+             description.includes('restricted') || 
+             description.includes('sealed') ||
+             description.includes('private');
+    });
     
     // 🔍 DEBUG: Log each document's raw structure  
     documents.forEach((doc, index) => {
@@ -159,7 +200,15 @@ function extractDocumentsEnhanced(rawFiling) {
       src: doc.src, // 🎯 DIRECT PDF URL! (e.g., "https://docs.fcc.gov/public/attachments/DA-25-567A1.pdf")
       description: doc.description || '',
       type: getFileType(doc.filename),
-      downloadable: !!doc.src && doc.src.includes('fcc.gov'),
+      downloadable: !!doc.src && doc.src.includes('fcc.gov') && !isFilingRestricted,
+      
+      // NEW: Confidentiality markers
+      is_confidential: isFilingRestricted,
+      access_restricted: !doc.src || isFilingRestricted,
+      restriction_reason: isFilingRestricted ? 
+        viewingStatus.map(vs => vs.description || 'Unknown restriction').join(', ') : 
+        (!doc.src ? 'No source URL provided' : null),
+      
       size_estimate: estimateFileSize(doc.filename)
     }));
     

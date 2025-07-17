@@ -289,6 +289,28 @@ async function tryBasicPostMode(url, jinaApiKey) {
  */
 export async function processFilingDocuments(filing, env) {
   try {
+    // Early detection: Handle confidential/restricted filings
+    if (filing.is_filing_restricted) {
+      console.log(`🔒 Filing ${filing.id} marked as restricted (${filing.restriction_reason}) - skipping document processing`);
+      
+      return {
+        ...filing,
+        documents: filing.documents.map(doc => ({
+          ...doc,
+          status: 'confidential',
+          reason: `Document access restricted: ${filing.restriction_reason}`,
+          text_content: null,
+          processed_at: Date.now(),
+          processing_method: 'confidential_restriction'
+        })),
+        documents_processed: 0,
+        documents_skipped: filing.documents?.length || 0,
+        documents_failed: 0,
+        documents_confidential: filing.documents?.length || 0,
+        processing_completed_at: Date.now()
+      };
+    }
+
     const processedDocuments = [];
     let processedCount = 0;
     let skippedCount = 0;
@@ -299,6 +321,21 @@ export async function processFilingDocuments(filing, env) {
     console.log(`🔄 Processing filing ${filing.id}: ${pdfCount} PDFs, ${nonPdfCount} other files`);
     
     for (const doc of filing.documents || []) {
+      // Check for individual document restrictions
+      if (doc.is_confidential || doc.access_restricted) {
+        processedDocuments.push({
+          ...doc,
+          status: 'confidential',
+          reason: doc.restriction_reason || 'Document access restricted',
+          text_content: null,
+          processed_at: Date.now(),
+          processing_method: 'document_restriction'
+        });
+        skippedCount++;
+        console.log(`🔒 Skipped confidential document: ${doc.filename} - ${doc.restriction_reason}`);
+        continue;
+      }
+      
       if (doc.src && doc.type === 'pdf') {
         
         // Route A: FCC Direct PDFs → Jina API extraction (same as Route B)
