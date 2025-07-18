@@ -210,8 +210,8 @@ async function generateAndSendNotificationEmail(
   env: any
 ): Promise<void> {
   try {
-    // Import existing email generation functions
-    const { generateDailyDigest, generateFilingAlert, generateSeedDigest } = await import('../email/daily-digest.js');
+    // Import NEW email generation functions (redesigned templates)
+    const { generateDailyDigest, generateFilingAlert, generateSeedDigest } = await import('../email/docketcc-templates.js');
     const { sendEmail } = await import('../email');
     
     let emailContent;
@@ -220,12 +220,11 @@ async function generateAndSendNotificationEmail(
       // Generate immediate filing alert
       emailContent = generateFilingAlert(user.email, filings[0], {
         user_tier: user.user_tier,
-        unsubscribe_url: `${env.APP_URL || 'https://simpledcc.pages.dev'}/unsubscribe?email=${encodeURIComponent(user.email)}`
+        unsubscribeBaseUrl: env.APP_URL || 'https://simpledcc.pages.dev'
       });
     } else if (digestType === 'seed_digest') {
-      // Generate seed digest (welcome experience)
-      const docketNumber = filings[0]?.docket_number || 'unknown';
-      emailContent = generateSeedDigest(user.email, docketNumber, filings, {
+      // Generate seed digest (welcome experience) - using first filing
+      emailContent = generateSeedDigest(user.email, filings[0], {
         user_tier: user.user_tier,
         unsubscribeBaseUrl: env.APP_URL || 'https://simpledcc.pages.dev'
       });
@@ -234,7 +233,7 @@ async function generateAndSendNotificationEmail(
       emailContent = generateDailyDigest(user.email, filings, {
         user_tier: user.user_tier,
         digest_type: digestType,
-        unsubscribe_url: `${env.APP_URL || 'https://simpledcc.pages.dev'}/unsubscribe?email=${encodeURIComponent(user.email)}`
+        unsubscribeBaseUrl: env.APP_URL || 'https://simpledcc.pages.dev'
       });
     }
     
