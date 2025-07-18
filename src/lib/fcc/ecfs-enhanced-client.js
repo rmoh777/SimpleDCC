@@ -69,7 +69,7 @@ export async function fetchLatestFilings(docketNumber, limit = DEFAULT_LIMIT, pa
     // Transform to our enhanced format with direct document access
     return filings.map(filing => transformFilingEnhanced(filing, docketNumber));
     
-  } catch (error) {
+  } catch (/** @type {any} */ error) {
     console.error(`❌ Enhanced ECFS failed for docket ${docketNumber}:`, error);
     throw error;
   }
@@ -227,7 +227,7 @@ function extractDocumentsEnhanced(rawFiling) {
       size_estimate: estimateFileSize(doc.filename)
     }));
     
-  } catch (error) {
+  } catch (/** @type {any} */ error) {
     console.warn('Error extracting enhanced documents:', error);
     return [];
   }

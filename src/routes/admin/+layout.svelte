@@ -48,6 +48,7 @@
     { href: '/admin/status', label: 'System Health', icon: '🔍' },
     { href: '/admin/test-cron-worker', label: 'Cron Test', icon: '🔧' },
     { href: '/admin/test-emails', label: 'Email Test', icon: '📧' },
+    { href: '/admin/email-templates', label: 'Email Templates', icon: '🎨' },
     { href: '/admin/manual-production-test', label: 'Production Test', icon: '🚀' },
     { href: '/admin/database/migrate', label: 'Database', icon: '🗄️' },
   ];

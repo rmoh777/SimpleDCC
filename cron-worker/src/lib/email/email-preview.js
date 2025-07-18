@@ -45,7 +45,8 @@ export function generateSampleEmailData() {
         filing_type: 'comment',
         date_received: new Date(Date.now() - 86400000).toISOString(),
         filing_url: 'https://www.fcc.gov/ecfs/filing/sample1',
-        ai_summary: 'The filing argues for streamlined permitting processes to accelerate broadband deployment in underserved areas. Key recommendations include standardizing municipal approval timelines and reducing regulatory barriers for infrastructure projects.'
+        ai_summary: 'The filing argues for streamlined permitting processes to accelerate broadband deployment in underserved areas. Key recommendations include standardizing municipal approval timelines and reducing regulatory barriers for infrastructure projects.',
+        ai_key_points: ['Streamlined permitting processes', 'Municipal approval standardization', 'Regulatory barrier reduction', 'Broadband deployment acceleration']
       },
       {
         id: 'sample-filing-2',
@@ -55,7 +56,8 @@ export function generateSampleEmailData() {
         filing_type: 'reply_comment',
         date_received: new Date(Date.now() - 172800000).toISOString(),
         filing_url: 'https://www.fcc.gov/ecfs/filing/sample2',
-        ai_summary: 'This reply supports flexible speed requirements for rural areas while emphasizing the need for reliable service over maximum speeds. The filing proposes tiered service standards based on geographic and economic factors.'
+        ai_summary: 'This reply supports flexible speed requirements for rural areas while emphasizing the need for reliable service over maximum speeds. The filing proposes tiered service standards based on geographic and economic factors.',
+        ai_key_points: ['Flexible speed requirements', 'Reliable service emphasis', 'Tiered service standards', 'Geographic considerations']
       },
       {
         id: 'sample-filing-3',
@@ -65,11 +67,37 @@ export function generateSampleEmailData() {
         filing_type: 'petition',
         date_received: new Date(Date.now() - 259200000).toISOString(),
         filing_url: 'https://www.fcc.gov/ecfs/filing/sample3',
-        ai_summary: null // No AI summary for this filing
+        ai_summary: null, // No AI summary for this filing
+        ai_key_points: null
       }
     ],
     options: {
-      brandName: 'SimpleDCC',
+      brandName: 'DocketCC',
+      supportEmail: 'support@simpledcc.com',
+      unsubscribeBaseUrl: 'https://simpledcc.pages.dev'
+    }
+  };
+}
+
+/**
+ * Generate sample data for DocketCC templates
+ */
+export function generateDocketCCSampleData() {
+  return {
+    userEmail: 'user@example.com',
+    filing: {
+      id: 'sample-filing-1',
+      docket_number: '23-108',
+      title: 'Comments on Broadband Infrastructure Deployment and Rural Connectivity Enhancement',
+      author: 'National Telecommunications Association',
+      filing_type: 'comment',
+      date_received: new Date(Date.now() - 86400000).toISOString(),
+      filing_url: 'https://www.fcc.gov/ecfs/filing/sample1',
+      ai_summary: 'The filing argues for streamlined permitting processes to accelerate broadband deployment in underserved areas. Key recommendations include standardizing municipal approval timelines and reducing regulatory barriers for infrastructure projects. The document emphasizes the economic benefits of improved connectivity and proposes specific regulatory reforms to facilitate faster deployment timelines.',
+      ai_key_points: ['Streamlined permitting processes', 'Municipal approval standardization', 'Regulatory barrier reduction', 'Broadband deployment acceleration', 'Economic benefits analysis']
+    },
+    options: {
+      brandName: 'DocketCC',
       supportEmail: 'support@simpledcc.com',
       unsubscribeBaseUrl: 'https://simpledcc.pages.dev'
     }

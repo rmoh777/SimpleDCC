@@ -1,16 +1,18 @@
 <script>
   import { onMount } from 'svelte';
   import { generateDailyDigest, generateWelcomeEmail, generateFilingAlert } from '$lib/email/daily-digest.js';
-  import { generateSampleEmailData, generateEmailPreview } from '$lib/email/email-preview.js';
+  import { generateSampleEmailData, generateEmailPreview, generateDocketCCSampleData } from '$lib/email/email-preview.js';
   
-  let selectedTemplate = 'daily-digest';
+  let selectedTemplate = 'docketcc-filing-alert-dark';
   let emailPreview = null;
   let loading = false;
   
   const templateOptions = [
-    { value: 'daily-digest', label: 'Daily Digest' },
-    { value: 'welcome', label: 'Welcome Email' },
-    { value: 'filing-alert', label: 'Filing Alert' }
+    { value: 'docketcc-filing-alert-dark', label: 'DocketCC Filing Alert (Dark)' },
+    { value: 'docketcc-filing-alert-light', label: 'DocketCC Filing Alert (Light)' },
+    { value: 'daily-digest', label: 'Daily Digest (Legacy)' },
+    { value: 'welcome', label: 'Welcome Email (Legacy)' },
+    { value: 'filing-alert', label: 'Filing Alert (Legacy)' }
   ];
   
   onMount(() => {
@@ -21,23 +23,48 @@
     loading = true;
     
     try {
-      const sampleData = generateSampleEmailData();
       let emailData;
       
+      console.log('Generating preview for template:', selectedTemplate);
+      
       switch (selectedTemplate) {
+        case 'docketcc-filing-alert-dark':
+        case 'docketcc-filing-alert-light':
+          // Import DocketCC templates dynamically
+          const { generateFilingAlert: generateDocketCCFilingAlert } = await import('$lib/email/docketcc-templates.js');
+          const sampleData = generateDocketCCSampleData();
+          const theme = selectedTemplate.includes('dark') ? 'dark' : 'light';
+          
+          console.log('Sample data:', sampleData);
+          console.log('Theme:', theme);
+          
+          emailData = generateDocketCCFilingAlert(sampleData.userEmail, sampleData.filing, {
+            ...sampleData.options,
+            user_tier: 'free',
+            theme: theme
+          });
+          break;
+          
         case 'daily-digest':
-          emailData = generateDailyDigest(sampleData.userEmail, sampleData.filings, sampleData.options);
+          const digestSampleData = generateSampleEmailData();
+          emailData = generateDailyDigest(digestSampleData.userEmail, digestSampleData.filings, digestSampleData.options);
           break;
+          
         case 'welcome':
-          emailData = generateWelcomeEmail(sampleData.userEmail, '23-108', sampleData.options);
+          const welcomeSampleData = generateSampleEmailData();
+          emailData = generateWelcomeEmail(welcomeSampleData.userEmail, '23-108', welcomeSampleData.options);
           break;
+          
         case 'filing-alert':
-          emailData = generateFilingAlert(sampleData.userEmail, sampleData.filings[0], sampleData.options);
+          const alertSampleData = generateSampleEmailData();
+          emailData = generateFilingAlert(alertSampleData.userEmail, alertSampleData.filings[0], alertSampleData.options);
           break;
+          
         default:
           throw new Error('Unknown template type');
       }
       
+      console.log('Generated email data:', emailData);
       emailPreview = generateEmailPreview(emailData, selectedTemplate);
       
     } catch (error) {
@@ -54,14 +81,14 @@
 </script>
 
 <svelte:head>
-  <title>Email Preview - SimpleDCC Admin</title>
+  <title>Email Preview - DocketCC Admin</title>
 </svelte:head>
 
 <div class="space-y-6">
   <div>
     <h2 class="text-2xl font-bold text-primary">Email Template Preview</h2>
     <p class="text-secondary mt-1">
-      Preview and test email templates with sample data
+      Preview and test email templates with sample data - New DocketCC designs available
     </p>
   </div>
   
