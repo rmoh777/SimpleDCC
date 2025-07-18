@@ -49,6 +49,8 @@
     
     try {
       const currentTemplateDef = templateOptions.find(opt => opt.value === selectedTemplate);
+      console.log('Generating preview for:', selectedTemplate, currentTemplateDef);
+      
       if (!currentTemplateDef) {
         throw new Error('Selected template not found.');
       }
@@ -61,35 +63,31 @@
         throw new Error(`Template function '$${currentTemplateDef.template}' not found or not a function.`);
       }
 
-      // Prepare sample data based on template type (extend this as needed)
-      let sampleData;
-      /** @type {EmailContentArg | undefined} */
-      let contentArg;
-
+      // Prepare sample data and generate preview based on template type
       if (currentTemplateDef.template === 'generateFilingAlert') {
         const filingSampleData = (await import('$lib/email/email-preview.js')).generateDocketCCSampleData();
-        sampleData = {
-          userEmail: filingSampleData.userEmail,
-          options: filingSampleData.options
-        };
-        contentArg = filingSampleData.filing;
+        emailPreview = generateFunction(filingSampleData.userEmail, filingSampleData.filing, {
+          ...filingSampleData.options,
+          user_tier: selectedTier,
+          theme: currentTemplateDef.theme
+        });
       } else if (currentTemplateDef.template === 'generateDailyDigest') {
         const dailyDigestSampleData = (await import('$lib/email/email-preview.js')).generateDailyDigestSampleData();
-        sampleData = {
-          userEmail: dailyDigestSampleData.userEmail,
-          options: dailyDigestSampleData.options
-        };
-        contentArg = dailyDigestSampleData.filings;
+        emailPreview = generateFunction(dailyDigestSampleData.userEmail, dailyDigestSampleData.filings, {
+          ...dailyDigestSampleData.options,
+          user_tier: selectedTier,
+          theme: currentTemplateDef.theme
+        });
       } else if (currentTemplateDef.template === 'generateSeedDigest') {
         const seedDigestSampleData = (await import('$lib/email/email-preview.js')).generateSeedDigestSampleData();
-        sampleData = {
-          userEmail: seedDigestSampleData.userEmail,
-          options: seedDigestSampleData.options
-        };
-        contentArg = seedDigestSampleData.filing;
+        emailPreview = generateFunction(seedDigestSampleData.userEmail, seedDigestSampleData.filing, {
+          ...seedDigestSampleData.options,
+          user_tier: selectedTier,
+          theme: currentTemplateDef.theme
+        });
       } else if (currentTemplateDef.template === 'generateWelcomeEmail') {
         // Welcome email needs userEmail, docketNumber, options
-        sampleData = {
+        const welcomeSampleData = {
           userEmail: 'user@example.com',
           docketNumber: '23-108',
           options: {
@@ -99,33 +97,13 @@
           }
         };
         
-        emailPreview = generateFunction(sampleData.userEmail, sampleData.docketNumber, {
-          ...sampleData.options,
+        emailPreview = generateFunction(welcomeSampleData.userEmail, welcomeSampleData.docketNumber, {
+          ...welcomeSampleData.options,
           user_tier: selectedTier,
           theme: currentTemplateDef.theme
         });
       } else {
-        // Default or other template specific sample data
-        sampleData = {
-          userEmail: 'user@example.com',
-          options: {
-            brandName: 'DocketCC',
-            supportEmail: 'support@simpledcc.com',
-            unsubscribeBaseUrl: 'https://simpledcc.pages.dev'
-          }
-        };
-        contentArg = undefined; // No specific content for unknown templates
-        
-        // Ensure contentArg is defined before passing to generateFunction
-        if (contentArg === undefined) {
-          throw new Error(`No sample data defined for template type: ${currentTemplateDef.template}`);
-        }
-
-        emailPreview = generateFunction(sampleData.userEmail, contentArg, {
-          ...sampleData.options,
-          user_tier: selectedTier,
-          theme: currentTemplateDef.theme
-        });
+        throw new Error(`Unknown template type: ${currentTemplateDef.template}`);
       }
       
     } catch (error) {
@@ -170,6 +148,7 @@
         ai_confidence: 'high',
         ai_enhanced: 1,
         documents_processed: 1,
+        status: 'completed',
         created_at: Math.floor(Date.now() / 1000),
         processed_at: Math.floor(Date.now() / 1000)
       };
@@ -219,7 +198,8 @@
         documents: '[]',
         raw_data: '{}',
         ai_summary: 'This filing advocates for streamlined permitting processes to accelerate broadband deployment.',
-        ai_key_points: 'Streamlined Permitting, Municipal Approval, Regulatory Reform'
+        ai_key_points: 'Streamlined Permitting, Municipal Approval, Regulatory Reform',
+        status: 'completed'
       };
 
       const templateModule = await import('$lib/email/docketcc-templates.js');
@@ -276,6 +256,11 @@
   function handleTierChange() {
     generatePreview();
   }
+  
+  // Generate initial preview on page load
+  onMount(() => {
+    generatePreview();
+  });
 </script>
 
 <svelte:head>
