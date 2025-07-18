@@ -1728,3 +1728,123 @@ function generateWelcomeText(userEmail, docketNumber, options) {
 
   return text;
 }
+
+// Sample data generation functions
+export function generateFilingAlertSampleData(tier = 'pro') {
+  return {
+    filing: {
+      id: 'sample-filing-001',
+      docket_number: '11-42',
+      title: 'Reply Comments of Example Communications LLC on Broadband Data Collection',
+      author: 'Example Communications LLC',
+      filing_type: 'REPLY TO COMMENTS',
+      date_received: '2024-11-15T14:30:00.000Z',
+      filing_url: 'https://www.fcc.gov/ecfs/filing/1111529958618',
+      documents: JSON.stringify([{
+        id: 'doc-001',
+        url: 'https://www.fcc.gov/ecfs/document/1111529958618/1',
+        description: 'Reply Comments'
+      }]),
+      raw_data: '{}',
+      ai_summary: 'Example Communications LLC supports the proposed framework for broadband data collection with several key modifications. The company emphasizes the need for standardized reporting formats across all providers and suggests implementing automated validation systems to ensure data accuracy. They propose quarterly reporting cycles instead of bi-annual submissions to capture network expansion more effectively.',
+      ai_key_points: JSON.stringify([
+        'Standardized reporting formats needed across all ISPs',
+        'Automated validation systems for data accuracy',
+        'Quarterly reporting cycles recommended',
+        'Support for granular census-block level reporting',
+        'API-based submission system proposed'
+      ]),
+      ai_document_analysis: 'The filing presents a comprehensive analysis of current broadband data collection challenges and proposes technical solutions for improvement. Key focus areas include data standardization, validation mechanisms, and reporting frequency optimization.',
+      page_count: 24,
+      extracted_text: 'Full text content would appear here...',
+      processed_at: new Date().toISOString(),
+      status: 'completed'
+    },
+    userEmail: 'user@example.com',
+    options: {
+      brandName: 'DocketCC',
+      supportEmail: 'support@simpledcc.com',
+      unsubscribeBaseUrl: 'https://simpledcc.pages.dev',
+      user_tier: tier
+    }
+  };
+}
+
+export function generateDailyDigestSampleData(tier = 'pro') {
+  const baseFiling = generateFilingAlertSampleData(tier).filing;
+  return {
+    filings: [
+      baseFiling,
+      {
+        ...baseFiling,
+        id: 'sample-filing-002',
+        title: 'Comments on Proposed Rulemaking for 5G Spectrum Allocation',
+        author: 'Wireless Industry Association',
+        filing_type: 'COMMENTS',
+        date_received: '2024-11-15T10:15:00.000Z',
+        ai_summary: 'The Wireless Industry Association strongly supports the proposed 5G spectrum allocation framework. They emphasize the critical need for mid-band spectrum availability and propose specific technical parameters for interference protection.',
+        ai_key_points: JSON.stringify([
+          'Support for mid-band spectrum allocation',
+          'Technical parameters for interference protection',
+          'Timeline recommendations for auction process'
+        ])
+      },
+      {
+        ...baseFiling,
+        id: 'sample-filing-003',
+        docket_number: '23-108',
+        title: 'Ex Parte Presentation - Rural Broadband Deployment Challenges',
+        author: 'Rural Connectivity Coalition',
+        filing_type: 'NOTICE OF EX PARTE',
+        date_received: '2024-11-15T16:45:00.000Z',
+        ai_summary: 'The Rural Connectivity Coalition presented data on deployment challenges in underserved areas, highlighting cost barriers and proposing enhanced subsidy mechanisms for rural ISPs.',
+        ai_key_points: JSON.stringify([
+          'Cost barriers in rural deployment',
+          'Enhanced subsidy mechanisms needed',
+          'Infrastructure sharing recommendations'
+        ])
+      }
+    ],
+    userEmail: 'user@example.com',
+    options: {
+      brandName: 'DocketCC',
+      supportEmail: 'support@simpledcc.com',
+      unsubscribeBaseUrl: 'https://simpledcc.pages.dev',
+      user_tier: tier
+    }
+  };
+}
+
+export function generateSeedDigestSampleData(tier = 'pro') {
+  return {
+    filing: {
+      ...generateFilingAlertSampleData(tier).filing,
+      title: 'Initial Comments on Net Neutrality Restoration',
+      author: 'Internet Freedom Foundation',
+      ai_summary: 'This is your first filing notification! The Internet Freedom Foundation has submitted comprehensive comments supporting the restoration of net neutrality rules, emphasizing the importance of treating internet access as an essential service.',
+      ai_key_points: JSON.stringify([
+        'Internet access as essential service',
+        'Support for Title II classification',
+        'Consumer protection mechanisms'
+      ])
+    },
+    userEmail: 'user@example.com',
+    options: {
+      brandName: 'DocketCC',
+      supportEmail: 'support@simpledcc.com',
+      unsubscribeBaseUrl: 'https://simpledcc.pages.dev',
+      user_tier: tier
+    }
+  };
+}
+
+// Export all functions
+export {
+  generateFilingAlert,
+  generateDailyDigest,
+  generateSeedDigest,
+  generateWelcomeEmail,
+  generateFilingAlertSampleData,
+  generateDailyDigestSampleData,
+  generateSeedDigestSampleData
+};

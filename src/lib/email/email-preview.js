@@ -1,5 +1,14 @@
 // Email preview functionality for testing and admin review
 
+import { 
+  generateFilingAlert, 
+  generateDailyDigest as generateDocketCCDailyDigest,
+  generateSeedDigest,
+  generateFilingAlertSampleData,
+  generateDailyDigestSampleData,
+  generateSeedDigestSampleData
+} from './docketcc-templates.js';
+
 export function generateEmailPreview(emailData, type = 'daily-digest') {
   const { html, text, subject } = emailData;
   
@@ -13,6 +22,52 @@ export function generateEmailPreview(emailData, type = 'daily-digest') {
       previewMode: true
     }
   };
+}
+
+export function generatePreviewEmail(type, options = {}) {
+  const defaultOptions = {
+    theme: 'light',
+    docket: '11-42',
+    frequency: 'immediate',
+    email: 'user@example.com',
+    tier: 'pro',
+    ...options
+  };
+
+  // Use new DocketCC templates
+  switch (type) {
+    case 'filing-alert':
+      return generateFilingAlert(
+        generateFilingAlertSampleData(defaultOptions.tier),
+        defaultOptions.email,
+        defaultOptions.theme,
+        defaultOptions.tier
+      );
+    case 'daily':
+      return generateDocketCCDailyDigest(
+        generateDailyDigestSampleData(defaultOptions.tier),
+        defaultOptions.email,
+        defaultOptions.theme,
+        defaultOptions.tier
+      );
+    case 'seed':
+      return generateSeedDigest(
+        generateSeedDigestSampleData(defaultOptions.tier),
+        defaultOptions.email,
+        defaultOptions.theme,
+        defaultOptions.tier
+      );
+    case 'immediate':
+      // Legacy support - use filing alert for immediate
+      return generateFilingAlert(
+        generateFilingAlertSampleData(defaultOptions.tier),
+        defaultOptions.email,
+        defaultOptions.theme,
+        defaultOptions.tier
+      );
+    default:
+      throw new Error(`Unknown email type: ${type}`);
+  }
 }
 
 function addPreviewStyles(html) {
@@ -74,4 +129,11 @@ export function generateSampleEmailData() {
       unsubscribeBaseUrl: 'https://simpledcc.pages.dev'
     }
   };
-} 
+}
+
+// Export the sample data generators for use in other modules
+export { 
+  generateFilingAlertSampleData as generateDocketCCSampleData,
+  generateDailyDigestSampleData,
+  generateSeedDigestSampleData
+} from './docketcc-templates.js'; 
