@@ -1,6 +1,6 @@
 import type { RequestHandler } from './$types';
 import { json } from '@sveltejs/kit';
-import stripe from '$lib/stripe/stripe';
+import getStripe from '$lib/stripe/stripe';
 import { 
   getUserByStripeCustomerId, 
   updateUserSubscriptionStatus 
@@ -24,6 +24,7 @@ export const POST: RequestHandler = async ({ request, platform }) => {
 
   try {
     const body = await request.text();
+    const stripe = getStripe();
     event = stripe.webhooks.constructEvent(body, sig, webhookSecret);
   } catch (err) {
     console.error('Webhook signature verification failed:', err);
@@ -160,6 +161,7 @@ async function handlePaymentFailed(invoice: any, db: any) {
   console.log(`🎣 Processing payment failed: ${invoice.id}`);
   
   if (invoice.subscription) {
+    const stripe = getStripe();
     const subscription = await stripe.subscriptions.retrieve(invoice.subscription);
     const user = await getUserByStripeCustomerId(subscription.customer, db);
     
@@ -174,6 +176,7 @@ async function handlePaymentSucceeded(invoice: any, db: any) {
   console.log(`🎣 Processing payment succeeded: ${invoice.id}`);
   
   if (invoice.subscription) {
+    const stripe = getStripe();
     const subscription = await stripe.subscriptions.retrieve(invoice.subscription);
     const user = await getUserByStripeCustomerId(subscription.customer, db);
     

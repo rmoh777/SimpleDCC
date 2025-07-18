@@ -1,9 +1,26 @@
 import Stripe from 'stripe';
 
-// Initialize Stripe with the secret key from environment variables
-// This runs on the server-side only
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY as string, {
-  apiVersion: '2024-06-20',
-});
+// Lazy initialization to prevent build-time errors
+let stripeInstance: Stripe | null = null;
 
-export default stripe; 
+/**
+ * Get Stripe instance (lazy-loaded)
+ * Initializes only when first called to prevent build-time env var issues
+ */
+function getStripe(): Stripe {
+  if (!stripeInstance) {
+    const secretKey = process.env.STRIPE_SECRET_KEY;
+    
+    if (!secretKey) {
+      throw new Error('STRIPE_SECRET_KEY is required but not found in environment variables');
+    }
+    
+    stripeInstance = new Stripe(secretKey, {
+      apiVersion: '2024-06-20',
+    });
+  }
+  
+  return stripeInstance;
+}
+
+export default getStripe; 

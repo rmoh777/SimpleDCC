@@ -1,6 +1,6 @@
 import type { RequestHandler } from './$types';
 import { json } from '@sveltejs/kit';
-import stripe from '$lib/stripe/stripe';
+import getStripe from '$lib/stripe/stripe';
 import { createOrGetUser, getUserByEmail, updateUserStripeCustomerId } from '$lib/users/user-operations';
 
 export const POST: RequestHandler = async ({ request, platform }) => {
@@ -27,20 +27,21 @@ export const POST: RequestHandler = async ({ request, platform }) => {
       stripeCustomerId = user.stripe_customer_id;
     }
 
-    // If no user or no Stripe Customer ID, create or get user and then potentially a Stripe Customer
-    if (!user || !stripeCustomerId) {
-      user = await createOrGetUser(email, db); // Ensure user exists in our DB
-      if (!user.stripe_customer_id) {
-        const customer = await stripe.customers.create({
-          email: email,
-          metadata: { db_user_id: user.id },
-        });
-        stripeCustomerId = customer.id;
-        await updateUserStripeCustomerId(user.id, stripeCustomerId, db);
-      } else {
-        stripeCustomerId = user.stripe_customer_id;
-      }
-    }
+            // If no user or no Stripe Customer ID, create or get user and then potentially a Stripe Customer
+        if (!user || !stripeCustomerId) {
+          user = await createOrGetUser(email, db); // Ensure user exists in our DB
+          if (!user.stripe_customer_id) {
+            const stripe = getStripe();
+            const customer = await stripe.customers.create({
+              email: email,
+              metadata: { db_user_id: user.id },
+            });
+            stripeCustomerId = customer.id;
+            await updateUserStripeCustomerId(user.id, stripeCustomerId, db);
+          } else {
+            stripeCustomerId = user.stripe_customer_id;
+          }
+        }
 
     // Ensure STRIPE_PRO_PRICE_ID is set in environment variables
     const priceId = process.env.STRIPE_PRO_PRICE_ID;
@@ -49,9 +50,10 @@ export const POST: RequestHandler = async ({ request, platform }) => {
       return json({ error: 'Server configuration error: Price ID missing.' }, { status: 500 });
     }
     
-    const YOUR_DOMAIN = process.env.PUBLIC_ORIGIN || 'http://localhost:5175';
+            const YOUR_DOMAIN = process.env.PUBLIC_ORIGIN || 'http://localhost:5175';
 
-    const session = await stripe.checkout.sessions.create({
+        const stripe = getStripe();
+        const session = await stripe.checkout.sessions.create({
       customer: stripeCustomerId,
       mode: 'subscription',
       line_items: [
