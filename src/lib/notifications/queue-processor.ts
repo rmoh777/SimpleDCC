@@ -50,17 +50,17 @@ export async function processNotificationQueue(db: any, env: any): Promise<{
             await markQueueItemsAsSent(queueItems.map(item => item.id), db);
             sent += queueItems.length;
             
-          } catch (batchError) {
+          } catch (batchError: any) {
             console.error(`Failed to process ${digestType} for ${userEmail}:`, batchError);
             await markQueueItemsAsFailed(queueItems.map(item => item.id), batchError.message, db);
             failed += queueItems.length;
-            errors.push(`${userEmail} ${digestType}: ${batchError.message}`);
+            errors.push(`${userEmail} ${digestType}: ${(batchError as any).message}`);
           }
           
           processed += queueItems.length;
         }
         
-      } catch (userError) {
+      } catch (userError: any) {
         console.error(`Failed to process notifications for ${userEmail}:`, userError);
         const userNotificationCount = Array.from(notifications.values()).reduce((sum, items) => sum + items.length, 0);
         failed += userNotificationCount;
@@ -72,7 +72,7 @@ export async function processNotificationQueue(db: any, env: any): Promise<{
     
     return { processed, sent, failed, errors };
     
-  } catch (error) {
+  } catch (error: any) {
     console.error('❌ Notification queue processing failed:', error);
     throw error;
   }
@@ -205,7 +205,7 @@ async function generateAndSendNotificationEmail(
     
     console.log(`📧 Sent ${digestType} notification to ${user.email}: ${filings.length} filings (${user.user_tier} tier)`);
     
-  } catch (error) {
+  } catch (error: any) {
     console.error(`Failed to generate/send email for ${user.email}:`, error);
     throw error;
   }
@@ -322,7 +322,7 @@ export async function queueNotificationForUser(
     
     console.log(`📬 Queued ${digestType} notification for ${userEmail}: ${filingIds.length} filings`);
     
-  } catch (error) {
+  } catch (error: any) {
     console.error('Error queuing notification:', error);
   }
 }
@@ -354,7 +354,7 @@ export async function getQueueStats(db: any) {
       pending_total: pendingCount?.count || 0
     };
     
-  } catch (error) {
+  } catch (error: any) {
     console.error('Error getting queue stats:', error);
     return { breakdown: [], pending_total: 0 };
   }
