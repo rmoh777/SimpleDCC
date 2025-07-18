@@ -212,4 +212,154 @@ export async function handleTrialExpirations(db: any): Promise<number> {
     console.error('Error handling trial expirations:', error);
     return 0;
   }
+}
+
+/**
+ * Update user's Stripe customer ID
+ */
+export async function updateUserStripeCustomerId(
+  userId: number, 
+  stripeCustomerId: string, 
+  db: any
+): Promise<void> {
+  try {
+    await db.prepare(`
+      UPDATE users 
+      SET stripe_customer_id = ?
+      WHERE id = ?
+    `).bind(stripeCustomerId, userId).run();
+  } catch (error) {
+    console.error('Error updating user Stripe customer ID:', error);
+    throw new Error('Failed to update Stripe customer ID');
+  }
+}
+
+/**
+ * Update user's subscription status from Stripe webhook
+ */
+export async function updateUserSubscriptionStatus(
+  userId: number,
+  subscriptionData: {
+    tier: 'free' | 'pro' | 'trial';
+    stripeSubscriptionId?: string;
+    subscriptionStatus?: string;
+    trialExpiresAt?: number;
+  },
+  db: any
+): Promise<User> {
+  try {
+    await db.prepare(`
+      UPDATE users 
+      SET user_tier = ?,
+          stripe_subscription_id = ?,
+          subscription_status = ?,
+          trial_expires_at = ?
+      WHERE id = ?
+    `).bind(
+      subscriptionData.tier,
+      subscriptionData.stripeSubscriptionId || null,
+      subscriptionData.subscriptionStatus || null,
+      subscriptionData.trialExpiresAt || null,
+      userId
+    ).run();
+    
+    const updatedUser = await getUserById(userId, db);
+    if (!updatedUser) {
+      throw new Error('User not found after subscription update');
+    }
+    
+    return updatedUser;
+  } catch (error) {
+    console.error('Error updating user subscription status:', error);
+    throw new Error('Failed to update subscription status');
+  }
+}
+
+/**
+ * Get user by Stripe customer ID
+ */
+export async function getUserByStripeCustomerId(stripeCustomerId: string, db: any): Promise<User | null> {
+  try {
+    const result = await db.prepare(`
+      SELECT * FROM users WHERE stripe_customer_id = ?
+    `).bind(stripeCustomerId).first();
+    
+    return result || null;
+  } catch (error) {
+    console.error('Error getting user by Stripe customer ID:', error);
+    return null;
+  }
+}
+
+/**
+ * Get user's current subscription info for dashboard display
+ */
+export async function getUserSubscriptionInfo(userId: number, db: any) {
+  try {
+    const user = await getUserById(userId, db);
+    if (!user) return null;
+
+    return {
+      user_tier: user.user_tier,
+      subscription_status: user.subscription_status,
+      trial_expires_at: user.trial_expires_at,
+      stripe_customer_id: user.stripe_customer_id,
+      stripe_subscription_id: user.stripe_subscription_id,
+      can_upgrade: user.user_tier === 'free',
+      can_cancel: user.user_tier === 'pro' || user.user_tier === 'trial',
+      is_trial: user.user_tier === 'trial',
+      is_pro: user.user_tier === 'pro'
+    };
+  } catch (error) {
+    console.error('Error getting user subscription info:', error);
+    return null;
+  }
+}
+
+/**
+ * Cancel user's subscription (mark for cancellation at period end)
+ */
+export async function cancelUserSubscription(userId: number, db: any): Promise<boolean> {
+  try {
+    const user = await getUserById(userId, db);
+    if (!user || !user.stripe_subscription_id) {
+      throw new Error('No active subscription found');
+    }
+
+    // Update user to free tier immediately
+    await db.prepare(`
+      UPDATE users 
+      SET user_tier = 'free',
+          subscription_status = 'canceled',
+          trial_expires_at = NULL
+      WHERE id = ?
+    `).bind(userId).run();
+
+    return true;
+  } catch (error) {
+    console.error('Error canceling user subscription:', error);
+    return false;
+  }
+}
+
+/**
+ * Check if user has access to pro features
+ */
+export async function userHasProAccess(userId: number, db: any): Promise<boolean> {
+  try {
+    const user = await getUserById(userId, db);
+    if (!user) return false;
+
+    // Pro access for pro users and active trial users
+    if (user.user_tier === 'pro') return true;
+    
+    if (user.user_tier === 'trial' && user.trial_expires_at) {
+      return user.trial_expires_at > Math.floor(Date.now() / 1000);
+    }
+
+    return false;
+  } catch (error) {
+    console.error('Error checking pro access:', error);
+    return false;
+  }
 } 

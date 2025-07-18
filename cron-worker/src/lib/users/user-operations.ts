@@ -212,4 +212,26 @@ export async function handleTrialExpirations(db: any): Promise<number> {
     console.error('Error handling trial expirations:', error);
     return 0;
   }
+}
+
+/**
+ * Check if user has access to pro features
+ */
+export async function userHasProAccess(userId: number, db: any): Promise<boolean> {
+  try {
+    const user = await getUserById(userId, db);
+    if (!user) return false;
+
+    // Pro access for pro users and active trial users
+    if (user.user_tier === 'pro') return true;
+    
+    if (user.user_tier === 'trial' && user.trial_expires_at) {
+      return user.trial_expires_at > Math.floor(Date.now() / 1000);
+    }
+
+    return false;
+  } catch (error) {
+    console.error('Error checking pro access:', error);
+    return false;
+  }
 } 

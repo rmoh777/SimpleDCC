@@ -58,6 +58,8 @@ export interface User {
   user_tier: 'free' | 'pro' | 'trial';
   trial_expires_at?: number;
   stripe_customer_id?: string;
+  stripe_subscription_id?: string;
+  subscription_status?: string;
   grace_period_until?: number;
   created_at: number;
 }
