@@ -170,7 +170,6 @@
         ai_confidence: 'high',
         ai_enhanced: 1,
         documents_processed: 1,
-        status: 'completed',
         created_at: Math.floor(Date.now() / 1000),
         processed_at: Math.floor(Date.now() / 1000)
       };
@@ -220,8 +219,7 @@
         documents: '[]',
         raw_data: '{}',
         ai_summary: 'This filing advocates for streamlined permitting processes to accelerate broadband deployment.',
-        ai_key_points: 'Streamlined Permitting, Municipal Approval, Regulatory Reform',
-        status: 'completed'
+        ai_key_points: 'Streamlined Permitting, Municipal Approval, Regulatory Reform'
       };
 
       const templateModule = await import('$lib/email/docketcc-templates.js');
