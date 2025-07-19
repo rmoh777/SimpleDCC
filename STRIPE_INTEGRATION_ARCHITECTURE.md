@@ -251,3 +251,34 @@ Identical functions replicated in `cron-worker/src/lib/users/user-operations.ts`
 **Last Updated**: January 2025  
 **Integration Status**: Fully Implemented  
 **Production Ready**: Yes (pending final environment variable configuration) 
+
+---
+
+## Environment Variables Update (January 2025)
+
+### Critical Variables Added for Production Fix
+
+The following environment variables were added to resolve Stripe integration issues:
+
+1. **VITE_STRIPE_PUBLISHABLE_KEY**
+   - Same value as STRIPE_PUBLISHABLE_KEY but with VITE_ prefix
+   - Required for SvelteKit frontend access to Stripe publishable key
+   - Example: pk_test_1234567890abcdef
+
+2. **PUBLIC_ORIGIN** 
+   - Production domain URL for Stripe redirects and webhooks
+   - Format: https://your-domain.com
+   - Example: https://simpledcc.pages.dev
+
+### Configuration Steps
+1. Add both variables to Cloudflare Pages environment settings
+2. Ensure VITE_STRIPE_PUBLISHABLE_KEY matches STRIPE_PUBLISHABLE_KEY value
+3. Set PUBLIC_ORIGIN to actual production domain
+4. Redeploy application to activate changes
+
+### Troubleshooting
+- Use /admin/stripe-diagnostics to verify all environment variables
+- "Environment Variables Check Failed" indicates missing VITE_ or PUBLIC_ORIGIN variables
+- Environment variable changes require full redeployment
+
+**Last Updated**: January 2025 - Environment variables configuration fix
