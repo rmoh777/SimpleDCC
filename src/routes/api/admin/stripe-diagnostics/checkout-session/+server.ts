@@ -45,9 +45,9 @@ export const POST: RequestHandler = async ({ request, platform }) => {
 
     // Step 2: Environment variables validation
     logStep('Environment variables validation');
-    const stripeSecretKey = process.env.STRIPE_SECRET_KEY;
-    const stripePriceId = process.env.STRIPE_PRO_PRICE_ID;
-    const publicOrigin = process.env.PUBLIC_ORIGIN;
+    const stripeSecretKey = platform.env.STRIPE_SECRET_KEY;
+    const stripePriceId = platform.env.STRIPE_PRO_PRICE_ID;
+    const publicOrigin = platform.env.PUBLIC_ORIGIN;
 
     const envValidation = {
       STRIPE_SECRET_KEY: !!stripeSecretKey,
