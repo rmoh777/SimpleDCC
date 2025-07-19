@@ -17,52 +17,52 @@ export const POST: RequestHandler = async ({ request, platform }) => {
       
       environment_variables: {
         STRIPE_SECRET_KEY: {
-          exists: !!process.env.STRIPE_SECRET_KEY,
-          starts_with: process.env.STRIPE_SECRET_KEY ? process.env.STRIPE_SECRET_KEY.substring(0, 7) + '...' : 'NOT SET',
-          is_test_key: process.env.STRIPE_SECRET_KEY?.startsWith('sk_test_') || false,
-          is_live_key: process.env.STRIPE_SECRET_KEY?.startsWith('sk_live_') || false
+          exists: !!platform.env.STRIPE_SECRET_KEY,
+          starts_with: platform.env.STRIPE_SECRET_KEY ? platform.env.STRIPE_SECRET_KEY.substring(0, 7) + '...' : 'NOT SET',
+          is_test_key: platform.env.STRIPE_SECRET_KEY?.startsWith('sk_test_') || false,
+          is_live_key: platform.env.STRIPE_SECRET_KEY?.startsWith('sk_live_') || false
         },
         
         STRIPE_PRO_PRICE_ID: {
-          exists: !!process.env.STRIPE_PRO_PRICE_ID,
-          starts_with: process.env.STRIPE_PRO_PRICE_ID ? process.env.STRIPE_PRO_PRICE_ID.substring(0, 8) + '...' : 'NOT SET',
-          is_test_price: process.env.STRIPE_PRO_PRICE_ID?.startsWith('price_') || false
+          exists: !!platform.env.STRIPE_PRO_PRICE_ID,
+          starts_with: platform.env.STRIPE_PRO_PRICE_ID ? platform.env.STRIPE_PRO_PRICE_ID.substring(0, 8) + '...' : 'NOT SET',
+          is_test_price: platform.env.STRIPE_PRO_PRICE_ID?.startsWith('price_') || false
         },
         
         STRIPE_WEBHOOK_SECRET: {
-          exists: !!process.env.STRIPE_WEBHOOK_SECRET,
-          starts_with: process.env.STRIPE_WEBHOOK_SECRET ? process.env.STRIPE_WEBHOOK_SECRET.substring(0, 8) + '...' : 'NOT SET',
-          is_webhook_secret: process.env.STRIPE_WEBHOOK_SECRET?.startsWith('whsec_') || false
+          exists: !!platform.env.STRIPE_WEBHOOK_SECRET,
+          starts_with: platform.env.STRIPE_WEBHOOK_SECRET ? platform.env.STRIPE_WEBHOOK_SECRET.substring(0, 8) + '...' : 'NOT SET',
+          is_webhook_secret: platform.env.STRIPE_WEBHOOK_SECRET?.startsWith('whsec_') || false
         },
         
         VITE_STRIPE_PUBLISHABLE_KEY: {
-          exists: !!process.env.VITE_STRIPE_PUBLISHABLE_KEY,
-          starts_with: process.env.VITE_STRIPE_PUBLISHABLE_KEY ? process.env.VITE_STRIPE_PUBLISHABLE_KEY.substring(0, 7) + '...' : 'NOT SET',
-          is_test_key: process.env.VITE_STRIPE_PUBLISHABLE_KEY?.startsWith('pk_test_') || false,
-          is_live_key: process.env.VITE_STRIPE_PUBLISHABLE_KEY?.startsWith('pk_live_') || false
+          exists: !!platform.env.VITE_STRIPE_PUBLISHABLE_KEY,
+          starts_with: platform.env.VITE_STRIPE_PUBLISHABLE_KEY ? platform.env.VITE_STRIPE_PUBLISHABLE_KEY.substring(0, 7) + '...' : 'NOT SET',
+          is_test_key: platform.env.VITE_STRIPE_PUBLISHABLE_KEY?.startsWith('pk_test_') || false,
+          is_live_key: platform.env.VITE_STRIPE_PUBLISHABLE_KEY?.startsWith('pk_live_') || false
         },
         
         PUBLIC_ORIGIN: {
-          exists: !!process.env.PUBLIC_ORIGIN,
-          value: process.env.PUBLIC_ORIGIN || 'NOT SET'
+          exists: !!platform.env.PUBLIC_ORIGIN,
+          value: platform.env.PUBLIC_ORIGIN || 'NOT SET'
         }
       }
     };
 
     // Validate critical environment variables
     const missingVariables = [];
-    if (!process.env.STRIPE_SECRET_KEY) missingVariables.push('STRIPE_SECRET_KEY');
-    if (!process.env.STRIPE_PRO_PRICE_ID) missingVariables.push('STRIPE_PRO_PRICE_ID');
-    if (!process.env.STRIPE_WEBHOOK_SECRET) missingVariables.push('STRIPE_WEBHOOK_SECRET');
-    if (!process.env.VITE_STRIPE_PUBLISHABLE_KEY) missingVariables.push('VITE_STRIPE_PUBLISHABLE_KEY');
+    if (!platform.env.STRIPE_SECRET_KEY) missingVariables.push('STRIPE_SECRET_KEY');
+    if (!platform.env.STRIPE_PRO_PRICE_ID) missingVariables.push('STRIPE_PRO_PRICE_ID');
+    if (!platform.env.STRIPE_WEBHOOK_SECRET) missingVariables.push('STRIPE_WEBHOOK_SECRET');
+    if (!platform.env.VITE_STRIPE_PUBLISHABLE_KEY) missingVariables.push('VITE_STRIPE_PUBLISHABLE_KEY');
 
     const keyMismatchWarnings = [];
-    if (process.env.STRIPE_SECRET_KEY?.startsWith('sk_test_') && 
-        process.env.VITE_STRIPE_PUBLISHABLE_KEY?.startsWith('pk_live_')) {
+    if (platform.env.STRIPE_SECRET_KEY?.startsWith('sk_test_') && 
+        platform.env.VITE_STRIPE_PUBLISHABLE_KEY?.startsWith('pk_live_')) {
       keyMismatchWarnings.push('Secret key is TEST but publishable key is LIVE');
     }
-    if (process.env.STRIPE_SECRET_KEY?.startsWith('sk_live_') && 
-        process.env.VITE_STRIPE_PUBLISHABLE_KEY?.startsWith('pk_test_')) {
+    if (platform.env.STRIPE_SECRET_KEY?.startsWith('sk_live_') && 
+        platform.env.VITE_STRIPE_PUBLISHABLE_KEY?.startsWith('pk_test_')) {
       keyMismatchWarnings.push('Secret key is LIVE but publishable key is TEST');
     }
 

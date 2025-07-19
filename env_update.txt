@@ -1,0 +1,49 @@
+﻿## Environment Variables
+
+### Required Configuration
+1. **STRIPE_SECRET_KEY**: Server-side API key (sk_test_* or sk_live_*)
+2. **STRIPE_PRO_PRICE_ID**: Product price ID for .99/month subscription (price_*)
+3. **STRIPE_WEBHOOK_SECRET**: Webhook endpoint verification secret (whsec_*)
+4. **VITE_STRIPE_PUBLISHABLE_KEY**: Client-side publishable key (pk_test_* or pk_live_*)
+5. **PUBLIC_ORIGIN**: Production domain URL for redirects and webhooks (e.g., https://simpledcc.pages.dev)
+
+### Critical Environment Variables Added (January 2025)
+The following variables were added to fix production Stripe integration issues:
+
+#### VITE_STRIPE_PUBLISHABLE_KEY
+- **Purpose**: Frontend-accessible version of Stripe publishable key
+- **Format**: Same value as regular STRIPE_PUBLISHABLE_KEY but with VITE_ prefix
+- **Required**: SvelteKit requires VITE_ prefix for client-side environment variables
+- **Example**: If STRIPE_PUBLISHABLE_KEY=pk_test_123, set VITE_STRIPE_PUBLISHABLE_KEY=pk_test_123
+
+#### PUBLIC_ORIGIN
+- **Purpose**: Production domain URL for Stripe checkout redirects and webhook endpoints
+- **Format**: Full URL with protocol (https://your-domain.com)
+- **Usage**: Constructs success_url, cancel_url, and webhook endpoint URLs
+- **Examples**: 
+  - Cloudflare Pages: https://simpledcc.pages.dev
+  - Custom domain: https://your-custom-domain.com
+
+### Troubleshooting Configuration Issues
+
+#### Common Error: "Environment Variables Check Failed"
+**Cause**: Missing VITE_STRIPE_PUBLISHABLE_KEY or PUBLIC_ORIGIN
+**Solution**: 
+1. Add both variables to Cloudflare Pages environment settings
+2. Ensure VITE_STRIPE_PUBLISHABLE_KEY has same value as STRIPE_PUBLISHABLE_KEY
+3. Set PUBLIC_ORIGIN to your actual production domain
+4. Redeploy application to pick up new variables
+
+#### Common Error: "Failed to create checkout session"
+**Cause**: Missing or incorrect environment variables
+**Solution**: Use /admin/stripe-diagnostics to test each component:
+1. Environment Variables validation
+2. Stripe SDK initialization  
+3. Customer operations
+4. Checkout session creation
+
+### Deployment Notes
+- Environment variable changes require redeployment
+- Use Stripe Diagnostics page to verify configuration
+- Test with actual Stripe keys (not placeholders)
+- Ensure test/live key consistency across all variables

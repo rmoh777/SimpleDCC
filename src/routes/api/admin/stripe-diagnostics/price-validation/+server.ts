@@ -10,7 +10,7 @@ export const POST: RequestHandler = async ({ request }) => {
       return json({ error: 'Admin secret required' }, { status: 401 });
     }
 
-    const stripePriceId = process.env.STRIPE_PRO_PRICE_ID;
+    const stripePriceId = platform.env.STRIPE_PRO_PRICE_ID;
     
     if (!stripePriceId) {
       return json({
