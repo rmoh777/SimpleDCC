@@ -44,6 +44,7 @@
     { href: '/admin', label: 'Dashboard', icon: '📊' },
     { href: '/admin/subscriptions', label: 'Subscriptions', icon: '👥' },
     { href: '/admin/monitoring', label: 'Monitoring', icon: '📡' },
+    { href: '/admin/stripe-diagnostics', label: 'Stripe Diagnostics', icon: '💳' },
     { href: '/admin/database-viewer', label: 'Database Viewer', icon: '🗄️' },
     { href: '/admin/status', label: 'System Health', icon: '🔍' },
     { href: '/admin/test-cron-worker', label: 'Cron Test', icon: '🔧' },
