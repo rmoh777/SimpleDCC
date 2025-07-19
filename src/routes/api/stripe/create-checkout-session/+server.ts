@@ -1,7 +1,7 @@
 import type { RequestHandler } from './$types';
 import { json } from '@sveltejs/kit';
-import getStripe from '$lib/stripe/stripe';
-import { createOrGetUser, getUserByEmail, updateUserStripeCustomerId } from '$lib/users/user-operations';
+import Stripe from 'stripe';
+import { createOrGetUser, updateUserStripeCustomerId } from '$lib/users/user-operations';
 
 export const POST: RequestHandler = async ({ request, platform }) => {
   if (!platform?.env?.DB) {
@@ -17,7 +17,34 @@ export const POST: RequestHandler = async ({ request, platform }) => {
       return json({ error: 'Email is required' }, { status: 400 });
     }
 
-    let user = await getUserByEmail(email, db);
+    // Validate environment variables
+    if (!platform?.env?.STRIPE_SECRET_KEY) {
+      return json({ 
+        error: 'Stripe configuration missing',
+        details: 'STRIPE_SECRET_KEY not found'
+      }, { status: 500 });
+    }
+
+    if (!platform?.env?.STRIPE_PRO_PRICE_ID) {
+      return json({ 
+        error: 'Stripe configuration missing', 
+        details: 'STRIPE_PRO_PRICE_ID not found'
+      }, { status: 500 });
+    }
+
+    if (!platform?.env?.PUBLIC_ORIGIN) {
+      return json({ 
+        error: 'Application configuration missing',
+        details: 'PUBLIC_ORIGIN not found'
+      }, { status: 500 });
+    }
+
+    // Initialize Stripe
+    const stripe = new Stripe(platform.env.STRIPE_SECRET_KEY, {
+      apiVersion: '2024-06-20',
+    });
+
+    let user = await createOrGetUser(email, db);
     let stripeCustomerId: string | undefined;
 
     if (user) {
@@ -31,8 +58,10 @@ export const POST: RequestHandler = async ({ request, platform }) => {
         if (!user || !stripeCustomerId) {
           user = await createOrGetUser(email, db); // Ensure user exists in our DB
           if (!user.stripe_customer_id) {
-            const stripe = getStripe();
-            const customer = await stripe.customers.create({
+            const stripeForCustomer = new Stripe(platform.env.STRIPE_SECRET_KEY, {
+              apiVersion: '2024-06-20',
+            });
+            const customer = await stripeForCustomer.customers.create({
               email: email,
               metadata: { db_user_id: user.id },
             });
@@ -43,16 +72,14 @@ export const POST: RequestHandler = async ({ request, platform }) => {
           }
         }
 
-    // Ensure STRIPE_PRO_PRICE_ID is set in environment variables
-    const priceId = process.env.STRIPE_PRO_PRICE_ID;
+    const priceId = platform.env.STRIPE_PRO_PRICE_ID;
     if (!priceId) {
       console.error('STRIPE_PRO_PRICE_ID is not set in environment variables.');
       return json({ error: 'Server configuration error: Price ID missing.' }, { status: 500 });
     }
     
-            const YOUR_DOMAIN = process.env.PUBLIC_ORIGIN || 'http://localhost:5175';
+            const YOUR_DOMAIN = platform.env.PUBLIC_ORIGIN || 'http://localhost:5175';
 
-        const stripe = getStripe();
         const session = await stripe.checkout.sessions.create({
       customer: stripeCustomerId,
       mode: 'subscription',

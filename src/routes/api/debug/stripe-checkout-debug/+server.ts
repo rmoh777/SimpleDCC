@@ -16,8 +16,10 @@ export const GET: RequestHandler = async ({ platform }) => {
   // Test Stripe initialization
   let stripe_init_error = null;
   try {
-    const getStripe = (await import('$lib/stripe/stripe')).default;
-    const stripe = getStripe();
+    const Stripe = (await import('stripe')).default;
+    const stripe = new Stripe(platform.env.STRIPE_SECRET_KEY, {
+      apiVersion: '2024-06-20',
+    });
     debug.stripe_init_success = true;
   } catch (error) {
     stripe_init_error = error instanceof Error ? error.message : 'Unknown Stripe error';
@@ -97,8 +99,10 @@ export const POST: RequestHandler = async ({ request, platform }) => {
     // Test Stripe initialization
     let stripe;
     try {
-      const getStripe = (await import('$lib/stripe/stripe')).default;
-      stripe = getStripe();
+      const Stripe = (await import('stripe')).default;
+      stripe = new Stripe(platform.env.STRIPE_SECRET_KEY, {
+        apiVersion: '2024-06-20',
+      });
       debug.stripe_init_success = true;
     } catch (error) {
       debug.stripe_init_error = error instanceof Error ? error.message : 'Unknown error';
