@@ -1,7 +1,7 @@
 import type { RequestHandler } from './$types';
 import { json } from '@sveltejs/kit';
 import Stripe from 'stripe';
-import { getUserByStripeCustomerId, updateUserTier, updateUserSubscriptionData } from '$lib/users/user-operations';
+import { getUserByStripeCustomerId, updateUserTier, updateUserSubscriptionStatus } from '$lib/users/user-operations';
 
 export const POST: RequestHandler = async ({ request, platform }) => {
   if (!platform?.env?.DB) {
@@ -98,7 +98,7 @@ async function handleSubscriptionCreated(subscription: any, db: any) {
     trialExpiresAt: subscription.trial_end || null
   };
 
-  await updateUserSubscriptionData(user.id, subscriptionData, db);
+  await updateUserSubscriptionStatus(user.id, subscriptionData, db);
   console.log(`✅ User ${user.email} upgraded to ${subscriptionData.tier}`);
 }
 
@@ -128,7 +128,7 @@ async function handleSubscriptionUpdated(subscription: any, db: any) {
     trialExpiresAt: subscription.trial_end || null
   };
 
-  await updateUserSubscriptionData(user.id, subscriptionData, db);
+  await updateUserSubscriptionStatus(user.id, subscriptionData, db);
   console.log(`✅ User ${user.email} subscription updated to ${tier} (${subscription.status})`);
 }
 
@@ -148,7 +148,7 @@ async function handleSubscriptionDeleted(subscription: any, db: any) {
     trialExpiresAt: null
   };
 
-  await updateUserSubscriptionData(user.id, subscriptionData, db);
+  await updateUserSubscriptionStatus(user.id, subscriptionData, db);
   console.log(`✅ User ${user.email} downgraded to free (subscription canceled)`);
 }
 
@@ -204,7 +204,7 @@ async function handlePaymentSucceeded(invoice: any, db: any, platform: any) {
           trialExpiresAt: null
         };
         
-        await updateUserSubscriptionData(user.id, subscriptionData, db);
+        await updateUserSubscriptionStatus(user.id, subscriptionData, db);
       }
     }
   }
