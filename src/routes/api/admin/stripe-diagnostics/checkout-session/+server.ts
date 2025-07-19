@@ -105,7 +105,7 @@ export const POST: RequestHandler = async ({ request, platform }) => {
     logStep('Stripe SDK initialization');
     let stripe;
     try {
-      stripe = getStripe();
+      stripe = new Stripe(platform.env.STRIPE_SECRET_KEY, { apiVersion: '2024-06-20' });
       logStep('Stripe SDK initialized successfully');
     } catch (error) {
       logStep('Stripe SDK initialization failed', { error: error instanceof Error ? error.message : 'Unknown error' });
