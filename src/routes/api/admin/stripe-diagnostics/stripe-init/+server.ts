@@ -1,8 +1,8 @@
-import type { RequestHandler } from './$types';
+﻿import type { RequestHandler } from './';
 import { json } from '@sveltejs/kit';
-import getStripe from '$lib/stripe/stripe';
+import Stripe from 'stripe';
 
-export const POST: RequestHandler = async ({ request }) => {
+export const POST: RequestHandler = async ({ request, platform }) => {
   try {
     const { adminSecret } = await request.json();
     
@@ -10,8 +10,20 @@ export const POST: RequestHandler = async ({ request }) => {
       return json({ error: 'Admin secret required' }, { status: 401 });
     }
 
-    // Test Stripe initialization
-    const stripe = getStripe();
+    // Get Stripe secret key from platform.env (Cloudflare Pages environment)
+    const secretKey = platform.env.STRIPE_SECRET_KEY;
+    
+    if (!secretKey) {
+      return json({
+        success: false,
+        error: 'STRIPE_SECRET_KEY not found in environment variables'
+      }, { status: 500 });
+    }
+
+    // Initialize Stripe with platform environment variables
+    const stripe = new Stripe(secretKey, {
+      apiVersion: '2024-06-20',
+    });
     
     // Test basic Stripe API connectivity
     const account = await stripe.accounts.retrieve();
@@ -45,4 +57,4 @@ export const POST: RequestHandler = async ({ request }) => {
       error_code: (error as any)?.code
     }, { status: 500 });
   }
-}; 
+};

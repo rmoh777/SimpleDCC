@@ -2,7 +2,7 @@ import type { RequestHandler } from './$types';
 import { json } from '@sveltejs/kit';
 import getStripe from '$lib/stripe/stripe';
 
-export const POST: RequestHandler = async ({ request }) => {
+export const POST: RequestHandler = async ({ request, platform }) => {
   try {
     const { adminSecret } = await request.json();
     
@@ -20,7 +20,7 @@ export const POST: RequestHandler = async ({ request }) => {
       }, { status: 500 });
     }
 
-    const stripe = getStripe();
+    const stripe = new Stripe(platform.env.STRIPE_SECRET_KEY, { apiVersion: '2024-06-20' });
     
     // Test price retrieval
     const price = await stripe.prices.retrieve(stripePriceId);

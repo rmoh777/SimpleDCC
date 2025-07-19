@@ -2,7 +2,7 @@ import type { RequestHandler } from './$types';
 import { json } from '@sveltejs/kit';
 import getStripe from '$lib/stripe/stripe';
 
-export const POST: RequestHandler = async ({ request }) => {
+export const POST: RequestHandler = async ({ request, platform }) => {
   try {
     const { email, adminSecret } = await request.json();
     
@@ -10,7 +10,7 @@ export const POST: RequestHandler = async ({ request }) => {
       return json({ error: 'Admin secret required' }, { status: 401 });
     }
 
-    const stripe = getStripe();
+    const stripe = new Stripe(platform.env.STRIPE_SECRET_KEY, { apiVersion: '2024-06-20' });
     
     // Test customer creation
     const customer = await stripe.customers.create({
