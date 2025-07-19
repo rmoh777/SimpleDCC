@@ -1,6 +1,6 @@
 import type { RequestHandler } from './$types';
 import { json } from '@sveltejs/kit';
-import getStripe from '$lib/stripe/stripe';
+import Stripe from 'stripe';
 import { createOrGetUser, getUserByEmail, updateUserStripeCustomerId } from '$lib/users/user-operations';
 
 export const POST: RequestHandler = async ({ request, platform }) => {

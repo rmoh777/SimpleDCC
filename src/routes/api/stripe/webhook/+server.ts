@@ -1,10 +1,7 @@
 import type { RequestHandler } from './$types';
 import { json } from '@sveltejs/kit';
-import getStripe from '$lib/stripe/stripe';
-import { 
-  getUserByStripeCustomerId, 
-  updateUserSubscriptionStatus 
-} from '$lib/users/user-operations';
+import Stripe from 'stripe';
+import { getUserByStripeCustomerId, updateUserTier, updateUserSubscriptionStatus } from '$lib/users/user-operations';
 
 export const POST: RequestHandler = async ({ request, platform }) => {
   if (!platform?.env?.DB) {
@@ -12,20 +9,31 @@ export const POST: RequestHandler = async ({ request, platform }) => {
   }
 
   const db = platform.env.DB;
-  const sig = request.headers.get('stripe-signature');
-  const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
+  const body = await request.text();
+  const signature = request.headers.get('stripe-signature');
+  const webhookSecret = platform.env.STRIPE_WEBHOOK_SECRET;
 
-  if (!sig || !webhookSecret) {
+  if (!signature || !webhookSecret) {
     console.error('Missing Stripe signature or webhook secret');
     return json({ error: 'Webhook signature missing' }, { status: 400 });
+  }
+
+  if (!platform?.env?.STRIPE_SECRET_KEY) {
+    return json({ error: 'Stripe configuration missing' }, { status: 500 });
+  }
+
+  if (!platform?.env?.STRIPE_WEBHOOK_SECRET) {
+    return json({ error: 'Webhook configuration missing' }, { status: 500 });
   }
 
   let event;
 
   try {
-    const body = await request.text();
-    const stripe = getStripe();
-    event = stripe.webhooks.constructEvent(body, sig, webhookSecret);
+    // Initialize Stripe
+    const stripe = new Stripe(platform.env.STRIPE_SECRET_KEY, {
+      apiVersion: '2024-06-20',
+    });
+    event = stripe.webhooks.constructEvent(body, signature, webhookSecret);
   } catch (err) {
     console.error('Webhook signature verification failed:', err);
     return json({ error: 'Invalid signature' }, { status: 400 });
@@ -52,11 +60,11 @@ export const POST: RequestHandler = async ({ request, platform }) => {
         break;
 
       case 'invoice.payment_failed':
-        await handlePaymentFailed(event.data.object, db);
-        break;
-
-      case 'invoice.payment_succeeded':
-        await handlePaymentSucceeded(event.data.object, db);
+              await handlePaymentFailed(event.data.object, db, platform);
+      break;
+    
+    case 'invoice.payment_succeeded':
+      await handlePaymentSucceeded(event.data.object, db, platform);
         break;
 
       default:
@@ -157,11 +165,13 @@ async function handleTrialWillEnd(subscription: any, db: any) {
   console.log(`📧 Should send trial ending reminder to ${user.email}`);
 }
 
-async function handlePaymentFailed(invoice: any, db: any) {
+async function handlePaymentFailed(invoice: any, db: any, platform: any) {
   console.log(`🎣 Processing payment failed: ${invoice.id}`);
   
   if (invoice.subscription) {
-    const stripe = getStripe();
+    const stripe = new Stripe(platform.env.STRIPE_SECRET_KEY, {
+      apiVersion: '2024-06-20',
+    });
     const subscription = await stripe.subscriptions.retrieve(invoice.subscription);
     const user = await getUserByStripeCustomerId(subscription.customer, db);
     
@@ -172,11 +182,13 @@ async function handlePaymentFailed(invoice: any, db: any) {
   }
 }
 
-async function handlePaymentSucceeded(invoice: any, db: any) {
+async function handlePaymentSucceeded(invoice: any, db: any, platform: any) {
   console.log(`🎣 Processing payment succeeded: ${invoice.id}`);
   
   if (invoice.subscription) {
-    const stripe = getStripe();
+    const stripe = new Stripe(platform.env.STRIPE_SECRET_KEY, {
+      apiVersion: '2024-06-20',
+    });
     const subscription = await stripe.subscriptions.retrieve(invoice.subscription);
     const user = await getUserByStripeCustomerId(subscription.customer, db);
     
