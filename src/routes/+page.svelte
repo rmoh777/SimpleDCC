@@ -152,7 +152,12 @@
     <div class="hero-content">
     <!-- Large Hero Logo -->
     <div class="hero-logo">
-      <DocketCCLogo size="large" variant="light" />
+      <div class="desktop-logo">
+        <DocketCCLogo size="large" variant="light" />
+      </div>
+      <div class="mobile-logo">
+        <DocketCCLogo size="medium" variant="light" />
+      </div>
     </div>
     
     <h1>F<span class="highlight">CC</span> Docket Intelligence</h1>
@@ -412,7 +417,17 @@
 
 
 <style>
+  /* Global mobile overflow prevention */
+  :global(html) {
+    overflow-x: hidden;
+  }
 
+  :global(body) {
+    overflow-x: hidden;
+    width: 100%;
+    margin: 0;
+    padding: 0;
+  }
 
   /* Hero section */
   .hero {
@@ -421,6 +436,8 @@
     min-height: 90vh;
     display: flex;
     align-items: center;
+    width: 100%;
+    box-sizing: border-box;
   }
 
   .hero-container {
@@ -432,12 +449,21 @@
     gap: 4rem;
     align-items: center;
     width: 100%;
+    box-sizing: border-box;
   }
 
   .hero-logo {
     margin-bottom: 2rem;
     display: flex;
     justify-content: flex-start;
+  }
+
+  .mobile-logo {
+    display: none;
+  }
+
+  .desktop-logo {
+    display: block;
   }
 
   .hero-content h1 {
@@ -994,46 +1020,98 @@
 
   /* Mobile responsive */
   @media (max-width: 768px) {
+    /* Prevent horizontal overflow */
+    body {
+      overflow-x: hidden;
+    }
+    
     .hero {
       padding: 2rem 0;
       min-height: 100vh;
+      overflow-x: hidden;
     }
     
     .hero-container {
       grid-template-columns: 1fr;
-      gap: 3rem;
+      gap: 2rem;
       padding: 0 1rem;
+      max-width: 100vw;
+      box-sizing: border-box;
     }
 
     .hero-logo {
       justify-content: center;
-      margin-bottom: 1.5rem;
+      margin-bottom: 1rem;
+    }
+
+    .mobile-logo {
+      display: block;
+    }
+
+    .desktop-logo {
+      display: none;
+    }
+
+    .hero-content {
+      text-align: center;
+      max-width: 100%;
+      overflow-wrap: break-word;
     }
 
     .hero-content h1 {
-      font-size: 2.5rem;
+      font-size: 2.2rem;
+      line-height: 1.2;
     }
 
     .search-card {
-      padding: 2rem 1.5rem;
+      padding: 1.5rem 1rem;
+      margin: 0;
+      max-width: 100%;
+      box-sizing: border-box;
     }
 
+    .search-input {
+      font-size: 1rem;
+      padding: 1rem 3.5rem 1rem 1rem;
+    }
 
+    .form-group {
+      margin-bottom: 1.5rem;
+    }
+
+    .btn-primary {
+      font-size: 1rem;
+      padding: 1rem 1.5rem;
+    }
 
     .features-section {
-      padding: 4rem 1rem;
+      padding: 3rem 1rem;
+      overflow-x: hidden;
+    }
+
+    .features-container {
+      max-width: 100%;
+      box-sizing: border-box;
     }
 
     .features-header h2 {
-      font-size: 2.2rem;
+      font-size: 2rem;
     }
 
     .features-grid {
       grid-template-columns: 1fr;
-      gap: 2rem;
+      gap: 1.5rem;
     }
 
+    .progress-labels {
+      font-size: 0.65rem;
+    }
 
+    /* Ensure all containers respect viewport width */
+    * {
+      max-width: 100vw;
+      box-sizing: border-box;
+    }
   }
 
   /* Success Modal */
