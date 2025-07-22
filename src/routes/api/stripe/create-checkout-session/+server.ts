@@ -92,12 +92,6 @@ export const POST: RequestHandler = async ({ request, platform }) => {
       subscription_data: {
         trial_period_days: 30,
       },
-      // Enhanced checkout features
-      payment_method_options: {
-        card: {
-          setup_future_usage: 'off_session' // Save card for future use
-        }
-      },
       customer_update: {
         name: 'auto',
         address: 'auto'

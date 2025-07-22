@@ -188,11 +188,6 @@ export const POST: RequestHandler = async ({ request, platform }) => {
       subscription_data: {
         trial_period_days: 30,
       },
-      payment_method_options: {
-        card: {
-          setup_future_usage: 'off_session' as const
-        }
-      },
       customer_update: {
         name: 'auto' as const,
         address: 'auto' as const

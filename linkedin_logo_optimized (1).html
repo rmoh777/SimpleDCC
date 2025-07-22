@@ -1,0 +1,489 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LinkedIn Optimized DocketCC Logos</title>
+    <style>
+        body {
+            font-family: 'Arial', sans-serif;
+            margin: 0;
+            padding: 40px;
+            background: #f8f9fa;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        h1 {
+            text-align: center;
+            color: #333;
+            margin-bottom: 40px;
+        }
+        .logo-section {
+            background: white;
+            padding: 40px;
+            border-radius: 12px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+            margin-bottom: 40px;
+        }
+        .logo-section h2 {
+            text-align: center;
+            color: #10b981;
+            margin-bottom: 30px;
+            font-size: 28px;
+        }
+        .specs {
+            background: #e8f4fd;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 30px;
+            text-align: center;
+        }
+        .specs h3 {
+            color: #0a66c2;
+            margin-bottom: 10px;
+        }
+        .specs p {
+            color: #666;
+            margin: 5px 0;
+            font-size: 14px;
+        }
+        
+        /* LinkedIn Business Cover - 1128x191px */
+        .linkedin-cover {
+            width: 1128px;
+            height: 191px;
+            background: #ffffff;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 8px;
+            margin: 20px auto;
+            box-shadow: 0 8px 24px rgba(0,0,0,0.1);
+            border: 1px solid #e2e8f0;
+        }
+        
+        .cover-logo {
+            display: flex;
+            align-items: center;
+            gap: 25px;
+        }
+        
+        .cover-folder-icon {
+            position: relative;
+            width: 92px;
+            height: 80px;
+        }
+        
+        .cover-folder-back {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            width: 92px;
+            height: 60px;
+            background: #0f172a;
+            border: 2px solid #475569;
+            border-radius: 0 6px 6px 6px;
+        }
+        
+        .cover-folder-tab {
+            position: absolute;
+            top: 6px;
+            left: 0;
+            width: 36px;
+            height: 20px;
+            background: #0f172a;
+            border: 2px solid #475569;
+            border-bottom: none;
+            border-radius: 4px 4px 0 0;
+        }
+        
+        .cover-folder-front {
+            position: absolute;
+            bottom: 0;
+            left: 2px;
+            width: 88px;
+            height: 52px;
+            background: #0f172a;
+            border: 1px solid #475569;
+            border-radius: 2px;
+        }
+        
+        .cover-documents {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 64px;
+            height: 44px;
+        }
+        
+        .cover-doc {
+            position: absolute;
+            width: 32px;
+            height: 40px;
+            border-radius: 2px;
+            border: 2px solid #0f172a;
+        }
+        
+        .cover-doc1 {
+            background: #10b981;
+            left: 0;
+            top: 0;
+            z-index: 3;
+        }
+        
+        .cover-doc2 {
+            background: #34d399;
+            left: 16px;
+            top: 2px;
+            z-index: 2;
+        }
+        
+        .cover-doc3 {
+            background: #6ee7b7;
+            left: 32px;
+            top: 4px;
+            z-index: 1;
+        }
+        
+        .cover-doc-lines {
+            position: absolute;
+            top: 8px;
+            left: 4px;
+            right: 4px;
+        }
+        
+        .cover-doc-line {
+            height: 2px;
+            background: #0f172a;
+            margin-bottom: 3px;
+            border-radius: 1px;
+        }
+        
+        .cover-doc-line:nth-child(2) {
+            width: 80%;
+        }
+        
+        .cover-doc-line:nth-child(3) {
+            width: 60%;
+        }
+        
+        .cover-logo-text {
+            font-size: 72px;
+            font-weight: 700;
+            color: #0f172a;
+            letter-spacing: -2px;
+            text-shadow: 0 2px 4px rgba(15, 23, 42, 0.3);
+        }
+        
+        /* LinkedIn Avatar - 400x400px */
+        .linkedin-avatar {
+            width: 400px;
+            height: 400px;
+            background: #ffffff;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 20px;
+            border-radius: 8px;
+            margin: 20px auto;
+            box-shadow: 0 8px 24px rgba(0,0,0,0.1);
+            border: 1px solid #e2e8f0;
+        }
+        
+        .avatar-folder-icon {
+            position: relative;
+            width: 120px;
+            height: 100px;
+        }
+        
+        .avatar-folder-back {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            width: 120px;
+            height: 78px;
+            background: #0f172a;
+            border: 3px solid #475569;
+            border-radius: 0 8px 8px 8px;
+        }
+        
+        .avatar-folder-tab {
+            position: absolute;
+            top: 8px;
+            left: 0;
+            width: 48px;
+            height: 26px;
+            background: #0f172a;
+            border: 3px solid #475569;
+            border-bottom: none;
+            border-radius: 6px 6px 0 0;
+        }
+        
+        .avatar-folder-front {
+            position: absolute;
+            bottom: 0;
+            left: 3px;
+            width: 114px;
+            height: 68px;
+            background: #0f172a;
+            border: 2px solid #475569;
+            border-radius: 3px;
+        }
+        
+        .avatar-documents {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 84px;
+            height: 58px;
+        }
+        
+        .avatar-doc {
+            position: absolute;
+            width: 42px;
+            height: 52px;
+            border-radius: 3px;
+            border: 3px solid #0f172a;
+        }
+        
+        .avatar-doc1 {
+            background: #10b981;
+            left: 0;
+            top: 0;
+            z-index: 3;
+        }
+        
+        .avatar-doc2 {
+            background: #34d399;
+            left: 21px;
+            top: 3px;
+            z-index: 2;
+        }
+        
+        .avatar-doc3 {
+            background: #6ee7b7;
+            left: 42px;
+            top: 6px;
+            z-index: 1;
+        }
+        
+        .avatar-doc-lines {
+            position: absolute;
+            top: 10px;
+            left: 6px;
+            right: 6px;
+        }
+        
+        .avatar-doc-line {
+            height: 3px;
+            background: #0f172a;
+            margin-bottom: 4px;
+            border-radius: 1px;
+        }
+        
+        .avatar-doc-line:nth-child(2) {
+            width: 80%;
+        }
+        
+        .avatar-doc-line:nth-child(3) {
+            width: 60%;
+        }
+        
+        .avatar-logo-text {
+            font-size: 56px;
+            font-weight: 700;
+            color: #0f172a;
+            letter-spacing: -1px;
+            text-shadow: 0 2px 4px rgba(15, 23, 42, 0.3);
+            text-align: center;
+        }
+        
+        /* Instructions */
+        .instructions {
+            background: #fff3cd;
+            padding: 20px;
+            border-radius: 8px;
+            margin-top: 20px;
+        }
+        
+        .instructions h4 {
+            color: #856404;
+            margin-bottom: 10px;
+        }
+        
+        .instructions p {
+            color: #856404;
+            margin: 8px 0;
+            font-size: 14px;
+        }
+        
+        /* Responsive scaling info */
+        .scale-info {
+            background: #d4edda;
+            padding: 20px;
+            border-radius: 8px;
+            margin-top: 20px;
+        }
+        
+        .scale-info h4 {
+            color: #155724;
+            margin-bottom: 10px;
+        }
+        
+        .scale-info p {
+            color: #155724;
+            margin: 5px 0;
+            font-size: 14px;
+        }
+        
+        @media (max-width: 1200px) {
+            .linkedin-cover {
+                transform: scale(0.8);
+                transform-origin: center;
+            }
+        }
+        
+        @media (max-width: 1000px) {
+            .linkedin-cover {
+                transform: scale(0.6);
+                transform-origin: center;
+            }
+        }
+        
+        @media (max-width: 800px) {
+            .linkedin-cover {
+                transform: scale(0.5);
+                transform-origin: center;
+            }
+            .linkedin-avatar {
+                transform: scale(0.8);
+                transform-origin: center;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>LinkedIn Optimized DocketCC Logos</h1>
+        
+        <!-- LinkedIn Business Cover -->
+        <div class="logo-section">
+            <h2>📊 LinkedIn Business Cover Page</h2>
+            <div class="specs">
+                <h3>Specifications</h3>
+                <p><strong>Dimensions:</strong> 1128 × 191 pixels</p>
+                <p><strong>Format:</strong> PNG recommended for transparency</p>
+                <p><strong>Background:</strong> LinkedIn gradient blue</p>
+                <p><strong>Usage:</strong> Company page header banner</p>
+            </div>
+            
+            <div class="linkedin-cover">
+                <div class="cover-logo">
+                    <div class="cover-folder-icon">
+                        <div class="cover-folder-tab"></div>
+                        <div class="cover-folder-back"></div>
+                        <div class="cover-folder-front"></div>
+                        <div class="cover-documents">
+                            <div class="cover-doc cover-doc1">
+                                <div class="cover-doc-lines">
+                                    <div class="cover-doc-line"></div>
+                                    <div class="cover-doc-line"></div>
+                                    <div class="cover-doc-line"></div>
+                                </div>
+                            </div>
+                            <div class="cover-doc cover-doc2">
+                                <div class="cover-doc-lines">
+                                    <div class="cover-doc-line"></div>
+                                    <div class="cover-doc-line"></div>
+                                    <div class="cover-doc-line"></div>
+                                </div>
+                            </div>
+                            <div class="cover-doc cover-doc3">
+                                <div class="cover-doc-lines">
+                                    <div class="cover-doc-line"></div>
+                                    <div class="cover-doc-line"></div>
+                                    <div class="cover-doc-line"></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="cover-logo-text">DocketCC</div>
+                </div>
+            </div>
+            
+            <div class="instructions">
+                <h4>📸 Screenshot Instructions for Cover:</h4>
+                <p>1. Right-click on the blue banner above → Inspect Element</p>
+                <p>2. Find the div with class "linkedin-cover" in the HTML</p>
+                <p>3. Right-click on that div → Screenshot node</p>
+                <p>4. This will capture exactly 1128×191px for LinkedIn</p>
+            </div>
+        </div>
+        
+        <!-- LinkedIn Avatar -->
+        <div class="logo-section">
+            <h2>👤 LinkedIn Profile Avatar</h2>
+            <div class="specs">
+                <h3>Specifications</h3>
+                <p><strong>Dimensions:</strong> 400 × 400 pixels</p>
+                <p><strong>Format:</strong> PNG for best quality</p>
+                <p><strong>Background:</strong> LinkedIn gradient blue</p>
+                <p><strong>Usage:</strong> Company profile picture, displays at 60px, 100px, 300px</p>
+            </div>
+            
+            <div class="linkedin-avatar">
+                <div class="avatar-folder-icon">
+                    <div class="avatar-folder-tab"></div>
+                    <div class="avatar-folder-back"></div>
+                    <div class="avatar-folder-front"></div>
+                    <div class="avatar-documents">
+                        <div class="avatar-doc avatar-doc1">
+                            <div class="avatar-doc-lines">
+                                <div class="avatar-doc-line"></div>
+                                <div class="avatar-doc-line"></div>
+                                <div class="avatar-doc-line"></div>
+                            </div>
+                        </div>
+                        <div class="avatar-doc avatar-doc2">
+                            <div class="avatar-doc-lines">
+                                <div class="avatar-doc-line"></div>
+                                <div class="avatar-doc-line"></div>
+                                <div class="avatar-doc-line"></div>
+                            </div>
+                        </div>
+                        <div class="avatar-doc avatar-doc3">
+                            <div class="avatar-doc-lines">
+                                <div class="avatar-doc-line"></div>
+                                <div class="avatar-doc-line"></div>
+                                <div class="avatar-doc-line"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="avatar-logo-text">DocketCC</div>
+            </div>
+            
+            <div class="instructions">
+                <h4>📸 Screenshot Instructions for Avatar:</h4>
+                <p>1. Right-click on the square logo above → Inspect Element</p>
+                <p>2. Find the div with class "linkedin-avatar" in the HTML</p>
+                <p>3. Right-click on that div → Screenshot node</p>
+                <p>4. This will capture exactly 400×400px for LinkedIn</p>
+            </div>
+            
+            <div class="scale-info">
+                <h4>✅ Why These Sizes Work:</h4>
+                <p><strong>Cover:</strong> Large enough for desktop viewing, scales well on mobile</p>
+                <p><strong>Avatar:</strong> High resolution for clarity when scaled down to 60px thumbnails</p>
+                <p><strong>Colors:</strong> LinkedIn blue background ensures brand consistency</p>
+                <p><strong>Contrast:</strong> White text and dark folder ensure visibility</p>
+            </div>
+        </div>
+    </div>
+</body>
+</html>
