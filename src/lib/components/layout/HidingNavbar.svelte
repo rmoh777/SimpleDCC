@@ -3,6 +3,7 @@
   import { page } from '$app/stores';
   import { gsap } from 'gsap';
   import { ScrollTrigger } from 'gsap/ScrollTrigger';
+  import DocketCCLogo from '$lib/components/ui/DocketCCLogo.svelte';
 
   // Register GSAP plugins
   gsap.registerPlugin(ScrollTrigger);
@@ -101,12 +102,7 @@
     <nav class="nav">
       <div class="logo-section">
         <a href="/" class="logo-link">
-          <div class="logo-graphic">
-            <div class="logo-icon">📡</div>
-            <div class="logo-text">
-              Docket<span class="logo-cc">CC</span>
-            </div>
-          </div>
+          <DocketCCLogo size="medium" />
         </a>
       </div>
       
@@ -167,35 +163,6 @@
     text-decoration: none;
   }
 
-  .logo-graphic {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-  }
-
-  .logo-icon {
-    width: 36px;
-    height: 36px;
-    background: linear-gradient(135deg, var(--color-primary), var(--color-primary-hover));
-    border-radius: var(--border-radius);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 1.3rem;
-    box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
-  }
-
-  .logo-text {
-    font-size: 1.6rem;
-    font-weight: var(--font-weight-black);
-    color: var(--color-secondary);
-    letter-spacing: -0.5px;
-  }
-
-  .logo-cc {
-    color: var(--color-primary);
-  }
-
   .nav-links {
     display: flex;
     gap: 2rem;
@@ -231,15 +198,7 @@
       display: none; /* Will implement mobile menu later */
     }
 
-    .logo-icon {
-      width: 35px;
-      height: 35px;
-      font-size: 1rem;
-    }
-
-    .logo-text {
-      font-size: var(--font-size-xl);
-    }
+    /* Logo scales down on mobile via component props */
 
     .btn-primary {
       padding: var(--spacing-2) var(--spacing-4);
