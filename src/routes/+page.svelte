@@ -1,5 +1,6 @@
 <script lang="ts">
   import { onMount } from 'svelte';
+  import DocketCCLogo from '$lib/components/ui/DocketCCLogo.svelte';
   
   let docketSearch = '';
   let emailInput = '';
@@ -149,6 +150,11 @@
 <section class="hero">
   <div class="hero-container">
     <div class="hero-content">
+    <!-- Large Hero Logo -->
+    <div class="hero-logo">
+      <DocketCCLogo size="large" variant="light" />
+    </div>
+    
     <h1>F<span class="highlight">CC</span> Docket Intelligence</h1>
     <p class="subtitle">
       Independent monitoring service for Federal Communications Commission proceedings. 
@@ -426,6 +432,12 @@
     gap: 4rem;
     align-items: center;
     width: 100%;
+  }
+
+  .hero-logo {
+    margin-bottom: 2rem;
+    display: flex;
+    justify-content: flex-start;
   }
 
   .hero-content h1 {
@@ -991,6 +1003,11 @@
       grid-template-columns: 1fr;
       gap: 3rem;
       padding: 0 1rem;
+    }
+
+    .hero-logo {
+      justify-content: center;
+      margin-bottom: 1.5rem;
     }
 
     .hero-content h1 {

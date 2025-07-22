@@ -1,6 +1,7 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import FrequencyToggle from '$lib/components/FrequencyToggle.svelte';
+  import DocketCCLogo from '$lib/components/ui/DocketCCLogo.svelte';
   
   let email = '';
   let subscriptions: any[] = [];
@@ -297,6 +298,8 @@
     text-align: center;
     margin-bottom: 3rem;
   }
+
+
 
   .page-header h1 {
     font-size: 3rem;

@@ -3,6 +3,7 @@
   import { stripePublishableKey } from '$lib/stripe/client';
   import { browser } from '$app/environment';
   import { onMount } from 'svelte';
+  import DocketCCLogo from '$lib/components/ui/DocketCCLogo.svelte';
 
   export let data;
 
@@ -230,6 +231,8 @@
     max-width: 500px;
     margin: 0 auto 1.5rem;
   }
+
+
 
   .main-title {
     font-size: 2.25rem;
