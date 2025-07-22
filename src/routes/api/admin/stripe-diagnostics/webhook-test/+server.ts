@@ -1,7 +1,7 @@
 import type { RequestHandler } from './$types';
 import { json } from '@sveltejs/kit';
 
-export const POST: RequestHandler = async ({ request }) => {
+export const POST: RequestHandler = async ({ request, platform }) => {
   try {
     const { adminSecret } = await request.json();
     
@@ -9,8 +9,8 @@ export const POST: RequestHandler = async ({ request }) => {
       return json({ error: 'Admin secret required' }, { status: 401 });
     }
 
-    const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
-    const publicOrigin = process.env.PUBLIC_ORIGIN;
+    const webhookSecret = platform?.env?.STRIPE_WEBHOOK_SECRET;
+    const publicOrigin = platform?.env?.PUBLIC_ORIGIN;
     
     // Test webhook endpoint accessibility
     const webhookUrl = `${publicOrigin || 'https://your-domain.com'}/api/stripe/webhook`;
