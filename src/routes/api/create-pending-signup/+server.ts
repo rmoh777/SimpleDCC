@@ -16,6 +16,9 @@ function isValidDocket(docket: string): boolean {
 
 export const POST: RequestHandler = async ({ request, platform }) => {
   try {
+    // TEMPORARY: Verify DB access in production (remove after deployment verification)
+    console.log('[create-pending-signup] DB Check:', platform?.env?.DB ? 'DB OK' : 'DB MISSING');
+    
     if (!platform?.env?.DB) {
       return json({ error: 'Database not available' }, { status: 500 });
     }
