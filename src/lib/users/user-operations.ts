@@ -362,4 +362,96 @@ export async function userHasProAccess(userId: number, db: any): Promise<boolean
     console.error('Error checking pro access:', error);
     return false;
   }
+}
+
+/**
+ * Link Google account to existing user
+ */
+export async function linkGoogleAccount(
+  userId: number,
+  googleId: string,
+  googleEmail: string,
+  db: any
+): Promise<boolean> {
+  try {
+    const now = Date.now();
+    
+    await db.prepare(`
+      UPDATE users 
+      SET google_id = ?, 
+          google_email = ?,
+          google_linked_at = ?
+      WHERE id = ?
+    `).bind(googleId, googleEmail, Math.floor(now / 1000), userId).run();
+    
+    console.log(`✅ Google account linked: ${googleEmail} → user ${userId}`);
+    return true;
+  } catch (error) {
+    console.error('Error linking Google account:', error);
+    return false;
+  }
+}
+
+/**
+ * Get user by Google ID
+ */
+export async function getUserByGoogleId(googleId: string, db: any): Promise<User | null> {
+  try {
+    const result = await db.prepare(`
+      SELECT * FROM users WHERE google_id = ?
+    `).bind(googleId).first();
+    
+    return result || null;
+  } catch (error) {
+    console.error('Error getting user by Google ID:', error);
+    return null;
+  }
+}
+
+/**
+ * Unlink Google account from user
+ */
+export async function unlinkGoogleAccount(userId: number, db: any): Promise<boolean> {
+  try {
+    await db.prepare(`
+      UPDATE users 
+      SET google_id = NULL, 
+          google_email = NULL,
+          google_linked_at = NULL
+      WHERE id = ?
+    `).bind(userId).run();
+    
+    console.log(`✅ Google account unlinked from user ${userId}`);
+    return true;
+  } catch (error) {
+    console.error('Error unlinking Google account:', error);
+    return false;
+  }
+}
+
+/**
+ * Create session token (used by both magic link and Google OAuth)
+ */
+export async function createUserSession(
+  userId: number,
+  extendedSession: boolean = false,
+  db: any
+): Promise<{ sessionToken: string; sessionExpires: number } | null> {
+  try {
+    const sessionToken = crypto.randomUUID();
+    const sessionDuration = extendedSession ? 24 * 60 * 60 * 1000 : 1 * 60 * 60 * 1000; // 24 hours or 1 hour
+    const sessionExpires = Date.now() + sessionDuration;
+
+    await db.prepare(`
+      UPDATE users 
+      SET session_token = ?,
+          session_expires = ?
+      WHERE id = ?
+    `).bind(sessionToken, sessionExpires, userId).run();
+
+    return { sessionToken, sessionExpires };
+  } catch (error) {
+    console.error('Error creating user session:', error);
+    return null;
+  }
 } 
