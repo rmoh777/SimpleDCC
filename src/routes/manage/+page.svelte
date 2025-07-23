@@ -19,6 +19,7 @@
   let isSendingMagicLink = false;
   let magicLinkStatus = '';
   let magicLinkError = '';
+  let keepSignedIn = false;
   
   // Initialize from server data
   onMount(() => {
@@ -136,7 +137,8 @@
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          email: magicLinkEmail
+          email: magicLinkEmail,
+          extendedSession: keepSignedIn
         })
       });
 
@@ -239,6 +241,13 @@
                   placeholder="your.email@organization.gov"
                   required
                 />
+              </div>
+              
+              <div class="form-group">
+                <label class="checkbox-label">
+                  <input type="checkbox" bind:checked={keepSignedIn} class="checkbox-input" />
+                  <span class="checkbox-text">Keep me signed in for 24 hours</span>
+                </label>
               </div>
               
               <button 
@@ -743,6 +752,49 @@
   .btn-magic:disabled {
     opacity: 0.6;
     cursor: not-allowed;
+  }
+
+  /* Checkbox styles */
+  .checkbox-label {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    cursor: pointer;
+    font-size: 0.9rem;
+    color: #374151;
+    margin-top: 0.5rem;
+  }
+
+  .checkbox-input {
+    width: 18px;
+    height: 18px;
+    border: 2px solid #d1d5db;
+    border-radius: 4px;
+    background: white;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+
+  .checkbox-input:checked {
+    background: linear-gradient(135deg, #8b5cf6, #a855f7);
+    border-color: #8b5cf6;
+  }
+
+  .checkbox-input:checked::after {
+    content: '✓';
+    color: white;
+    font-size: 12px;
+    font-weight: bold;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    height: 100%;
+  }
+
+  .checkbox-text {
+    user-select: none;
+    font-weight: 500;
   }
 
   /* Dashboard */

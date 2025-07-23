@@ -14,7 +14,7 @@ export const POST: RequestHandler = async ({ request, platform }) => {
       return json({ error: 'Database not available' }, { status: 500 });
     }
 
-    const { email } = await request.json();
+    const { email, extendedSession = false } = await request.json();
 
     if (!email || !email.includes('@')) {
       return json({ error: 'Valid email address is required' }, { status: 400 });
@@ -72,7 +72,7 @@ export const POST: RequestHandler = async ({ request, platform }) => {
 
     // Generate magic link URL
     const baseUrl = platform.env.PUBLIC_ORIGIN || 'http://localhost:5175';
-    const magicLink = `${baseUrl}/auth/verify?token=${magicToken}&email=${encodeURIComponent(normalizedEmail)}`;
+    const magicLink = `${baseUrl}/auth/verify?token=${magicToken}&email=${encodeURIComponent(normalizedEmail)}&extended=${extendedSession}`;
 
     // Send magic link email
     const emailResult = await sendMagicLinkEmail(normalizedEmail, magicLink, platform.env, 15);

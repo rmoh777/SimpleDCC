@@ -9,6 +9,7 @@ export const load: PageServerLoad = async ({ url, platform, cookies }) => {
 
   const token = url.searchParams.get('token');
   const email = url.searchParams.get('email');
+  const extended = url.searchParams.get('extended') === 'true';
 
   if (!token || !email) {
     throw redirect(302, '/manage?error=invalid_link');
@@ -48,7 +49,8 @@ export const load: PageServerLoad = async ({ url, platform, cookies }) => {
 
     // Generate session token
     const sessionToken = crypto.randomUUID();
-    const sessionExpires = now + (7 * 24 * 60 * 60 * 1000); // 7 days
+    const sessionDuration = extended ? 24 * 60 * 60 * 1000 : 1 * 60 * 60 * 1000; // 24 hours or 1 hour
+    const sessionExpires = now + sessionDuration;
 
     // Update user: clear magic token, set session token
     await db.prepare(`
@@ -61,9 +63,10 @@ export const load: PageServerLoad = async ({ url, platform, cookies }) => {
     `).bind(sessionToken, sessionExpires, user.id).run();
 
     // Set session cookie
+    const cookieMaxAge = extended ? 24 * 60 * 60 : 60 * 60; // 24 hours or 1 hour in seconds
     cookies.set('user_session', sessionToken, {
       path: '/',
-      maxAge: 7 * 24 * 60 * 60, // 7 days in seconds
+      maxAge: cookieMaxAge,
       httpOnly: true,
       secure: true,
       sameSite: 'lax'
@@ -80,7 +83,8 @@ export const load: PageServerLoad = async ({ url, platform, cookies }) => {
       JSON.stringify({ 
         email: user.email,
         user_tier: user.user_tier,
-        session_duration_days: 7
+        session_duration_hours: extended ? 24 : 1,
+        extended_session: extended
       }),
       Math.floor(now / 1000)
     ).run();
