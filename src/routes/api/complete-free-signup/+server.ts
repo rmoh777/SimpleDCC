@@ -1,7 +1,6 @@
 import { json, redirect } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { createOrGetUser, createUserSession, getUserByEmail } from '$lib/users/user-operations';
-import { createUserSubscription } from '$lib/database/db-operations';
 
 export const POST: RequestHandler = async ({ request, platform, cookies }) => {
   try {
@@ -77,14 +76,21 @@ export const POST: RequestHandler = async ({ request, platform, cookies }) => {
 
       // 4. Create free subscription
       console.log(`[complete-free-signup] Creating subscription for user ${newUser.id}`);
-      await createUserSubscription({
-        userId: newUser.id,
-        docketNumber,
-        tier: 'free',
-        frequency: 'daily',
-        isActive: true,
-        createdAt: now
-      }, db);
+      const subResult = await db.prepare(`
+        INSERT INTO subscriptions (user_id, email, docket_number, frequency, created_at, needs_seed) 
+        VALUES (?, ?, ?, ?, ?, ?)
+      `).bind(
+        newUser.id, 
+        email.toLowerCase(), 
+        docketNumber, 
+        'daily', 
+        Math.floor(now / 1000), 
+        1
+      ).run();
+      
+      if (!subResult.success) {
+        throw new Error('Failed to create subscription');
+      }
 
       // 5. Mark pending signup as completed
       await db.prepare(`
