@@ -60,6 +60,14 @@ export const load: PageServerLoad = async ({ url, platform, cookies }) => {
   const googleLinked = url.searchParams.get('google_linked');
   const authMethod = url.searchParams.get('method');
 
+  // Clear any lingering OAuth cookies to ensure fresh attempts
+  // This helps prevent issues with stuck authentication states
+  if (errorType === 'oauth_params_missing' || errorType === 'no_account_found') {
+    cookies.delete("google_oauth_state", { path: "/" });
+    cookies.delete("google_code_verifier", { path: "/" });
+    cookies.delete("google_oauth_linking", { path: "/" });
+  }
+
   let statusMessage = '';
   let errorMessage = '';
 
@@ -94,7 +102,12 @@ export const load: PageServerLoad = async ({ url, platform, cookies }) => {
         errorMessage = `No SimpleDCC account found for ${emailParam || 'that Google account'}. Please use magic link to sign in with your original email address.`;
         break;
       case 'oauth_params_missing':
-        errorMessage = 'Google OAuth error: Missing authorization parameters. Please try again.';
+        const retryParam = url.searchParams.get('retry');
+        if (retryParam === 'true') {
+          errorMessage = 'Google OAuth failed on first attempt. This is common - please try "Sign in with Google" again.';
+        } else {
+          errorMessage = 'Google OAuth error: Missing authorization parameters. Please try again.';
+        }
         break;
       case 'oauth_state_mismatch':
         errorMessage = 'Google OAuth security error. Please try signing in again.';
