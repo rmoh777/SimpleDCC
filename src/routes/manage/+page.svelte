@@ -3,6 +3,8 @@
   import FrequencyToggle from '$lib/components/FrequencyToggle.svelte';
   import DocketCCLogo from '$lib/components/ui/DocketCCLogo.svelte';
   
+  export let data;
+  
   let email = '';
   let subscriptions: any[] = [];
   let userTier = 'free';
@@ -11,6 +13,30 @@
   let showEmailForm = true;
   let isUnsubscribing = false;
   let unsubscribeStatus = '';
+  
+  // Magic link variables
+  let magicLinkEmail = '';
+  let isSendingMagicLink = false;
+  let magicLinkStatus = '';
+  let magicLinkError = '';
+  
+  // Initialize from server data
+  onMount(() => {
+    if (data.isLoggedIn && data.user) {
+      email = data.user.email;
+      subscriptions = data.subscriptions || [];
+      userTier = data.user.user_tier || 'free';
+      showEmailForm = false;
+    }
+    
+    if (data.statusMessage) {
+      unsubscribeStatus = data.statusMessage;
+    }
+    
+    if (data.errorMessage) {
+      errorMessage = data.errorMessage;
+    }
+  });
   
   async function loadSubscriptions() {
     if (!email) return;
@@ -92,6 +118,46 @@
         : sub
     );
   }
+
+  async function sendMagicLink() {
+    if (!magicLinkEmail || !magicLinkEmail.includes('@')) {
+      magicLinkError = 'Please enter a valid email address';
+      return;
+    }
+
+    isSendingMagicLink = true;
+    magicLinkStatus = '';
+    magicLinkError = '';
+
+    try {
+      const response = await fetch('/api/auth/magic-link', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          email: magicLinkEmail
+        })
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        magicLinkStatus = data.message;
+        magicLinkEmail = ''; // Clear the form
+      } else {
+        if (data.rateLimited) {
+          magicLinkError = data.error;
+        } else {
+          magicLinkError = data.error || 'Failed to send magic link. Please try again.';
+        }
+      }
+    } catch (error) {
+      magicLinkError = 'Network error occurred. Please try again.';
+    } finally {
+      isSendingMagicLink = false;
+    }
+  }
 </script>
 
 <svelte:head>
@@ -147,6 +213,60 @@
               ❌ {errorMessage}
             </div>
           {/if}
+        </div>
+      </div>
+
+      <!-- Magic Link Section -->
+      <div class="magic-link-section">
+        <div class="section-divider">
+          <span>or</span>
+        </div>
+        
+        <div class="magic-link-card">
+          <div class="magic-link-content">
+            <div class="magic-link-icon">🔗</div>
+            <h3>Sign In with Magic Link</h3>
+            <p>We'll send you a secure link to sign in instantly - no password needed!</p>
+            
+            <form on:submit|preventDefault={sendMagicLink} class="magic-link-form">
+              <div class="form-group">
+                <label for="magic-email" class="form-label">Email Address</label>
+                <input 
+                  type="email" 
+                  id="magic-email"
+                  bind:value={magicLinkEmail}
+                  class="email-input"
+                  placeholder="your.email@organization.gov"
+                  required
+                />
+              </div>
+              
+              <button 
+                type="submit" 
+                class="btn-magic"
+                disabled={isSendingMagicLink || !magicLinkEmail}
+              >
+                {#if isSendingMagicLink}
+                  <span class="loading-spinner"></span>
+                  Sending Magic Link...
+                {:else}
+                  🪄 Send Magic Link
+                {/if}
+              </button>
+            </form>
+            
+            {#if magicLinkStatus}
+              <div class="success-message">
+                ✅ {magicLinkStatus}
+              </div>
+            {/if}
+            
+            {#if magicLinkError}
+              <div class="error-message">
+                ❌ {magicLinkError}
+              </div>
+            {/if}
+          </div>
         </div>
       </div>
     {:else}
@@ -501,6 +621,128 @@
     border-radius: 8px;
     margin-top: 1rem;
     font-weight: 600;
+  }
+
+  .success-message {
+    background: rgba(16, 185, 129, 0.1);
+    color: #059669;
+    border: 1px solid rgba(16, 185, 129, 0.3);
+    padding: 1rem;
+    border-radius: 8px;
+    margin-top: 1rem;
+    font-weight: 600;
+  }
+
+  /* Magic Link Styles */
+  .magic-link-section {
+    max-width: 600px;
+    margin: 2rem auto 0;
+  }
+
+  .section-divider {
+    text-align: center;
+    margin: 2rem 0 1.5rem;
+    position: relative;
+  }
+
+  .section-divider::before {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 0;
+    right: 0;
+    height: 1px;
+    background: #e5e7eb;
+    z-index: 1;
+  }
+
+  .section-divider span {
+    background: #f8fafc;
+    padding: 0 1rem;
+    color: #9ca3af;
+    font-weight: 600;
+    font-size: 0.9rem;
+    position: relative;
+    z-index: 2;
+  }
+
+  .magic-link-card {
+    background: white;
+    border-radius: 24px;
+    box-shadow: 0 10px 40px rgba(0,0,0,0.08);
+    border: 1px solid #e5e7eb;
+    overflow: hidden;
+  }
+
+  .magic-link-card::before {
+    content: '';
+    display: block;
+    height: 4px;
+    background: linear-gradient(90deg, #8b5cf6, #a855f7);
+  }
+
+  .magic-link-content {
+    padding: 2.5rem;
+    text-align: center;
+  }
+
+  .magic-link-icon {
+    width: 60px;
+    height: 60px;
+    background: linear-gradient(135deg, #8b5cf6, #a855f7);
+    border-radius: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.5rem;
+    margin: 0 auto 1.5rem;
+    box-shadow: 0 8px 25px rgba(139, 92, 246, 0.3);
+  }
+
+  .magic-link-content h3 {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: #0f172a;
+    margin-bottom: 0.75rem;
+  }
+
+  .magic-link-content p {
+    color: #6b7280;
+    margin-bottom: 1.5rem;
+    line-height: 1.6;
+  }
+
+  .magic-link-form {
+    max-width: 350px;
+    margin: 0 auto;
+  }
+
+  .btn-magic {
+    width: 100%;
+    background: linear-gradient(135deg, #8b5cf6, #a855f7);
+    color: white;
+    border: none;
+    padding: 1rem 2rem;
+    border-radius: 12px;
+    font-size: 1rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    box-shadow: 0 8px 25px rgba(139, 92, 246, 0.3);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+  }
+
+  .btn-magic:hover:not(:disabled) {
+    transform: translateY(-2px);
+    box-shadow: 0 12px 35px rgba(139, 92, 246, 0.4);
+  }
+
+  .btn-magic:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
   }
 
   /* Dashboard */
