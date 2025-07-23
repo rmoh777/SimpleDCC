@@ -1,6 +1,6 @@
 import { json, redirect } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
-import getStripe from '$lib/stripe/stripe';
+import Stripe from 'stripe';
 
 export const GET: RequestHandler = async ({ url, platform }) => {
   try {
@@ -19,8 +19,18 @@ export const GET: RequestHandler = async ({ url, platform }) => {
 
     console.log(`[stripe-success] Processing session ${sessionId} for token ${token}`);
 
+    // Validate Stripe configuration
+    if (!platform?.env?.STRIPE_SECRET_KEY) {
+      console.error('[stripe-success] STRIPE_SECRET_KEY not found');
+      throw redirect(302, '/upgrade?error=stripe_config_missing');
+    }
+
+    // Initialize Stripe with platform.env (Cloudflare Workers pattern)
+    const stripe = new Stripe(platform.env.STRIPE_SECRET_KEY, {
+      apiVersion: '2024-06-20',
+    });
+
     // Retrieve the Stripe session
-    const stripe = getStripe();
     const session = await stripe.checkout.sessions.retrieve(sessionId);
     
     if (!session) {
