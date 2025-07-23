@@ -54,43 +54,33 @@ export const GET: RequestHandler = async ({ url, platform }) => {
     // Retrieve the subscription details
     const subscription = await stripe.subscriptions.retrieve(subscriptionId as string);
     const customerId = session.customer as string;
+    const db = platform.env.DB;
 
     console.log(`[stripe-success] Payment successful. Subscription: ${subscriptionId}, Customer: ${customerId}`);
 
-    // Call our completion API
-    const completionResponse = await fetch(`${url.origin}/api/complete-stripe-signup`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        token: parseInt(token),
-        stripeSessionId: sessionId,
-        stripeSubscriptionId: subscriptionId,
-        stripeCustomerId: customerId,
-        trialEnd: subscription.trial_end
-      })
-    });
+    // Store the Stripe data in the database for the completion handler to use
+    await db.prepare(`
+      UPDATE pending_signups 
+      SET stripe_session_id = ?,
+          stripe_customer_id = ?,
+          stripe_subscription_id = ?
+      WHERE id = ?
+    `).bind(sessionId, customerId, subscriptionId, parseInt(token)).run();
 
-    if (!completionResponse.ok) {
-      const error = await completionResponse.json();
-      console.error('[stripe-success] Completion API failed:', error);
-      throw redirect(302, `/upgrade?token=${token}&error=completion_failed`);
-    }
+    console.log(`[stripe-success] Stored Stripe data for token ${token}`);
 
-    const completionData = await completionResponse.json();
-    
-    // Set the session cookie from the completion response
-    if (completionData.sessionToken) {
-      // Note: We can't set cookies in a GET redirect handler
-      // The completion API should have already set the cookie via its own response
-      console.log('[stripe-success] Session created successfully');
-    }
+    // Build URL with all necessary parameters for completion
+    const completionUrl = new URL(`${url.origin}/api/complete-stripe-payment`);
+    completionUrl.searchParams.set('token', token);
+    completionUrl.searchParams.set('session_id', sessionId);
+    completionUrl.searchParams.set('subscription_id', subscriptionId as string);
+    completionUrl.searchParams.set('customer_id', customerId);
+    completionUrl.searchParams.set('trial_end', subscription.trial_end?.toString() || '');
 
-    console.log(`[stripe-success] Signup completed successfully for token ${token}`);
+    console.log(`[stripe-success] Redirecting to completion handler`);
 
-    // Redirect to manage page with success indicator
-    throw redirect(302, '/manage?signup=success&method=stripe');
+    // Redirect user to completion endpoint which will set cookie and redirect to /manage
+    throw redirect(302, completionUrl.toString());
 
   } catch (error) {
     if (error.status === 302) {
