@@ -112,25 +112,12 @@
         body: JSON.stringify({
           email: emailInput,
           docket_number: selectedDocket
-        }),
-        redirect: 'manual' // Prevent automatic redirect following
+        })
       });
       
-      // Check if response is a redirect (our new flow)
-      if (response.status === 302) {
-        const location = response.headers.get('Location');
-        if (location) {
-          // Success - redirect to upgrade page (user is now logged in)
-          window.location.href = location;
-          return;
-        }
-      }
-      
-      // Handle JSON response (for errors or fallback)
       const data = await response.json();
       
       if (response.ok) {
-        // Fallback success case (shouldn't happen with new flow)
         subscriptionStatus = 'success';
         currentStep = 4;
         subscriptionDetails = {
@@ -142,7 +129,7 @@
         };
         showSuccessModal = true;
       } else {
-        subscriptionStatus = `Error: ${data.message || 'Subscription failed'}`;
+        subscriptionStatus = `Error: ${data.error || 'Subscription failed'}`;
         currentStep = 2; // Go back to selection step
       }
     } catch (error) {
