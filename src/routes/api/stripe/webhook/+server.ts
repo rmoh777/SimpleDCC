@@ -85,6 +85,38 @@ export const POST: RequestHandler = async ({ request, platform }) => {
 async function handleSubscriptionCreated(subscription: any, db: any) {
   console.log(`🎣 Processing subscription created: ${subscription.id}`);
   
+  // Check if this is from a pending signup (new flow)
+  const pendingSignupId = subscription.metadata?.pending_signup_id;
+  if (pendingSignupId) {
+    console.log(`🎣 Subscription ${subscription.id} is from pending signup ${pendingSignupId}`);
+    
+    // Check if pending signup was already completed
+    const pendingRecord = await db.prepare(`
+      SELECT id, status, user_id 
+      FROM pending_signups 
+      WHERE id = ? AND status = 'completed'
+    `).bind(pendingSignupId).first();
+    
+    if (pendingRecord && pendingRecord.user_id) {
+      console.log(`🎣 Pending signup ${pendingSignupId} already completed, updating user ${pendingRecord.user_id}`);
+      
+      const subscriptionData = {
+        tier: subscription.status === 'trialing' ? 'trial' as const : 'pro' as const,
+        stripeSubscriptionId: subscription.id,
+        subscriptionStatus: subscription.status,
+        trialExpiresAt: subscription.trial_end || null
+      };
+
+      await updateUserSubscriptionStatus(pendingRecord.user_id, subscriptionData, db);
+      console.log(`✅ User ID ${pendingRecord.user_id} updated via pending signup webhook`);
+      return;
+    } else {
+      console.log(`🎣 Pending signup ${pendingSignupId} not yet completed, webhook will be processed later`);
+      return;
+    }
+  }
+  
+  // Existing flow - user already exists
   const user = await getUserByStripeCustomerId(subscription.customer, db);
   if (!user) {
     console.error('User not found for Stripe customer:', subscription.customer);
@@ -105,6 +137,46 @@ async function handleSubscriptionCreated(subscription: any, db: any) {
 async function handleSubscriptionUpdated(subscription: any, db: any) {
   console.log(`🎣 Processing subscription updated: ${subscription.id}`);
   
+  // Check if this is from a pending signup (new flow)
+  const pendingSignupId = subscription.metadata?.pending_signup_id;
+  if (pendingSignupId) {
+    console.log(`🎣 Subscription update ${subscription.id} is from pending signup ${pendingSignupId}`);
+    
+    // Find the user by pending signup
+    const pendingRecord = await db.prepare(`
+      SELECT user_id 
+      FROM pending_signups 
+      WHERE id = ? AND status = 'completed' AND user_id IS NOT NULL
+    `).bind(pendingSignupId).first();
+    
+    if (pendingRecord && pendingRecord.user_id) {
+      let tier: 'free' | 'pro' | 'trial';
+      
+      if (subscription.status === 'trialing') {
+        tier = 'trial';
+      } else if (subscription.status === 'active') {
+        tier = 'pro';
+      } else {
+        tier = 'free'; // canceled, past_due, etc.
+      }
+
+      const subscriptionData = {
+        tier,
+        stripeSubscriptionId: subscription.id,
+        subscriptionStatus: subscription.status,
+        trialExpiresAt: subscription.trial_end || null
+      };
+
+      await updateUserSubscriptionStatus(pendingRecord.user_id, subscriptionData, db);
+      console.log(`✅ User ID ${pendingRecord.user_id} subscription updated to ${tier} (${subscription.status}) via pending signup`);
+      return;
+    } else {
+      console.log(`🎣 Pending signup ${pendingSignupId} not yet completed for subscription update`);
+      return;
+    }
+  }
+  
+  // Existing flow - user already exists
   const user = await getUserByStripeCustomerId(subscription.customer, db);
   if (!user) {
     console.error('User not found for Stripe customer:', subscription.customer);

@@ -668,6 +668,53 @@ async function runDataPipeline(env: any, ctx: any, isManualTrigger = false, targ
   }
 }
 
+/**
+ * Daily cleanup tasks
+ * Removes expired pending signups and other maintenance
+ */
+async function runDailyCleanup(env: any): Promise<{
+  expired_signups_cleaned: number;
+  errors: string[];
+}> {
+  const errors: string[] = [];
+  let expired_signups_cleaned = 0;
+  
+  try {
+    console.log('🧹 Starting daily cleanup tasks...');
+    
+    // Clean up expired pending signups (older than 1 hour)
+    const oneHourAgo = Date.now() - (60 * 60 * 1000);
+    
+    const cleanupResult = await env.DB.prepare(`
+      DELETE FROM pending_signups 
+      WHERE expires_at < ? AND status = 'pending'
+    `).bind(oneHourAgo).run();
+    
+    expired_signups_cleaned = cleanupResult.changes || 0;
+    
+    if (expired_signups_cleaned > 0) {
+      console.log(`🧹 Cleaned up ${expired_signups_cleaned} expired pending signups`);
+    }
+    
+    // Future cleanup tasks can be added here:
+    // - Old notification queue entries (older than 30 days)
+    // - Old system logs (older than 90 days)
+    // - Failed filing processing attempts (older than 7 days)
+    
+    console.log('🧹 Daily cleanup completed successfully');
+    
+  } catch (error) {
+    const errorMsg = `Cleanup error: ${error.message}`;
+    console.error('🧹 Daily cleanup failed:', error);
+    errors.push(errorMsg);
+  }
+  
+  return {
+    expired_signups_cleaned,
+    errors
+  };
+}
+
 export default {
   async scheduled(controller, env, ctx) {
     const startTime = Date.now();
@@ -718,6 +765,14 @@ export default {
         }
 
         console.log(`(INFO) ✅ BAU pipeline execution completed successfully. Processed ${pipelineResult.pipeline_results?.dockets_processed || 0} dockets, ${pipelineResult.pipeline_results?.filings_fetched || 0} filings.`);
+        
+        // Run daily cleanup at midnight ET (0:00)
+        const { etHour } = getETTimeInfo();
+        if (etHour === 0) {
+          console.log("(INFO) 🧹 Running daily cleanup at midnight ET...");
+          const cleanupResult = await runDailyCleanup(env);
+          console.log(`(INFO) 🧹 Daily cleanup completed: ${cleanupResult.expired_signups_cleaned} expired signups removed`);
+        }
         
       } else {
         console.log("(INFO) ⚠️ Unexpected cron timing - running BAU pipeline as fallback");
