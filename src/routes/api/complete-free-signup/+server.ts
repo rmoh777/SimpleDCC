@@ -1,6 +1,6 @@
 import { json, redirect } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
-import { createUser, createUserSession, getUserByEmail } from '$lib/users/user-operations';
+import { createOrGetUser, createUserSession, getUserByEmail } from '$lib/users/user-operations';
 import { createUserSubscription } from '$lib/database/db-operations';
 
 export const POST: RequestHandler = async ({ request, platform, cookies }) => {
@@ -69,17 +69,7 @@ export const POST: RequestHandler = async ({ request, platform, cookies }) => {
 
       // 3. Create user account
       console.log(`[complete-free-signup] Creating user: ${email}`);
-      const newUser = await createUser({
-        email,
-        name: null,
-        googleId: null,
-        picture: null,
-        tier: 'free',
-        isActive: true,
-        emailVerified: true, // Trust email from pending signup
-        createdAt: now,
-        lastLoginAt: now
-      }, db);
+      const newUser = await createOrGetUser(email, db);
 
       if (!newUser) {
         throw new Error('Failed to create user account');

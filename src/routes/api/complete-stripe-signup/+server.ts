@@ -1,6 +1,6 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
-import { createUser, createUserSession, getUserByEmail } from '$lib/users/user-operations';
+import { createOrGetUser, createUserSession, getUserByEmail, updateUserStripeCustomerId } from '$lib/users/user-operations';
 import { createUserSubscription } from '$lib/database/db-operations';
 
 export const POST: RequestHandler = async ({ request, platform, cookies }) => {
@@ -70,22 +70,19 @@ export const POST: RequestHandler = async ({ request, platform, cookies }) => {
 
       // 3. Create user account with pro tier
       console.log(`[complete-stripe-signup] Creating pro user: ${email}`);
-      const newUser = await createUser({
-        email,
-        name: null,
-        googleId: null,
-        picture: null,
-        tier: 'pro',
-        isActive: true,
-        emailVerified: true, // Trust email from pending signup
-        createdAt: now,
-        lastLoginAt: now,
-        stripeCustomerId: stripeCustomerId
-      }, db);
+      const newUser = await createOrGetUser(email, db);
 
       if (!newUser) {
         throw new Error('Failed to create user account');
       }
+
+      // Update user with Stripe customer ID and pro tier
+      await updateUserStripeCustomerId(newUser.id, stripeCustomerId, db);
+      await db.prepare(`
+        UPDATE users 
+        SET user_tier = 'pro'
+        WHERE id = ?
+      `).bind(newUser.id).run();
 
       // 4. Create pro subscription
       console.log(`[complete-stripe-signup] Creating pro subscription for user ${newUser.id}`);
