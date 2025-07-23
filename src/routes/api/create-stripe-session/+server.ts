@@ -1,6 +1,6 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
-import { stripe } from '$lib/stripe/stripe';
+import getStripe from '$lib/stripe/stripe';
 
 const STRIPE_PRICE_ID = 'price_1QQPAkCJaxUnOvgcgRqBJoKG'; // Pro tier price ID
 
@@ -50,6 +50,7 @@ export const POST: RequestHandler = async ({ request, platform, url }) => {
     console.log(`[create-stripe-session] Creating checkout session for ${email}, token: ${token}`);
 
     // Create Stripe checkout session
+    const stripe = getStripe();
     const session = await stripe.checkout.sessions.create({
       payment_method_types: ['card'],
       mode: 'subscription',

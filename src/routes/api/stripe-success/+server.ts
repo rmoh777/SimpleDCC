@@ -1,6 +1,6 @@
 import { json, redirect } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
-import { stripe } from '$lib/stripe/stripe';
+import getStripe from '$lib/stripe/stripe';
 
 export const GET: RequestHandler = async ({ url, platform }) => {
   try {
@@ -20,6 +20,7 @@ export const GET: RequestHandler = async ({ url, platform }) => {
     console.log(`[stripe-success] Processing session ${sessionId} for token ${token}`);
 
     // Retrieve the Stripe session
+    const stripe = getStripe();
     const session = await stripe.checkout.sessions.retrieve(sessionId);
     
     if (!session) {
