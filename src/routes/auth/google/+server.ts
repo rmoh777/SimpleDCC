@@ -20,19 +20,23 @@ export const GET: RequestHandler = async ({ platform, cookies, url }) => {
       "email"
     ]);
 
+    // Force Google account selection to prevent being stuck on one account
+    authUrl.searchParams.set("prompt", "select_account");
+
     // Store state and code verifier in secure cookies
+    // Use more permissive settings to ensure cookies persist across redirects
     cookies.set("google_oauth_state", state, {
       httpOnly: true,
-      maxAge: 60 * 10, // 10 minutes
-      secure: true,
+      maxAge: 60 * 15, // 15 minutes (longer expiry)
+      secure: import.meta.env.PROD, // Only secure in production
       path: "/",
       sameSite: "lax"
     });
     
     cookies.set("google_code_verifier", codeVerifier, {
       httpOnly: true,
-      maxAge: 60 * 10, // 10 minutes
-      secure: true,
+      maxAge: 60 * 15, // 15 minutes (longer expiry)
+      secure: import.meta.env.PROD, // Only secure in production
       path: "/",
       sameSite: "lax"
     });
@@ -41,14 +45,15 @@ export const GET: RequestHandler = async ({ platform, cookies, url }) => {
     if (isLinking) {
       cookies.set("google_oauth_linking", "true", {
         httpOnly: true,
-        maxAge: 60 * 10, // 10 minutes
-        secure: true,
+        maxAge: 60 * 15, // 15 minutes (longer expiry)
+        secure: import.meta.env.PROD, // Only secure in production
         path: "/",
         sameSite: "lax"
       });
     }
 
     console.log(`🔗 Google OAuth initiated: ${isLinking ? 'linking' : 'login'} flow`);
+    console.log(`🍪 Setting OAuth cookies with domain: ${url.hostname}, secure: ${import.meta.env.PROD}`);
 
     // Redirect to Google for authorization
     return new Response(null, {

@@ -25,11 +25,24 @@ export const GET: RequestHandler = async ({ url, platform, cookies }) => {
 
     // Validate required parameters
     if (!code || !state || !storedState || !codeVerifier) {
-      console.error('Missing OAuth parameters:', { code: !!code, state: !!state, storedState: !!storedState, codeVerifier: !!codeVerifier });
+      console.error('Missing OAuth parameters:', { 
+        code: !!code, 
+        state: !!state, 
+        storedState: !!storedState, 
+        codeVerifier: !!codeVerifier,
+        cookiesReceived: Object.keys(cookies.getAll ? cookies.getAll() : {}),
+        userAgent: url.headers?.get?.('user-agent') || 'unknown'
+      });
+      
+      // Clean up any partial cookies
+      cookies.delete("google_oauth_state", { path: "/" });
+      cookies.delete("google_code_verifier", { path: "/" });
+      cookies.delete("google_oauth_linking", { path: "/" });
+      
       return new Response(null, {
         status: 302,
         headers: {
-          Location: '/manage?error=oauth_params_missing'
+          Location: '/manage?error=oauth_params_missing&retry=true'
         }
       });
     }
