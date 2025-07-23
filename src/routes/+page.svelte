@@ -18,7 +18,13 @@
     email: string;
     date: string;
     time: string;
-  } | null = null;
+  } = {
+    docket: '',
+    name: '',
+    email: '',
+    date: '',
+    time: ''
+  };
   let currentStep = 1; // 1: Search, 2: Select, 3: Subscribe, 4: Success
   let debounceTimer: ReturnType<typeof setTimeout> | null = null;
   
@@ -104,7 +110,7 @@
     currentStep = 3;
     
     try {
-      const response = await fetch('/api/subscribe', {
+      const response = await fetch('/api/create-pending-signup', {
         method: 'POST',   
         headers: {
           'Content-Type': 'application/json',
@@ -115,24 +121,21 @@
         })
       });
       
-      const data = await response.json();
+      // Handle redirect response (302) vs error responses
+      if (response.redirected || response.status === 302) {
+        // Success - redirect to upgrade page
+        window.location.href = response.url || '/upgrade';
+        return;
+      }
       
-      if (response.ok) {
-        subscriptionStatus = 'success';
-        currentStep = 4;
-        subscriptionDetails = {
-          docket: selectedDocket,
-          name: selectedName,
-          email: emailInput,
-          date: new Date().toLocaleDateString(),
-          time: new Date().toLocaleTimeString()
-        };
-        showSuccessModal = true;
-      } else {
-        subscriptionStatus = `Error: ${data.error || 'Subscription failed'}`;
+      // Handle error responses (non-redirect)
+      if (!response.ok) {
+        const data = await response.json();
+        subscriptionStatus = `Error: ${data.error || 'Signup failed'}`;
         currentStep = 2; // Go back to selection step
       }
     } catch (error) {
+      console.error('Signup error:', error);
       subscriptionStatus = 'Error: Network error occurred';
       currentStep = 2; // Go back to selection step
     } finally {
