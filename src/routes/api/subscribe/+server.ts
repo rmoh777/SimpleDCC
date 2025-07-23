@@ -1,6 +1,6 @@
-import { json } from '@sveltejs/kit';
+import { json, redirect } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
-import { createOrGetUser, getUserByEmail } from '$lib/users/user-operations';
+import { createOrGetUser, getUserByEmail, createUserSession } from '$lib/users/user-operations';
 
 function isValidEmail(email: string): boolean {
   return !!(email && email.includes('@') && email.includes('.'));
@@ -10,7 +10,7 @@ function isValidDocketNumber(docket: string): boolean {
   return /^\d{1,3}-\d{1,3}$/.test(docket);
 }
 
-export const POST: RequestHandler = async ({ request, platform }) => {
+export const POST: RequestHandler = async ({ request, platform, cookies }) => {
   try {
     if (!platform?.env?.DB) {
       return json({ 
@@ -109,13 +109,31 @@ export const POST: RequestHandler = async ({ request, platform }) => {
         // Continue anyway - don't break subscription if email fails
       }
 
-      return json({ 
-        success: true,
-        message: `Successfully subscribed to docket ${docket_number}`,
-        id: result.meta.last_row_id,
-        user_tier: user.user_tier, // Phase 2 Card 1: Include user tier
-        show_trial_upsell: user.user_tier === 'free' // Phase 2 Card 1: Signal for pro trial modal
-      }, { status: 201 });
+      // Create user session for auto-login
+      try {
+        const sessionResult = await createUserSession(user.id, false, platform.env.DB);
+        
+        if (sessionResult) {
+          // Set session cookie for auto-login
+          cookies.set('session_token', sessionResult.sessionToken, {
+            httpOnly: true,
+            secure: import.meta.env.PROD,
+            path: '/',
+            maxAge: 7 * 24 * 60 * 60, // 7 days
+            sameSite: 'lax'
+          });
+          console.log(`✅ Auto-login session created for user ${user.id}`);
+        } else {
+          console.error('Failed to create session: sessionResult is null');
+        }
+      } catch (sessionError) {
+        console.error('Session creation error:', sessionError);
+        // Continue anyway - user can still use magic link
+      }
+
+      // Redirect to upgrade page for tier selection
+      // User is now logged in with Free tier, can upgrade to Pro trial
+      return redirect(302, '/upgrade?signup=success');
     } else {
       return json({ 
         success: false, 
@@ -124,6 +142,11 @@ export const POST: RequestHandler = async ({ request, platform }) => {
     }
 
   } catch (error) {
+    // Re-throw SvelteKit redirects
+    if (error instanceof Response) {
+      throw error;
+    }
+    
     console.error('Subscription error:', error);
     if (error.message?.includes('UNIQUE constraint')) {
       return json({ 

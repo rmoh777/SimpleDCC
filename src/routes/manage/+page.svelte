@@ -51,6 +51,23 @@
     if (data.errorMessage) {
       errorMessage = data.errorMessage;
     }
+    
+    // Handle trial started and upgrade canceled messages from URL parameters
+    if (typeof window !== 'undefined') {
+      const urlParams = new URLSearchParams(window.location.search);
+      const trialStarted = urlParams.get('trial_started');
+      const upgradeCanceled = urlParams.get('upgrade_canceled');
+      
+      if (trialStarted) {
+        unsubscribeStatus = '🎉 Pro trial started successfully! Welcome to SimpleDCC Pro - enjoy your 30-day trial with AI-powered insights.';
+        // Clean up URL
+        window.history.replaceState({}, '', window.location.pathname);
+      } else if (upgradeCanceled) {
+        errorMessage = 'Upgrade process was canceled. You can try again anytime from your dashboard.';
+        // Clean up URL
+        window.history.replaceState({}, '', window.location.pathname);
+      }
+    }
   });
   
   async function loadSubscriptions() {
@@ -390,6 +407,20 @@
                   </a>
                 </div>
               </div>
+            </div>
+          </div>
+        {/if}
+
+        <!-- Upgrade Banner for Free Users -->
+        {#if userTier === 'free'}
+          <div class="upgrade-banner">
+            <div class="upgrade-content">
+              <div class="upgrade-icon">⭐</div>
+              <div class="upgrade-text">
+                <h3>Upgrade to Pro</h3>
+                <p>Get AI-powered summaries, instant notifications, and enhanced monitoring features with a 30-day free trial.</p>
+              </div>
+              <a href="/upgrade" class="btn-upgrade">Start Pro Trial</a>
             </div>
           </div>
         {/if}
@@ -1363,6 +1394,110 @@
   .btn-link-google:hover {
     background: #3367d6;
     transform: translateY(-1px);
+  }
+
+  /* Upgrade Banner */
+  .upgrade-banner {
+    background: linear-gradient(135deg, #8b5cf6, #a855f7);
+    border-radius: 16px;
+    padding: 0;
+    margin-bottom: 2rem;
+    box-shadow: 0 10px 30px rgba(139, 92, 246, 0.3);
+    overflow: hidden;
+    position: relative;
+  }
+
+  .upgrade-banner::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: linear-gradient(135deg, rgba(255,255,255,0.1), rgba(255,255,255,0.05));
+    pointer-events: none;
+  }
+
+  .upgrade-content {
+    display: flex;
+    align-items: center;
+    gap: 1.5rem;
+    padding: 2rem;
+    position: relative;
+    z-index: 1;
+  }
+
+  .upgrade-icon {
+    width: 60px;
+    height: 60px;
+    background: rgba(255, 255, 255, 0.2);
+    border-radius: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.8rem;
+    backdrop-filter: blur(10px);
+  }
+
+  .upgrade-text {
+    flex: 1;
+    color: white;
+  }
+
+  .upgrade-text h3 {
+    font-size: 1.5rem;
+    font-weight: 700;
+    margin: 0 0 0.5rem 0;
+    text-shadow: 0 2px 4px rgba(0,0,0,0.1);
+  }
+
+  .upgrade-text p {
+    margin: 0;
+    opacity: 0.9;
+    line-height: 1.5;
+    font-size: 1rem;
+  }
+
+  .btn-upgrade {
+    background: white;
+    color: #8b5cf6;
+    padding: 1rem 2rem;
+    border-radius: 12px;
+    text-decoration: none;
+    font-weight: 700;
+    font-size: 1rem;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+    backdrop-filter: blur(10px);
+  }
+
+  .btn-upgrade:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 25px rgba(0,0,0,0.2);
+    background: #f8fafc;
+  }
+
+  @media (max-width: 768px) {
+    .upgrade-content {
+      flex-direction: column;
+      text-align: center;
+      gap: 1rem;
+      padding: 1.5rem;
+    }
+
+    .upgrade-icon {
+      width: 50px;
+      height: 50px;
+      font-size: 1.5rem;
+    }
+
+    .upgrade-text h3 {
+      font-size: 1.3rem;
+    }
+
+    .upgrade-text p {
+      font-size: 0.9rem;
+    }
   }
 
   @media (max-width: 768px) {
