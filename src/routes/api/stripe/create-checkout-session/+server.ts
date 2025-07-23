@@ -97,8 +97,8 @@ export const POST: RequestHandler = async ({ request, platform }) => {
         address: 'auto'
       },
       // Stripe Link is enabled automatically - no additional config needed
-      success_url: `${YOUR_DOMAIN}/manage?trial_started=true&session_id={CHECKOUT_SESSION_ID}`,
-      cancel_url: `${YOUR_DOMAIN}/manage?upgrade_canceled=true`,
+      success_url: `${YOUR_DOMAIN}/upgrade?success=true&session_id={CHECKOUT_SESSION_ID}`,
+      cancel_url: `${YOUR_DOMAIN}/upgrade?canceled=true`,
     });
 
     if (session.url) {
