@@ -77,11 +77,18 @@ export const POST: RequestHandler = async ({ request, platform, cookies }) => {
 
       // Update user with Stripe customer ID and pro tier
       await updateUserStripeCustomerId(newUser.id, stripeCustomerId, db);
+      
+      // Set user tier based on trial status
+      const userTier = trialEnd ? 'trial' : 'pro';
+      const trialExpiresAt = trialEnd ? trialEnd : null;
+      
       await db.prepare(`
         UPDATE users 
-        SET user_tier = 'pro'
+        SET user_tier = ?,
+            stripe_subscription_id = ?,
+            trial_expires_at = ?
         WHERE id = ?
-      `).bind(newUser.id).run();
+      `).bind(userTier, stripeSubscriptionId, trialExpiresAt, newUser.id).run();
 
       // 4. Create pro subscription
       console.log(`[complete-stripe-signup] Creating pro subscription for user ${newUser.id}`);
