@@ -10,49 +10,27 @@
   // State management
   let isLoading = false;
   let errorMessage = '';
-  let successMessage = '';
   
-  // Initialize email and isEmailValid from data prop
-  let email = data.email || '';
-  let isEmailValid = validateEmail(email);
-  let isEmailPrefilled = !!data.email;
-
-  // Check for success or cancellation from Stripe redirect
+  // Get email from session or URL parameter - should always be available
+  const userEmail = data.user?.email || data.email;
+  
+  // Redirect to homepage if no email available (edge case)
   onMount(() => {
-    if (browser) {
-      const urlParams = new URLSearchParams(window.location.search);
-      const success = urlParams.get('success');
-      const canceled = urlParams.get('canceled');
-
-      if (success) {
-        successMessage = 'Subscription started successfully! Check your email for details.';
-        // You might want to fetch more details using the session_id if needed
-      } else if (canceled) {
-        errorMessage = 'Subscription process canceled. You can try again.';
-      }
+    if (browser && !userEmail) {
+      console.warn('No email available on upgrade page, redirecting to homepage');
+      window.location.href = '/';
     }
   });
 
-  function validateEmail(email: string): boolean {
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    return emailRegex.test(email);
-  }
-
-  function handleEmailChange(event: Event) {
-    const target = event.target as HTMLInputElement;
-    email = target.value;
-    isEmailValid = validateEmail(email);
-  }
-
   async function startProTrial() {
-    if (!isEmailValid) {
-      errorMessage = 'Please enter a valid email address';
+    // Email validation not needed - we always have email from session/URL
+    if (!userEmail) {
+      errorMessage = 'Email not available. Please try again from the homepage.';
       return;
     }
 
     isLoading = true;
     errorMessage = '';
-    successMessage = '';
 
     try {
       const response = await fetch('/api/stripe/create-checkout-session', {
@@ -60,7 +38,7 @@
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ email: email }),
+        body: JSON.stringify({ email: userEmail }),
       });
 
       const result = await response.json();
@@ -85,7 +63,13 @@
   }
 
   function continueWithFree() {
-    window.location.href = '/';
+    // If user is logged in (from new signup flow), go to dashboard
+    // Otherwise, go to homepage
+    if (data.isLoggedIn) {
+      window.location.href = '/manage';
+    } else {
+      window.location.href = '/';
+    }
   }
 </script>
 
@@ -99,6 +83,17 @@
   <div class="header-section">
     <h1 class="main-title">Pick your plan</h1>
     <p class="subtitle">Choose the plan that works best for you. Free 30 day trial, cancel anytime.</p>
+    
+    <!-- Signup Success Message -->
+    {#if data.signupSuccess && data.isLoggedIn}
+      <div class="signup-success-banner">
+        <div class="success-icon">✅</div>
+        <div class="success-content">
+          <h3>Account Created Successfully!</h3>
+          <p>You're all set with <strong>Free monitoring</strong> for your docket. Upgrade to Pro for enhanced features, or continue with Free.</p>
+        </div>
+      </div>
+    {/if}
   </div>
 
   <!-- Pricing Cards -->
@@ -115,7 +110,11 @@
       </div>
 
       <button class="cta-button secondary" on:click={continueWithFree}>
-        Continue with Free
+        {#if data.isLoggedIn}
+          Go to Dashboard
+        {:else}
+          Continue with Free
+        {/if}
       </button>
 
       <div class="features-section">
@@ -166,36 +165,10 @@
     </div>
   </div>
 
-  <!-- Email Input Section -->
-  <div class="email-section">
-    <div class="email-container">
-      <label for="email" class="email-label">Your Email Address</label>
-      <div class="email-input-group">
-        <input
-          id="email"
-          type="email"
-          placeholder="Enter your email address"
-          bind:value={email}
-          on:input={handleEmailChange}
-          class="email-input"
-          disabled={isEmailPrefilled || isLoading}
-        />
-        <button 
-          class="email-submit-btn"
-          on:click={startProTrial}
-          disabled={!isEmailValid || isLoading}
-        >
-          {isLoading ? 'Processing...' : 'Start Pro Trial'}
-        </button>
-      </div>
-      {#if errorMessage}
-        <p class="error-message">{errorMessage}</p>
-      {/if}
-      {#if successMessage}
-        <p class="success-message">{successMessage}</p>
-      {/if}
-    </div>
-  </div>
+  <!-- Action Messages -->
+  {#if errorMessage}
+    <div class="error-message">{errorMessage}</div>
+  {/if}
 
   <!-- Bottom Section -->
   <div class="bottom-section">
@@ -246,6 +219,42 @@
     font-size: 1rem;
     color: #6b7280;
     font-weight: 400;
+  }
+
+  /* Signup Success Banner */
+  .signup-success-banner {
+    background: linear-gradient(135deg, #10b981, #059669);
+    border-radius: 12px;
+    padding: 1.5rem;
+    margin: 1.5rem 0;
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    color: white;
+    box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
+  }
+
+  .success-icon {
+    font-size: 2rem;
+    flex-shrink: 0;
+  }
+
+  .success-content {
+    flex: 1;
+  }
+
+  .success-content h3 {
+    font-size: 1.2rem;
+    font-weight: 700;
+    margin: 0 0 0.5rem 0;
+    color: white;
+  }
+
+  .success-content p {
+    font-size: 0.95rem;
+    margin: 0;
+    color: rgba(255, 255, 255, 0.9);
+    line-height: 1.4;
   }
 
   /* Pricing Grid */
