@@ -5,17 +5,25 @@
   import { onMount } from 'svelte';
   import DocketCCLogo from '$lib/components/ui/DocketCCLogo.svelte';
 
-  export let data;
+  export let data: any;
 
   // State management
   let isLoading = false;
   let errorMessage = '';
   let successMessage = '';
   
-  // Initialize email and isEmailValid from data prop
-  let email = data.email || '';
+  // Initialize from pending signup data (with fallback for old structure)
+  let token = data.token || null;
+  let pendingSignup = data.pendingSignup || null;
+  let email = pendingSignup?.email || data.email || '';
+  let docketNumber = pendingSignup?.docket_number || '';
   let isEmailValid = validateEmail(email);
-  let isEmailPrefilled = !!data.email;
+  let isEmailPrefilled = !!email;
+  
+  // Handle server-side errors
+  if (data.error) {
+    errorMessage = data.error;
+  }
 
   // Check for success or cancellation from Stripe redirect
   onMount(() => {
@@ -44,9 +52,9 @@
     isEmailValid = validateEmail(email);
   }
 
-  async function startProTrial() {
-    if (!isEmailValid) {
-      errorMessage = 'Please enter a valid email address';
+  async function selectFreeTier() {
+    if (!token) {
+      errorMessage = 'Invalid signup session. Please start over.';
       return;
     }
 
@@ -55,12 +63,49 @@
     successMessage = '';
 
     try {
-      const response = await fetch('/api/stripe/create-checkout-session', {
+      const response = await fetch('/api/complete-free-signup', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ email: email }),
+        body: JSON.stringify({ token: token }),
+      });
+
+      // Handle redirect response for free completion
+      if (response.redirected || response.status === 302) {
+        window.location.href = response.url || '/manage';
+        return;
+      }
+
+      if (!response.ok) {
+        const result = await response.json();
+        throw new Error(result.error || 'Failed to complete free signup.');
+      }
+    } catch (error) {
+      console.error('Free signup completion error:', error);
+      errorMessage = error instanceof Error ? error.message : 'Network error occurred';
+    } finally {
+      isLoading = false;
+    }
+  }
+
+  async function startProTrial() {
+    if (!token) {
+      errorMessage = 'Invalid signup session. Please start over.';
+      return;
+    }
+
+    isLoading = true;
+    errorMessage = '';
+    successMessage = '';
+
+    try {
+      const response = await fetch('/api/create-stripe-session', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ token: token }),
       });
 
       const result = await response.json();
@@ -84,9 +129,7 @@
     }
   }
 
-  function continueWithFree() {
-    window.location.href = '/';
-  }
+  // Removed - replaced with selectFreeTier function above
 </script>
 
 <svelte:head>
@@ -114,8 +157,8 @@
         </div>
       </div>
 
-      <button class="cta-button secondary" on:click={continueWithFree}>
-        Continue with Free
+      <button class="cta-button secondary" on:click={selectFreeTier} disabled={isLoading}>
+        {isLoading ? 'Processing...' : 'Continue with Free'}
       </button>
 
       <div class="features-section">
@@ -166,36 +209,38 @@
     </div>
   </div>
 
-  <!-- Email Input Section -->
-  <div class="email-section">
-    <div class="email-container">
-      <label for="email" class="email-label">Your Email Address</label>
-      <div class="email-input-group">
-        <input
-          id="email"
-          type="email"
-          placeholder="Enter your email address"
-          bind:value={email}
-          on:input={handleEmailChange}
-          class="email-input"
-          disabled={isEmailPrefilled || isLoading}
-        />
-        <button 
-          class="email-submit-btn"
-          on:click={startProTrial}
-          disabled={!isEmailValid || isLoading}
-        >
-          {isLoading ? 'Processing...' : 'Start Pro Trial'}
-        </button>
+  <!-- Pending Signup Information -->
+  {#if pendingSignup}
+    <div class="signup-info-section">
+      <div class="signup-container">
+        <h3 class="signup-title">Complete Your Signup</h3>
+        <div class="signup-details">
+          <div class="detail-row">
+            <span class="label">Email:</span>
+            <span class="value">{email}</span>
+          </div>
+          <div class="detail-row">
+            <span class="label">Docket:</span>
+            <span class="value">{docketNumber}</span>
+          </div>
+        </div>
+        <p class="signup-description">
+          Choose your monitoring plan to start receiving notifications for FCC docket {docketNumber}.
+        </p>
+        {#if errorMessage}
+          <p class="error-message">{errorMessage}</p>
+        {/if}
+        {#if successMessage}
+          <p class="success-message">{successMessage}</p>
+        {/if}
       </div>
-      {#if errorMessage}
-        <p class="error-message">{errorMessage}</p>
-      {/if}
-      {#if successMessage}
-        <p class="success-message">{successMessage}</p>
-      {/if}
     </div>
-  </div>
+  {:else}
+    <div class="error-section">
+      <p class="error-message">Invalid signup session. Please start over from the homepage.</p>
+      <a href="/" class="back-link">← Back to Homepage</a>
+    </div>
+  {/if}
 
   <!-- Bottom Section -->
   <div class="bottom-section">
@@ -204,7 +249,7 @@
         <h3 class="bottom-title">Curious how it works?</h3>
         <p class="bottom-subtitle">You can try SimpleDCC for free</p>
       </div>
-      <button class="try-button" on:click={continueWithFree}>
+              <button class="try-button" on:click={selectFreeTier} disabled={isLoading}>
         Try It Now
       </button>
     </div>
@@ -535,6 +580,78 @@
   .try-button:hover {
     background: #374151;
     transform: translateY(-0.5px);
+  }
+
+  /* Signup Info Styles */
+  .signup-info-section {
+    padding: 2rem 0;
+    background: #f8fafc;
+  }
+
+  .signup-container {
+    max-width: 600px;
+    margin: 0 auto;
+    text-align: center;
+    background: white;
+    padding: 2rem;
+    border-radius: 12px;
+    border: 1px solid #e2e8f0;
+  }
+
+  .signup-title {
+    font-size: 1.5rem;
+    font-weight: 600;
+    color: #1e293b;
+    margin-bottom: 1rem;
+  }
+
+  .signup-details {
+    margin: 1.5rem 0;
+    text-align: left;
+  }
+
+  .detail-row {
+    display: flex;
+    justify-content: space-between;
+    padding: 0.75rem 0;
+    border-bottom: 1px solid #f1f5f9;
+  }
+
+  .detail-row:last-child {
+    border-bottom: none;
+  }
+
+  .detail-row .label {
+    font-weight: 500;
+    color: #64748b;
+  }
+
+  .detail-row .value {
+    font-weight: 600;
+    color: #1e293b;
+  }
+
+  .signup-description {
+    color: #64748b;
+    margin-bottom: 1.5rem;
+    line-height: 1.6;
+  }
+
+  .error-section {
+    padding: 2rem;
+    text-align: center;
+  }
+
+  .back-link {
+    display: inline-block;
+    margin-top: 1rem;
+    color: #3b82f6;
+    text-decoration: none;
+    font-weight: 500;
+  }
+
+  .back-link:hover {
+    text-decoration: underline;
   }
 
   /* Mobile Responsive */
