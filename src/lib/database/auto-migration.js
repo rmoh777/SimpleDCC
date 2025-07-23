@@ -11,7 +11,8 @@ const REQUIRED_SCHEMA = {
   active_dockets: ['docket_number', 'last_checked', 'total_filings', 'subscribers_count', 'status', 'error_count', 'created_at', 'updated_at'],
   system_logs: ['id', 'level', 'message', 'component', 'details', 'docket_number', 'filing_id', 'created_at'],  // Added missing columns!
   system_health_logs: ['id', 'timestamp', 'level', 'message', 'category', 'details', 'docket_number', 'filing_id', 'created_at', 'service_name', 'status', 'run_timestamp', 'duration_ms', 'metrics', 'error_message', 'error_stack'],  // Health monitoring table
-  notification_queue: ['id', 'email', 'docket_number', 'filing_ids', 'digest_type', 'status', 'created_at', 'sent_at', 'error_message']
+  notification_queue: ['id', 'email', 'docket_number', 'filing_ids', 'digest_type', 'status', 'created_at', 'sent_at', 'error_message'],
+  users: ['id', 'email', 'user_tier', 'created_at', 'magic_token', 'magic_token_expires', 'session_token', 'session_expires', 'last_magic_link_sent', 'magic_link_attempts']  // Added magic link authentication columns (Google OAuth columns handled manually)
 };
 
 /**
@@ -397,6 +398,15 @@ function getColumnType(tableName, columnName) {
     'filings': {
       'ai_summary': 'TEXT',
       'processed_at': 'INTEGER'
+    },
+    'users': {
+      'magic_token': 'TEXT',
+      'magic_token_expires': 'INTEGER',
+      'session_token': 'TEXT', 
+      'session_expires': 'INTEGER',
+      'last_magic_link_sent': 'INTEGER',
+      'magic_link_attempts': 'INTEGER DEFAULT 0'
+      // Google OAuth columns (google_id, google_email, google_linked_at) handled manually
     }
   };
 
