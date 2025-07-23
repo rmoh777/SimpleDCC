@@ -111,9 +111,9 @@ export const POST: RequestHandler = async ({ request, platform, cookies }) => {
 
       // Create user session for auto-login
       try {
-        const sessionResult = await createUserSession(user.id, platform.env.DB);
+        const sessionResult = await createUserSession(user.id, false, platform.env.DB);
         
-        if (sessionResult.success) {
+        if (sessionResult) {
           // Set session cookie for auto-login
           cookies.set('session_token', sessionResult.sessionToken, {
             httpOnly: true,
@@ -124,7 +124,7 @@ export const POST: RequestHandler = async ({ request, platform, cookies }) => {
           });
           console.log(`✅ Auto-login session created for user ${user.id}`);
         } else {
-          console.error('Failed to create session:', sessionResult.error);
+          console.error('Failed to create session: sessionResult is null');
         }
       } catch (sessionError) {
         console.error('Session creation error:', sessionError);
@@ -142,6 +142,11 @@ export const POST: RequestHandler = async ({ request, platform, cookies }) => {
     }
 
   } catch (error) {
+    // Re-throw SvelteKit redirects
+    if (error instanceof Response) {
+      throw error;
+    }
+    
     console.error('Subscription error:', error);
     if (error.message?.includes('UNIQUE constraint')) {
       return json({ 
