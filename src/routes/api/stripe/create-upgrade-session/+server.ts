@@ -107,7 +107,7 @@ export const POST: RequestHandler = async ({ request, platform, cookies }) => {
         name: 'auto',
         address: 'auto'
       },
-      success_url: `${YOUR_DOMAIN}/manage?upgrade=success`,
+      success_url: `${YOUR_DOMAIN}/manage?upgrade=success&session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${YOUR_DOMAIN}/manage?upgrade=cancelled`,
     });
 

@@ -1,5 +1,7 @@
 import type { PageServerLoad } from './$types';
-import { getUserByEmail } from '$lib/users/user-operations';
+import { redirect } from '@sveltejs/kit';
+import Stripe from 'stripe';
+import { getUserByEmail, updateUserSubscriptionStatus } from '$lib/users/user-operations';
 
 export const load: PageServerLoad = async ({ url, platform, cookies }) => {
   if (!platform?.env?.DB) {
@@ -11,6 +13,75 @@ export const load: PageServerLoad = async ({ url, platform, cookies }) => {
   }
 
   const db = platform.env.DB;
+
+  // ====================================================================
+  // START: DIRECT UPDATE LOGIC - Fix for race condition
+  // This handles successful Stripe upgrades immediately before page render
+  // ====================================================================
+  const upgradeStatus = url.searchParams.get('upgrade');
+  const stripeSessionId = url.searchParams.get('session_id');
+
+  if (upgradeStatus === 'success' && stripeSessionId) {
+    try {
+      console.log(`[Direct Update] Detected successful upgrade. Verifying Stripe session: ${stripeSessionId}`);
+      
+      // Validate Stripe configuration
+      if (!platform?.env?.STRIPE_SECRET_KEY) {
+        console.error('[Direct Update] STRIPE_SECRET_KEY not available');
+        throw new Error('Stripe configuration missing');
+      }
+
+      const stripe = new Stripe(platform.env.STRIPE_SECRET_KEY, { apiVersion: '2024-06-20' });
+      
+      // 1. Retrieve the session from Stripe to get customer and subscription details
+      const session = await stripe.checkout.sessions.retrieve(stripeSessionId);
+      
+      if (session.payment_status === 'paid' && session.customer && session.subscription) {
+        const stripeCustomerId = session.customer as string;
+        const stripeSubscriptionId = session.subscription as string;
+
+        // 2. Find our user by their Stripe Customer ID
+        const user = await db.prepare(`SELECT * FROM users WHERE stripe_customer_id = ?`).bind(stripeCustomerId).first();
+        
+        if (user) {
+          console.log(`[Direct Update] Found user ${user.id} for customer ${stripeCustomerId}. Forcing tier update.`);
+          
+          // 3. Retrieve the full subscription object to get trial end date
+          const subscription = await stripe.subscriptions.retrieve(stripeSubscriptionId);
+
+          // 4. Force the database update immediately
+          const subscriptionData = {
+            tier: subscription.status === 'trialing' ? 'trial' as const : 'pro' as const,
+            stripeSubscriptionId: subscription.id,
+            subscriptionStatus: subscription.status,
+            trialExpiresAt: subscription.trial_end || null
+          };
+          
+          await updateUserSubscriptionStatus(user.id, subscriptionData, db);
+
+          console.log(`[Direct Update] ✅ SUCCESS: User ${user.id} tier updated to '${subscriptionData.tier}'.`);
+
+          // Clear the URL parameters to prevent re-triggering and redirect to a clean URL
+          throw redirect(302, '/manage?upgrade_status=complete');
+        } else {
+           console.error(`[Direct Update] CRITICAL: Could not find user for Stripe customer ID ${stripeCustomerId}`);
+        }
+      } else {
+        console.error(`[Direct Update] Stripe session ${stripeSessionId} not paid or missing data.`);
+      }
+    } catch (error) {
+      // If it's a redirect, re-throw it
+      if (error?.status === 302) {
+        throw error;
+      }
+      
+      console.error('[Direct Update] Error during synchronous upgrade process:', error);
+      // Fall through to normal page load, webhook will hopefully catch it later.
+    }
+  }
+  // ====================================================================
+  // END: DIRECT UPDATE LOGIC
+  // ====================================================================
   
   // Check for existing session
   const sessionToken = cookies.get('user_session');
@@ -59,6 +130,7 @@ export const load: PageServerLoad = async ({ url, platform, cookies }) => {
   const errorType = url.searchParams.get('error');
   const googleLinked = url.searchParams.get('google_linked');
   const authMethod = url.searchParams.get('method');
+  const upgradeStatusParam = url.searchParams.get('upgrade_status');
 
   // Clear any lingering OAuth cookies to ensure fresh attempts
   // This helps prevent issues with stuck authentication states
@@ -70,6 +142,11 @@ export const load: PageServerLoad = async ({ url, platform, cookies }) => {
 
   let statusMessage = '';
   let errorMessage = '';
+
+  // Handle direct upgrade completion
+  if (upgradeStatusParam === 'complete') {
+    statusMessage = '✅ Upgrade successful! Welcome to your Pro plan.';
+  }
 
   if (loginStatus === 'success') {
     if (authMethod === 'google') {
