@@ -85,7 +85,24 @@ export const POST: RequestHandler = async ({ request, platform }) => {
 async function handleSubscriptionCreated(subscription: any, db: any) {
   console.log(`🎣 Processing subscription created: ${subscription.id}`);
   
-  // Check if this is from a pending signup (new flow)
+  // Step 1: Check for user_id in metadata (authenticated upgrade flow)
+  const userId = subscription.metadata?.user_id;
+  if (userId) {
+    console.log(`🎣 Subscription ${subscription.id} is from authenticated user upgrade ${userId}`);
+    
+    const subscriptionData = {
+      tier: subscription.status === 'trialing' ? 'trial' as const : 'pro' as const,
+      stripeSubscriptionId: subscription.id,
+      subscriptionStatus: subscription.status,
+      trialExpiresAt: subscription.trial_end || null
+    };
+
+    await updateUserSubscriptionStatus(parseInt(userId), subscriptionData, db);
+    console.log(`✅ User ID ${userId} upgraded to ${subscriptionData.tier} via authenticated flow`);
+    return;
+  }
+  
+  // Step 2: Check if this is from a pending signup (new user flow)
   const pendingSignupId = subscription.metadata?.pending_signup_id;
   if (pendingSignupId) {
     console.log(`🎣 Subscription ${subscription.id} is from pending signup ${pendingSignupId}`);
@@ -116,7 +133,7 @@ async function handleSubscriptionCreated(subscription: any, db: any) {
     }
   }
   
-  // Existing flow - user already exists
+  // Step 3: Fallback - lookup user by Stripe customer ID (existing flow)
   const user = await getUserByStripeCustomerId(subscription.customer, db);
   if (!user) {
     console.error('User not found for Stripe customer:', subscription.customer);
@@ -131,13 +148,40 @@ async function handleSubscriptionCreated(subscription: any, db: any) {
   };
 
   await updateUserSubscriptionStatus(user.id, subscriptionData, db);
-  console.log(`✅ User ${user.email} upgraded to ${subscriptionData.tier}`);
+  console.log(`✅ User ${user.email} upgraded to ${subscriptionData.tier} via customer ID lookup`);
 }
 
 async function handleSubscriptionUpdated(subscription: any, db: any) {
   console.log(`🎣 Processing subscription updated: ${subscription.id}`);
   
-  // Check if this is from a pending signup (new flow)
+  // Step 1: Check for user_id in metadata (authenticated upgrade flow)
+  const userId = subscription.metadata?.user_id;
+  if (userId) {
+    console.log(`🎣 Subscription update ${subscription.id} is from authenticated user ${userId}`);
+    
+    let tier: 'free' | 'pro' | 'trial';
+    
+    if (subscription.status === 'trialing') {
+      tier = 'trial';
+    } else if (subscription.status === 'active') {
+      tier = 'pro';
+    } else {
+      tier = 'free'; // canceled, past_due, etc.
+    }
+
+    const subscriptionData = {
+      tier,
+      stripeSubscriptionId: subscription.id,
+      subscriptionStatus: subscription.status,
+      trialExpiresAt: subscription.trial_end || null
+    };
+
+    await updateUserSubscriptionStatus(parseInt(userId), subscriptionData, db);
+    console.log(`✅ User ID ${userId} subscription updated to ${tier} (${subscription.status}) via authenticated flow`);
+    return;
+  }
+  
+  // Step 2: Check if this is from a pending signup (new user flow)
   const pendingSignupId = subscription.metadata?.pending_signup_id;
   if (pendingSignupId) {
     console.log(`🎣 Subscription update ${subscription.id} is from pending signup ${pendingSignupId}`);
@@ -176,7 +220,7 @@ async function handleSubscriptionUpdated(subscription: any, db: any) {
     }
   }
   
-  // Existing flow - user already exists
+  // Step 3: Fallback - lookup user by Stripe customer ID (existing flow)
   const user = await getUserByStripeCustomerId(subscription.customer, db);
   if (!user) {
     console.error('User not found for Stripe customer:', subscription.customer);
@@ -201,7 +245,7 @@ async function handleSubscriptionUpdated(subscription: any, db: any) {
   };
 
   await updateUserSubscriptionStatus(user.id, subscriptionData, db);
-  console.log(`✅ User ${user.email} subscription updated to ${tier} (${subscription.status})`);
+  console.log(`✅ User ${user.email} subscription updated to ${tier} (${subscription.status}) via customer ID lookup`);
 }
 
 async function handleSubscriptionDeleted(subscription: any, db: any) {
