@@ -35,6 +35,13 @@
   let magicLinkError = '';
   let keepSignedIn = false;
   
+  // Add Docket form variables
+  let addDocketNumber = '';
+  let isAddingDocket = false;
+  let addDocketStatus = '';
+  let addDocketError = '';
+  let selectedFrequency = 'daily';
+  
   // Initialize from server data
   onMount(() => {
     if (data.isLoggedIn && data.user) {
@@ -172,6 +179,57 @@
       magicLinkError = 'Network error occurred. Please try again.';
     } finally {
       isSendingMagicLink = false;
+    }
+  }
+
+  function isValidDocketNumber(docket: string): boolean {
+    return /^\d{2,4}-\d{1,4}$/.test(docket.trim());
+  }
+
+  async function addDocket() {
+    if (!addDocketNumber) {
+      addDocketError = 'Please enter a docket number';
+      return;
+    }
+
+    if (!isValidDocketNumber(addDocketNumber)) {
+      addDocketError = 'Invalid docket number format. Use XX-XXX format (e.g., 23-108)';
+      return;
+    }
+
+    isAddingDocket = true;
+    addDocketStatus = '';
+    addDocketError = '';
+
+    try {
+      const response = await fetch('/api/subscriptions/add', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          docket_number: addDocketNumber,
+          frequency: selectedFrequency
+        }),
+        credentials: 'include'
+      });
+
+      const data = await response.json();
+
+      if (response.ok && data.success) {
+        addDocketStatus = data.message;
+        addDocketNumber = ''; // Clear the form
+        selectedFrequency = 'daily'; // Reset frequency
+        
+        // Refresh subscriptions list
+        await loadSubscriptions();
+      } else {
+        addDocketError = data.error || 'Failed to add docket subscription';
+      }
+    } catch (error) {
+      addDocketError = 'Network error occurred. Please try again.';
+    } finally {
+      isAddingDocket = false;
     }
   }
 </script>
@@ -420,6 +478,98 @@
               <div class="stat-number">Active</div>
               <div class="stat-label">Notification Status</div>
             </div>
+          </div>
+        </div>
+
+        <!-- Add Docket Section -->
+        <div class="add-docket-section">
+          <div class="add-docket-card">
+            <div class="add-docket-header">
+              <div class="add-docket-icon">➕</div>
+              <div class="add-docket-info">
+                <h3>Add New Docket</h3>
+                <p>
+                  {#if userTier === 'free'}
+                    Monitor a new FCC proceeding (will replace your current subscription)
+                  {:else}
+                    Add another FCC proceeding to your monitoring list
+                  {/if}
+                </p>
+              </div>
+            </div>
+            
+            {#if userTier === 'free' && subscriptions.length > 0}
+              <div class="tier-warning">
+                ⚠️ Adding a new docket will replace your existing subscription. 
+                <a href="/upgrade" class="upgrade-link">Upgrade to Pro</a> to monitor multiple dockets.
+              </div>
+            {/if}
+            
+            <form on:submit|preventDefault={addDocket} class="add-docket-form">
+              <div class="form-group">
+                <label for="docket-number" class="form-label">FCC Proceeding Number</label>
+                <div class="form-help">Format: XX-XXX (e.g., 23-108, 11-42)</div>
+                <input 
+                  type="text" 
+                  id="docket-number"
+                  bind:value={addDocketNumber}
+                  class="docket-input"
+                  placeholder="Enter proceeding number"
+                  disabled={isAddingDocket}
+                />
+              </div>
+
+              {#if userTier === 'pro' || userTier === 'trial'}
+                <div class="form-group">
+                  <label class="form-label">Notification Frequency</label>
+                  <div class="frequency-options">
+                    <button
+                      type="button"
+                      class="frequency-option"
+                      class:selected={selectedFrequency === 'daily'}
+                      on:click={() => selectedFrequency = 'daily'}
+                    >
+                      <span class="frequency-icon">📅</span>
+                      <span class="frequency-label">Daily Digest</span>
+                    </button>
+                    <button
+                      type="button"
+                      class="frequency-option"
+                      class:selected={selectedFrequency === 'immediate'}
+                      on:click={() => selectedFrequency = 'immediate'}
+                    >
+                      <span class="frequency-icon">⚡</span>
+                      <span class="frequency-label">Immediate (Hourly)</span>
+                    </button>
+                  </div>
+                </div>
+              {/if}
+              
+              <button 
+                type="submit" 
+                class="btn-primary"
+                disabled={isAddingDocket || !addDocketNumber}
+              >
+                {#if isAddingDocket}
+                  <span class="loading-spinner"></span>
+                  Adding Docket...
+                {:else}
+                  Add Docket Monitoring
+                {/if}
+              </button>
+            </form>
+            
+            {#if addDocketStatus}
+              <div class="success-message">
+                ✅ {addDocketStatus}
+              </div>
+            {/if}
+            
+            {#if addDocketError}
+              <div class="error-message">
+                ❌ {addDocketError}
+              </div>
+            {/if}
           </div>
         </div>
 
@@ -948,6 +1098,152 @@
     grid-template-columns: repeat(3, 1fr);
     gap: 1.5rem;
     margin-bottom: 3rem;
+  }
+
+  /* Add Docket Section */
+  .add-docket-section {
+    margin-bottom: 3rem;
+  }
+
+  .add-docket-card {
+    background: white;
+    border-radius: 16px;
+    padding: 2rem;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+    border: 1px solid #e5e7eb;
+    position: relative;
+  }
+
+  .add-docket-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 4px;
+    background: linear-gradient(90deg, #10b981, #059669);
+    border-radius: 16px 16px 0 0;
+  }
+
+  .add-docket-header {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+  }
+
+  .add-docket-icon {
+    width: 50px;
+    height: 50px;
+    background: linear-gradient(135deg, #10b981, #059669);
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.5rem;
+    color: white;
+    box-shadow: 0 8px 20px rgba(16, 185, 129, 0.3);
+  }
+
+  .add-docket-info h3 {
+    font-size: 1.3rem;
+    font-weight: 700;
+    color: #0f172a;
+    margin: 0 0 0.25rem 0;
+  }
+
+  .add-docket-info p {
+    color: #6b7280;
+    margin: 0;
+    font-size: 0.95rem;
+  }
+
+  .tier-warning {
+    background: #fef3c7;
+    border: 1px solid #f59e0b;
+    border-radius: 8px;
+    padding: 1rem;
+    margin-bottom: 1.5rem;
+    font-size: 0.9rem;
+    color: #92400e;
+  }
+
+  .upgrade-link {
+    color: #059669;
+    text-decoration: underline;
+    font-weight: 600;
+  }
+
+  .upgrade-link:hover {
+    color: #047857;
+  }
+
+  .add-docket-form {
+    max-width: 400px;
+  }
+
+  .docket-input {
+    width: 100%;
+    padding: 1rem;
+    border: 2px solid #e5e7eb;
+    border-radius: 12px;
+    font-size: 1rem;
+    font-weight: 500;
+    transition: all 0.3s;
+    background: #f9fafb;
+  }
+
+  .docket-input:focus {
+    outline: none;
+    border-color: #10b981;
+    background: white;
+    box-shadow: 0 0 0 4px rgba(16, 185, 129, 0.1);
+  }
+
+  .docket-input:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+  }
+
+  .frequency-options {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
+    margin-top: 0.5rem;
+  }
+
+  .frequency-option {
+    background: #f3f4f6;
+    border: 2px solid #e5e7eb;
+    border-radius: 12px;
+    padding: 1rem;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.2s;
+    font-family: inherit;
+  }
+
+  .frequency-option:hover {
+    border-color: #d1d5db;
+    background: #e5e7eb;
+  }
+
+  .frequency-option.selected {
+    border-color: #10b981;
+    background: #d1fae5;
+    color: #065f46;
+    font-weight: 600;
+    box-shadow: 0 4px 10px rgba(16, 185, 129, 0.1);
+  }
+
+  .frequency-icon {
+    font-size: 1.5rem;
+    display: block;
+    margin-bottom: 0.5rem;
+  }
+
+  .frequency-label {
+    font-size: 0.9rem;
   }
 
   .stat-card {
