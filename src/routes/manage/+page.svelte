@@ -1,5 +1,6 @@
 <script lang="ts">
   import { onMount } from 'svelte';
+  import { page } from '$app/stores';
   import FrequencyToggle from '$lib/components/FrequencyToggle.svelte';
   import DocketCCLogo from '$lib/components/ui/DocketCCLogo.svelte';
   
@@ -57,6 +58,23 @@
     
     if (data.errorMessage) {
       errorMessage = data.errorMessage;
+    }
+
+    // Handle upgrade success/cancel parameters
+    const upgradeStatus = $page.url.searchParams.get('upgrade');
+    if (upgradeStatus === 'success') {
+      unsubscribeStatus = '✅ Upgrade successful! Welcome to your Pro plan.';
+    } else if (upgradeStatus === 'cancelled') {
+      unsubscribeStatus = 'ℹ️ Your upgrade was cancelled. You are still on the Free plan.';
+    }
+
+    // Optional: Clear the upgrade message after a few seconds
+    if (upgradeStatus) {
+      setTimeout(() => { 
+        if (upgradeStatus === 'success' || upgradeStatus === 'cancelled') {
+          unsubscribeStatus = ''; 
+        }
+      }, 5000);
     }
   });
   
@@ -232,6 +250,8 @@
       isAddingDocket = false;
     }
   }
+
+
 </script>
 
 <svelte:head>
@@ -501,7 +521,7 @@
             {#if userTier === 'free' && subscriptions.length > 0}
               <div class="tier-warning">
                 ⚠️ Adding a new docket will replace your existing subscription. 
-                <a href="/upgrade" class="upgrade-link">Upgrade to Pro</a> to monitor multiple dockets.
+                <a href="/upgrade-current" class="upgrade-link-button">Upgrade to Pro</a> to monitor multiple dockets.
               </div>
             {/if}
             
@@ -646,7 +666,7 @@
         </div>
 
         {#if unsubscribeStatus}
-          <div class="status-notification" class:success={unsubscribeStatus.includes('Successfully')}>
+          <div class="status-notification" class:success={unsubscribeStatus.includes('Successfully') || unsubscribeStatus.includes('successful')}>
             {unsubscribeStatus}
           </div>
         {/if}
@@ -1175,6 +1195,21 @@
   }
 
   .upgrade-link:hover {
+    color: #047857;
+  }
+
+  .upgrade-link-button {
+    color: #059669;
+    text-decoration: underline;
+    font-weight: 600;
+    background: none;
+    border: none;
+    padding: 0;
+    font: inherit;
+    cursor: pointer;
+  }
+
+  .upgrade-link-button:hover {
     color: #047857;
   }
 
