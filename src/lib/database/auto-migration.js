@@ -5,7 +5,7 @@
  * Complete schema definition with expected columns for each table
  */
 const REQUIRED_SCHEMA = {
-  subscriptions: ['id', 'email', 'docket_number', 'created_at', 'frequency', 'last_notified'],
+  subscriptions: ['id', 'email', 'docket_number', 'created_at', 'frequency', 'last_notified', 'user_id', 'needs_seed'],
   admin_users: ['id', 'username', 'password_hash', 'created_at'],
   filings: ['id', 'docket_number', 'title', 'author', 'filing_type', 'date_received', 'filing_url', 'documents', 'raw_data', 'ai_summary', 'status', 'created_at', 'processed_at'],
   active_dockets: ['docket_number', 'last_checked', 'total_filings', 'subscribers_count', 'status', 'error_count', 'created_at', 'updated_at'],
@@ -393,7 +393,9 @@ function getColumnType(tableName, columnName) {
     },
     'subscriptions': {
       'frequency': 'TEXT DEFAULT \'daily\'',
-      'last_notified': 'INTEGER DEFAULT 0'
+      'last_notified': 'INTEGER DEFAULT 0',
+      'user_id': 'INTEGER REFERENCES users(id)',
+      'needs_seed': 'INTEGER DEFAULT 1'
     },
     'filings': {
       'ai_summary': 'TEXT',

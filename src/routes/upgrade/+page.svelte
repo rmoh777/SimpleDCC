@@ -81,6 +81,14 @@
         const result = await response.json();
         throw new Error(result.error || 'Failed to complete free signup.');
       }
+      
+      // Handle successful JSON response
+      const result = await response.json();
+      if (result.success && result.redirect) {
+        window.location.href = result.redirect;
+      } else {
+        throw new Error('Unexpected response from server');
+      }
     } catch (error) {
       console.error('Free signup completion error:', error);
       errorMessage = error instanceof Error ? error.message : 'Network error occurred';
