@@ -28,11 +28,39 @@
   let currentStep = 1; // 1: Search, 2: Select, 3: Subscribe, 4: Success
   let debounceTimer: ReturnType<typeof setTimeout> | null = null;
   
+  // User session state
+  let isLoggedIn = false;
+  let currentUser: any = null;
+  let sessionCheckComplete = false;
+  
   const mockSuggestions = [
     { number: '02-6', name: 'Schools and Libraries Universal Service Support Mechanism' },
     { number: '21-450', name: 'Affordable Connectivity Program' },
     { number: '11-42', name: 'Connect America Fund/Universal Service Reform' }
   ];
+  
+  // Check if user is already logged in on page load
+  onMount(async () => {
+    try {
+      const response = await fetch('/api/users', {
+        method: 'GET',
+        credentials: 'include' // Include cookies
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        if (data.user && data.isLoggedIn) {
+          isLoggedIn = true;
+          currentUser = data.user;
+        }
+      }
+    } catch (error) {
+      console.log('Session check failed:', error);
+      // Fail silently - user is not logged in
+    } finally {
+      sessionCheckComplete = true;
+    }
+  });
   
   function isValidDocketNumber(docket: string): boolean {
     const docketRegex = /^\d{2,4}-\d{1,4}$/;
@@ -99,6 +127,10 @@
   }
   
   function goToSubscriptions() {
+    window.location.href = '/manage';
+  }
+  
+  function goToDashboard() {
     window.location.href = '/manage';
   }
   
@@ -179,28 +211,71 @@
   </div>
 
   <div class="search-card">
-    <!-- Progress Bar -->
-    <div class="progress-stepper">
-      <div class="progress-container">
-        <div class="progress-fill" style="width: {(currentStep / 4) * 100}%">
-          <div class="progress-segments">
-            <div class="progress-segment"></div>
-            <div class="progress-segment"></div>
-            <div class="progress-segment"></div>
-            <div class="progress-segment"></div>
+    <!-- Show different content based on login status -->
+    {#if sessionCheckComplete}
+      {#if isLoggedIn}
+        <!-- Logged-in user content -->
+        <div class="welcome-section">
+          <div class="welcome-icon">👋</div>
+          <h2>Welcome back, {currentUser?.email || 'User'}!</h2>
+          <p class="subtitle">You're already signed in. Access your subscription dashboard to manage your docket monitoring.</p>
+          
+          <div class="user-info">
+            <div class="user-details">
+              <div class="user-tier">
+                <span class="tier-label">Current Plan:</span>
+                <span class="tier-value {currentUser?.user_tier || 'free'}">{(currentUser?.user_tier || 'free').toUpperCase()}</span>
+              </div>
+            </div>
+          </div>
+          
+          <button class="btn-primary dashboard-btn" on:click={goToDashboard}>
+            <span>Go to Dashboard</span>
+            <span class="arrow">→</span>
+          </button>
+          
+          <div class="quick-action">
+            <p>Or continue below to add new docket monitoring</p>
           </div>
         </div>
+        
+        <!-- Still show the form below for adding new subscriptions -->
+        <div class="divider"></div>
+        <div class="add-new-section">
+          <h3>Add New Docket Monitoring</h3>
+        </div>
+      {:else}
+        <!-- New user content -->
+        <!-- Progress Bar -->
+        <div class="progress-stepper">
+          <div class="progress-container">
+            <div class="progress-fill" style="width: {(currentStep / 4) * 100}%">
+              <div class="progress-segments">
+                <div class="progress-segment"></div>
+                <div class="progress-segment"></div>
+                <div class="progress-segment"></div>
+                <div class="progress-segment"></div>
+              </div>
+            </div>
+          </div>
+          <div class="progress-labels">
+            <span class="progress-label" class:active={currentStep === 1} class:completed={currentStep > 1}>Search</span>
+            <span class="progress-label" class:active={currentStep === 2} class:completed={currentStep > 2}>Select</span>
+            <span class="progress-label" class:active={currentStep === 3} class:completed={currentStep > 3}>Subscribe</span>
+            <span class="progress-label" class:active={currentStep === 4}>Complete</span>
+          </div>
+        </div>
+        
+        <h2>Begin Monitoring</h2>
+        <p class="subtitle">Enter an FCC proceeding number to start receiving intelligence</p>
+      {/if}
+    {:else}
+      <!-- Loading state -->
+      <div class="loading-section">
+        <div class="loading-spinner"></div>
+        <p>Checking session...</p>
       </div>
-      <div class="progress-labels">
-        <span class="progress-label" class:active={currentStep === 1} class:completed={currentStep > 1}>Search</span>
-        <span class="progress-label" class:active={currentStep === 2} class:completed={currentStep > 2}>Select</span>
-        <span class="progress-label" class:active={currentStep === 3} class:completed={currentStep > 3}>Subscribe</span>
-        <span class="progress-label" class:active={currentStep === 4}>Complete</span>
-      </div>
-    </div>
-    
-    <h2>Begin Monitoring</h2>
-    <p class="subtitle">Enter an FCC proceeding number to start receiving intelligence</p>
+    {/if}
     
     <div class="form-group">
       <label class="form-label" for="docketSearch">FCC Proceeding Number</label>
@@ -298,13 +373,15 @@
           </div>
         {/if}
       </div>
-    {:else if !showPreview}
+    {:else if !showPreview && !isLoggedIn}
       <div class="initial-cta">
         <button class="btn-secondary" disabled>
           Select Proceeding Number Above
         </button>
       </div>
     {/if}
+    
+
   </div>
   </div>
 </section>
@@ -1329,5 +1406,134 @@
     .progress-labels {
       font-size: 0.7rem;
     }
+  }
+
+  /* New styles for user detection */
+  .welcome-section {
+    text-align: center;
+    margin-bottom: 2rem;
+  }
+
+  .welcome-icon {
+    font-size: 3rem;
+    margin-bottom: 1rem;
+    animation: wave 2s ease-in-out infinite;
+  }
+
+  @keyframes wave {
+    0%, 100% { transform: rotate(0deg); }
+    25% { transform: rotate(20deg); }
+    75% { transform: rotate(-10deg); }
+  }
+
+  .user-info {
+    background: rgba(16, 185, 129, 0.1);
+    border: 1px solid rgba(16, 185, 129, 0.2);
+    border-radius: 12px;
+    padding: 1rem;
+    margin: 1.5rem 0;
+  }
+
+  .user-details {
+    text-align: center;
+  }
+
+  .user-tier {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 0.5rem;
+  }
+
+  .tier-label {
+    color: #6b7280;
+    font-weight: 500;
+  }
+
+  .tier-value {
+    font-weight: 700;
+    padding: 0.25rem 0.75rem;
+    border-radius: 20px;
+    font-size: 0.85rem;
+  }
+
+  .tier-value.free {
+    background: #f3f4f6;
+    color: #374151;
+  }
+
+  .tier-value.trial {
+    background: #fef3c7;
+    color: #92400e;
+  }
+
+  .tier-value.pro {
+    background: #d1fae5;
+    color: #065f46;
+  }
+
+  .dashboard-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    margin-bottom: 1rem;
+  }
+
+  .dashboard-btn .arrow {
+    transition: transform 0.2s;
+  }
+
+  .dashboard-btn:hover .arrow {
+    transform: translateX(4px);
+  }
+
+  .quick-action {
+    margin-top: 1.5rem;
+    padding-top: 1.5rem;
+    border-top: 1px solid #e5e7eb;
+  }
+
+  .quick-action p {
+    color: #6b7280;
+    font-size: 0.9rem;
+    margin: 0;
+  }
+
+  .divider {
+    height: 1px;
+    background: linear-gradient(90deg, transparent, #e5e7eb, transparent);
+    margin: 2rem 0;
+  }
+
+  .add-new-section {
+    margin-bottom: 1rem;
+  }
+
+  .add-new-section h3 {
+    color: #374151;
+    font-size: 1.2rem;
+    margin-bottom: 1rem;
+    text-align: center;
+  }
+
+  .loading-section {
+    text-align: center;
+    padding: 3rem 1rem;
+  }
+
+  .loading-spinner {
+    width: 40px;
+    height: 40px;
+    border: 3px solid #f3f4f6;
+    border-top: 3px solid #10b981;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+    margin: 0 auto 1rem;
+  }
+
+  .loading-section p {
+    color: #6b7280;
+    font-size: 1rem;
   }
 </style>

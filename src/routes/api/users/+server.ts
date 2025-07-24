@@ -101,4 +101,65 @@ export const POST: RequestHandler = async ({ request, platform }) => {
       details: error instanceof Error ? error.message : 'Unknown error'
     }, { status: 500 });
   }
+};
+
+export const GET: RequestHandler = async ({ platform, cookies }) => {
+  try {
+    if (!platform?.env?.DB) {
+      return json({ 
+        user: null, 
+        isLoggedIn: false, 
+        error: 'Database service unavailable' 
+      }, { status: 500 });
+    }
+
+    const db = platform.env.DB;
+    
+    // Check for existing session using the EXACT same pattern as manage page
+    const sessionToken = cookies.get('user_session');
+    
+    if (sessionToken) {
+      try {
+        const user = await db.prepare(`
+          SELECT * FROM users 
+          WHERE session_token = ? 
+          AND session_expires > ?
+        `).bind(sessionToken, Date.now()).first();
+
+        if (user) {
+          return json({
+            user: {
+              id: user.id,
+              email: user.email,
+              user_tier: user.user_tier,
+              created_at: user.created_at,
+              google_id: user.google_id,
+              google_email: user.google_email,
+              google_linked_at: user.google_linked_at
+            },
+            isLoggedIn: true
+          });
+        } else {
+          // Clear invalid session cookie
+          cookies.delete('user_session', { path: '/' });
+        }
+      } catch (error) {
+        console.error('Session validation error:', error);
+        cookies.delete('user_session', { path: '/' });
+      }
+    }
+
+    return json({
+      user: null,
+      isLoggedIn: false
+    });
+
+  } catch (error) {
+    console.error('Error in /api/users GET endpoint:', error);
+    return json({ 
+      user: null,
+      isLoggedIn: false,
+      error: 'Internal server error'
+    }, { status: 500 });
+  }
 }; 
