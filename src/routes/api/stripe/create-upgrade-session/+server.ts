@@ -70,7 +70,7 @@ export const POST: RequestHandler = async ({ request, platform, cookies }) => {
       const customer = await stripe.customers.create({
         email: user.email,
         metadata: { 
-          db_user_id: user.id.toString(),
+          user_id: user.id.toString(),
           upgrade_type: 'authenticated_user'
         },
       });

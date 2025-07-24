@@ -1,7 +1,7 @@
 import type { RequestHandler } from './$types';
 import { json } from '@sveltejs/kit';
 import Stripe from 'stripe';
-import { getUserByStripeCustomerId, updateUserTier, updateUserSubscriptionStatus } from '$lib/users/user-operations';
+import { getUserById, getUserByStripeCustomerId, updateUserTier, updateUserSubscriptionStatus } from '$lib/users/user-operations';
 
 export const POST: RequestHandler = async ({ request, platform }) => {
   if (!platform?.env?.DB) {
@@ -83,29 +83,34 @@ export const POST: RequestHandler = async ({ request, platform }) => {
 };
 
 async function handleSubscriptionCreated(subscription: any, db: any) {
-  console.log(`🎣 Processing subscription created: ${subscription.id}`);
+  console.log(`[Webhook] Processing 'customer.subscription.created': ${subscription.id}`);
   
-  // Step 1: Check for user_id in metadata (authenticated upgrade flow)
-  const userId = subscription.metadata?.user_id;
-  if (userId) {
-    console.log(`🎣 Subscription ${subscription.id} is from authenticated user upgrade ${userId}`);
-    
-    const subscriptionData = {
-      tier: subscription.status === 'trialing' ? 'trial' as const : 'pro' as const,
-      stripeSubscriptionId: subscription.id,
-      subscriptionStatus: subscription.status,
-      trialExpiresAt: subscription.trial_end || null
-    };
+  const metadata = subscription.metadata || {};
+  let user = null;
 
-    await updateUserSubscriptionStatus(parseInt(userId), subscriptionData, db);
-    console.log(`✅ User ID ${userId} upgraded to ${subscriptionData.tier} via authenticated flow`);
-    return;
+  // --- Robust User Identification Logic ---
+  // Priority 1: Check for user_id in subscription metadata (authenticated upgrade flow)
+  if (metadata.user_id) {
+    console.log(`[Webhook] Found user_id in metadata: ${metadata.user_id}`);
+    // FIX: Explicitly parse the user_id from metadata string to a number
+    const userId = parseInt(metadata.user_id, 10);
+    if (!isNaN(userId)) {
+      console.log(`[Webhook] Parsed user_id as number: ${userId}`);
+      user = await getUserById(userId, db);
+      if (!user) {
+        console.error(`[Webhook] ERROR: User not found for user_id ${userId} from metadata.`);
+      } else {
+        console.log(`[Webhook] Successfully found user ${user.email} by user_id ${userId}`);
+      }
+    } else {
+      console.error(`[Webhook] ERROR: Invalid user_id in metadata: ${metadata.user_id}`);
+    }
   }
-  
-  // Step 2: Check if this is from a pending signup (new user flow)
-  const pendingSignupId = subscription.metadata?.pending_signup_id;
-  if (pendingSignupId) {
-    console.log(`🎣 Subscription ${subscription.id} is from pending signup ${pendingSignupId}`);
+
+  // Priority 2: Check for pending_signup_id (new user flow)
+  if (!user && metadata.pending_signup_id) {
+    console.log(`[Webhook] Found pending_signup_id in metadata: ${metadata.pending_signup_id}`);
+    const pendingSignupId = metadata.pending_signup_id;
     
     // Check if pending signup was already completed
     const pendingRecord = await db.prepare(`
@@ -115,30 +120,35 @@ async function handleSubscriptionCreated(subscription: any, db: any) {
     `).bind(pendingSignupId).first();
     
     if (pendingRecord && pendingRecord.user_id) {
-      console.log(`🎣 Pending signup ${pendingSignupId} already completed, updating user ${pendingRecord.user_id}`);
-      
-      const subscriptionData = {
-        tier: subscription.status === 'trialing' ? 'trial' as const : 'pro' as const,
-        stripeSubscriptionId: subscription.id,
-        subscriptionStatus: subscription.status,
-        trialExpiresAt: subscription.trial_end || null
-      };
-
-      await updateUserSubscriptionStatus(pendingRecord.user_id, subscriptionData, db);
-      console.log(`✅ User ID ${pendingRecord.user_id} updated via pending signup webhook`);
-      return;
+      console.log(`[Webhook] Pending signup ${pendingSignupId} already completed, user_id: ${pendingRecord.user_id}`);
+      user = await getUserById(pendingRecord.user_id, db);
+      if (!user) {
+        console.error(`[Webhook] ERROR: User not found for completed pending signup user_id ${pendingRecord.user_id}`);
+      }
     } else {
-      console.log(`🎣 Pending signup ${pendingSignupId} not yet completed, webhook will be processed later`);
+      console.log(`[Webhook] Pending signup ${pendingSignupId} not yet completed, webhook will be processed later`);
       return;
     }
   }
-  
-  // Step 3: Fallback - lookup user by Stripe customer ID (existing flow)
-  const user = await getUserByStripeCustomerId(subscription.customer, db);
+
+  // Priority 3: Fallback - lookup user by Stripe customer ID
+  if (!user && subscription.customer) {
+    console.log(`[Webhook] Falling back to customer ID lookup: ${subscription.customer}`);
+    user = await getUserByStripeCustomerId(subscription.customer, db);
+    if (!user) {
+      console.error(`[Webhook] ERROR: User not found for Stripe customer ${subscription.customer}`);
+    } else {
+      console.log(`[Webhook] Found user ${user.email} by Stripe customer ID`);
+    }
+  }
+
+  // Critical failure if no user found
   if (!user) {
-    console.error('User not found for Stripe customer:', subscription.customer);
+    console.error(`[Webhook] CRITICAL FAILURE: Could not identify a user for subscription ${subscription.id}. Metadata: ${JSON.stringify(metadata)}`);
     return;
   }
+
+  console.log(`[Webhook] Identified user ${user.id} (${user.email}) for subscription ${subscription.id}`);
 
   const subscriptionData = {
     tier: subscription.status === 'trialing' ? 'trial' as const : 'pro' as const,
@@ -147,44 +157,43 @@ async function handleSubscriptionCreated(subscription: any, db: any) {
     trialExpiresAt: subscription.trial_end || null
   };
 
-  await updateUserSubscriptionStatus(user.id, subscriptionData, db);
-  console.log(`✅ User ${user.email} upgraded to ${subscriptionData.tier} via customer ID lookup`);
+  try {
+    await updateUserSubscriptionStatus(user.id, subscriptionData, db);
+    console.log(`[Webhook] ✅ SUCCESS: User ${user.email} (ID: ${user.id}) tier updated to '${subscriptionData.tier}'`);
+  } catch (dbError) {
+    console.error(`[Webhook] CRITICAL DATABASE FAILURE: Failed to update user ${user.id}`, dbError);
+  }
 }
 
 async function handleSubscriptionUpdated(subscription: any, db: any) {
-  console.log(`🎣 Processing subscription updated: ${subscription.id}`);
+  console.log(`[Webhook] Processing 'customer.subscription.updated': ${subscription.id}`);
   
-  // Step 1: Check for user_id in metadata (authenticated upgrade flow)
-  const userId = subscription.metadata?.user_id;
-  if (userId) {
-    console.log(`🎣 Subscription update ${subscription.id} is from authenticated user ${userId}`);
-    
-    let tier: 'free' | 'pro' | 'trial';
-    
-    if (subscription.status === 'trialing') {
-      tier = 'trial';
-    } else if (subscription.status === 'active') {
-      tier = 'pro';
+  const metadata = subscription.metadata || {};
+  let user = null;
+
+  // --- Robust User Identification Logic ---
+  // Priority 1: Check for user_id in subscription metadata (authenticated upgrade flow)
+  if (metadata.user_id) {
+    console.log(`[Webhook] Found user_id in metadata: ${metadata.user_id}`);
+    // FIX: Explicitly parse the user_id from metadata string to a number
+    const userId = parseInt(metadata.user_id, 10);
+    if (!isNaN(userId)) {
+      console.log(`[Webhook] Parsed user_id as number: ${userId}`);
+      user = await getUserById(userId, db);
+      if (!user) {
+        console.error(`[Webhook] ERROR: User not found for user_id ${userId} from metadata.`);
+      } else {
+        console.log(`[Webhook] Successfully found user ${user.email} by user_id ${userId}`);
+      }
     } else {
-      tier = 'free'; // canceled, past_due, etc.
+      console.error(`[Webhook] ERROR: Invalid user_id in metadata: ${metadata.user_id}`);
     }
-
-    const subscriptionData = {
-      tier,
-      stripeSubscriptionId: subscription.id,
-      subscriptionStatus: subscription.status,
-      trialExpiresAt: subscription.trial_end || null
-    };
-
-    await updateUserSubscriptionStatus(parseInt(userId), subscriptionData, db);
-    console.log(`✅ User ID ${userId} subscription updated to ${tier} (${subscription.status}) via authenticated flow`);
-    return;
   }
-  
-  // Step 2: Check if this is from a pending signup (new user flow)
-  const pendingSignupId = subscription.metadata?.pending_signup_id;
-  if (pendingSignupId) {
-    console.log(`🎣 Subscription update ${subscription.id} is from pending signup ${pendingSignupId}`);
+
+  // Priority 2: Check for pending_signup_id (new user flow)
+  if (!user && metadata.pending_signup_id) {
+    console.log(`[Webhook] Found pending_signup_id in metadata: ${metadata.pending_signup_id}`);
+    const pendingSignupId = metadata.pending_signup_id;
     
     // Find the user by pending signup
     const pendingRecord = await db.prepare(`
@@ -194,39 +203,36 @@ async function handleSubscriptionUpdated(subscription: any, db: any) {
     `).bind(pendingSignupId).first();
     
     if (pendingRecord && pendingRecord.user_id) {
-      let tier: 'free' | 'pro' | 'trial';
-      
-      if (subscription.status === 'trialing') {
-        tier = 'trial';
-      } else if (subscription.status === 'active') {
-        tier = 'pro';
-      } else {
-        tier = 'free'; // canceled, past_due, etc.
+      console.log(`[Webhook] Found user_id ${pendingRecord.user_id} from pending signup`);
+      user = await getUserById(pendingRecord.user_id, db);
+      if (!user) {
+        console.error(`[Webhook] ERROR: User not found for pending signup user_id ${pendingRecord.user_id}`);
       }
-
-      const subscriptionData = {
-        tier,
-        stripeSubscriptionId: subscription.id,
-        subscriptionStatus: subscription.status,
-        trialExpiresAt: subscription.trial_end || null
-      };
-
-      await updateUserSubscriptionStatus(pendingRecord.user_id, subscriptionData, db);
-      console.log(`✅ User ID ${pendingRecord.user_id} subscription updated to ${tier} (${subscription.status}) via pending signup`);
-      return;
     } else {
-      console.log(`🎣 Pending signup ${pendingSignupId} not yet completed for subscription update`);
-      return;
+      console.log(`[Webhook] Pending signup ${pendingSignupId} not found or not completed`);
     }
   }
-  
-  // Step 3: Fallback - lookup user by Stripe customer ID (existing flow)
-  const user = await getUserByStripeCustomerId(subscription.customer, db);
+
+  // Priority 3: Fallback - lookup user by Stripe customer ID
+  if (!user && subscription.customer) {
+    console.log(`[Webhook] Falling back to customer ID lookup: ${subscription.customer}`);
+    user = await getUserByStripeCustomerId(subscription.customer, db);
+    if (!user) {
+      console.error(`[Webhook] ERROR: User not found for Stripe customer ${subscription.customer}`);
+    } else {
+      console.log(`[Webhook] Found user ${user.email} by Stripe customer ID`);
+    }
+  }
+
+  // Critical failure if no user found
   if (!user) {
-    console.error('User not found for Stripe customer:', subscription.customer);
+    console.error(`[Webhook] CRITICAL FAILURE: Could not identify a user for subscription ${subscription.id}. Metadata: ${JSON.stringify(metadata)}`);
     return;
   }
 
+  console.log(`[Webhook] Identified user ${user.id} (${user.email}) for subscription ${subscription.id}`);
+
+  // Determine tier based on subscription status
   let tier: 'free' | 'pro' | 'trial';
   
   if (subscription.status === 'trialing') {
@@ -244,8 +250,12 @@ async function handleSubscriptionUpdated(subscription: any, db: any) {
     trialExpiresAt: subscription.trial_end || null
   };
 
-  await updateUserSubscriptionStatus(user.id, subscriptionData, db);
-  console.log(`✅ User ${user.email} subscription updated to ${tier} (${subscription.status}) via customer ID lookup`);
+  try {
+    await updateUserSubscriptionStatus(user.id, subscriptionData, db);
+    console.log(`[Webhook] ✅ SUCCESS: User ${user.email} (ID: ${user.id}) subscription updated to ${tier} (${subscription.status})`);
+  } catch (dbError) {
+    console.error(`[Webhook] CRITICAL DATABASE FAILURE: Failed to update user ${user.id}`, dbError);
+  }
 }
 
 async function handleSubscriptionDeleted(subscription: any, db: any) {
