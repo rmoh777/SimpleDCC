@@ -107,11 +107,12 @@
       </div>
       
       <div class="nav-links">
-        <a href="/about" class="nav-link" class:active={$page.url.pathname === '/about'}>
+        <a href="/about" class="nav-link desktop-only" class:active={$page.url.pathname === '/about'}>
           About
         </a>
         <a href="/manage" class="nav-link" class:active={$page.url.pathname === '/manage'}>
-          My Subscriptions
+          <span class="desktop-text">My Subscriptions</span>
+          <span class="mobile-text">Manage</span>
         </a>
         <a href="/pricing" class="nav-link" class:active={$page.url.pathname === '/pricing'}>
           Pricing
@@ -190,12 +191,43 @@
 
   /* Mobile responsive */
   @media (max-width: 768px) {
-    .nav-container {
-      padding: var(--spacing-3) var(--spacing-4);
+    .container {
+      padding: 0 1rem;
+    }
+
+    .nav {
+      justify-content: flex-start;
+      gap: 2rem;
     }
 
     .nav-links {
-      display: none; /* Will implement mobile menu later */
+      display: flex;
+      gap: 0.25rem;
+      align-items: center;
+      margin-left: 0;
+    }
+
+    .nav-link {
+      padding: 0.5rem 0.75rem;
+      font-size: 0.9rem;
+      font-weight: 700;
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+      color: #1f2937;
+    }
+
+    /* Hide About link on mobile */
+    .desktop-only {
+      display: none;
+    }
+
+    /* Show/hide text based on screen size */
+    .desktop-text {
+      display: none;
+    }
+
+    .mobile-text {
+      display: inline;
     }
 
     /* Logo scales down on mobile via component props */
@@ -203,6 +235,17 @@
     .btn-primary {
       padding: var(--spacing-2) var(--spacing-4);
       font-size: var(--font-size-xs);
+    }
+  }
+
+  /* Desktop text display */
+  @media (min-width: 769px) {
+    .desktop-text {
+      display: inline;
+    }
+
+    .mobile-text {
+      display: none;
     }
   }
 
