@@ -38,36 +38,36 @@
             <p class="footer-tagline">Stay ahead of regulatory changes that impact your business.</p>
           </div>
           
-          <div class="footer-section">
-            <h4>Product</h4>
-            <a href="/features">Features</a>
-            <a href="/pricing">Pricing</a>
-            <a href="/api">API Access</a>
-            <a href="/enterprise">Enterprise</a>
-            <a href="/security">Security</a>
-          </div>
-          
-          <div class="footer-section">
-            <h4>Resources</h4>
-            <a href="/docs">Documentation</a>
-            <a href="/guide">FCC Guide</a>
-            <a href="/best-practices">Best Practices</a>
-            <a href="/case-studies">Case Studies</a>
-            <a href="/blog">Blog</a>
-          </div>
-          
-          <div class="footer-section">
-            <h4>Support</h4>
-            <a href="/help">Help Center</a>
-            <a href="/contact">Contact Support</a>
-            <a href="/status">System Status</a>
-            <a href="/privacy">Privacy Policy</a>
-            <a href="/terms">Terms of Service</a>
-          </div>
+                     <div class="footer-section">
+             <h4>Product</h4>
+             <span>Features</span>
+             <span>Pricing</span>
+             <span>API Access</span>
+             <span>Enterprise</span>
+             <span>Security</span>
+           </div>
+           
+           <div class="footer-section">
+             <h4>Resources</h4>
+             <span>Documentation</span>
+             <span>FCC Guide</span>
+             <span>Best Practices</span>
+             <span>Case Studies</span>
+             <span>Blog</span>
+           </div>
+           
+           <div class="footer-section">
+             <h4>Support</h4>
+             <span>Help Center</span>
+             <span>Contact Support</span>
+             <span>System Status</span>
+             <span>Privacy Policy</span>
+             <span>Terms of Service</span>
+           </div>
         </div>
         
         <div class="footer-bottom">
-          <p>&copy; 2024 DocketCC. Professional regulatory intelligence service. Not affiliated with the Federal Communications Commission.</p>
+          <p>&copy; 2025 DocketCC. Professional regulatory intelligence service. This product uses the FCC Data API but is not endorsed or certified by the FCC.</p>
         </div>
       </div>
     </footer>
@@ -143,17 +143,11 @@
     font-size: 1.1rem;
   }
   
-  .footer-section a {
-    color: rgba(255, 255, 255, 0.7);
-    text-decoration: none;
-    display: block;
-    margin-bottom: 0.5rem;
-    transition: color var(--transition-normal);
-  }
-  
-  .footer-section a:hover {
-    color: var(--color-primary);
-  }
+     .footer-section span {
+     color: rgba(255, 255, 255, 0.7);
+     display: block;
+     margin-bottom: 0.5rem;
+   }
   
   .footer-bottom {
     border-top: 1px solid #334155;
