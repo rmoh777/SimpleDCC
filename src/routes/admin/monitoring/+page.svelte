@@ -4,6 +4,28 @@
   import StatsCard from '$lib/components/monitoring/StatsCard.svelte';
   import ActivityFeed from '$lib/components/monitoring/ActivityFeed.svelte';
   import SystemControls from '$lib/components/monitoring/SystemControls.svelte';
+  import FrequencyToggle from '$lib/components/FrequencyToggle.svelte';
+
+  // ====================================================================
+  // START: User Subscription Lookup State
+  // ====================================================================
+  let lookupEmail = '';
+  let lookupSubscriptions: any[] = [];
+  let lookupUserTier = 'free';
+  let isLookupLoading = false;
+  let lookupErrorMessage = '';
+  let showLookupForm = true;
+  let isLookupUnsubscribing = false;
+  let lookupUnsubscribeStatus = '';
+  
+  let lookupAddDocketNumber = '';
+  let isLookupAddingDocket = false;
+  let lookupAddDocketStatus = '';
+  let lookupAddDocketError = '';
+  let lookupSelectedFrequency = 'daily';
+  // ====================================================================
+  // END: User Subscription Lookup State
+  // ====================================================================
   
   // State management
   let monitoringData: {
@@ -55,7 +77,146 @@
       clearInterval(autoRefreshInterval);
     }
   });
+
+  // ====================================================================
+  // START: User Subscription Lookup Functions
+  // ====================================================================
+  async function loadLookupSubscriptions() {
+    if (!lookupEmail) return;
+    
+    isLookupLoading = true;
+    lookupErrorMessage = '';
+    
+    try {
+      const response = await fetch(`/api/subscribe?email=${encodeURIComponent(lookupEmail)}`);
+      const data = await response.json();
+      
+      if (response.ok) {
+        lookupSubscriptions = data.subscriptions || [];
+        lookupUserTier = data.user_tier || 'free';
+        showLookupForm = false;
+      } else {
+        lookupErrorMessage = data.error || 'Failed to load subscriptions';
+      }
+    } catch (error) {
+      lookupErrorMessage = 'Network error occurred';
+    } finally {
+      isLookupLoading = false;
+    }
+  }
   
+  async function lookupUnsubscribe(docketNumber: string) {
+    isLookupUnsubscribing = true;
+    lookupUnsubscribeStatus = '';
+    
+    try {
+      const response = await fetch('/api/unsubscribe', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          email: lookupEmail,
+          docket_number: docketNumber
+        })
+      });
+      
+      const data = await response.json();
+      
+      if (response.ok) {
+        lookupSubscriptions = lookupSubscriptions.filter(sub => sub.docket_number !== docketNumber);
+        lookupUnsubscribeStatus = `Successfully unsubscribed from ${docketNumber}`;
+      } else {
+        lookupUnsubscribeStatus = `Error: ${data.error || 'Unsubscribe failed'}`;
+      }
+    } catch (error) {
+      lookupUnsubscribeStatus = 'Error: Network error occurred';
+    } finally {
+      isLookupUnsubscribing = false;
+    }
+  }
+  
+  function backToLookupForm() {
+    showLookupForm = true;
+    lookupSubscriptions = [];
+    lookupEmail = '';
+    lookupErrorMessage = '';
+    lookupUnsubscribeStatus = '';
+  }
+  
+  function formatLookupDate(timestamp: number) {
+    return new Intl.DateTimeFormat('en-US', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric'
+    }).format(new Date(timestamp * 1000));
+  }
+
+  function handleLookupFrequencyChange(event: CustomEvent<{frequency: string}>, docketNumber: string) {
+    lookupSubscriptions = lookupSubscriptions.map(sub => 
+      sub.docket_number === docketNumber 
+        ? { ...sub, frequency: event.detail.frequency }
+        : sub
+    );
+  }
+
+  function isValidLookupDocketNumber(docket: string): boolean {
+    return /^\d{2,4}-\d{1,4}$/.test(docket.trim());
+  }
+
+  async function addLookupDocket() {
+    if (!lookupAddDocketNumber) {
+      lookupAddDocketError = 'Please enter a docket number';
+      return;
+    }
+
+    if (!isValidLookupDocketNumber(lookupAddDocketNumber)) {
+      lookupAddDocketError = 'Invalid docket number format. Use XX-XXX format (e.g., 23-108)';
+      return;
+    }
+
+    isLookupAddingDocket = true;
+    lookupAddDocketStatus = '';
+    lookupAddDocketError = '';
+
+    try {
+      // Note: This API requires the user to be logged in. 
+      // For an admin impersonation feature, this would need a separate admin API endpoint
+      // that takes an email. For now, this will likely fail if the admin's session
+      // doesn't have a subscription to modify. This is a limitation of not creating a new endpoint.
+      const response = await fetch('/api/subscriptions/add', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          email: lookupEmail, // Sending email to specify target user
+          docket_number: lookupAddDocketNumber,
+          frequency: lookupSelectedFrequency
+        }),
+      });
+
+      const data = await response.json();
+
+      if (response.ok && data.success) {
+        lookupAddDocketStatus = data.message;
+        lookupAddDocketNumber = '';
+        lookupSelectedFrequency = 'daily';
+        
+        await loadLookupSubscriptions();
+      } else {
+        lookupAddDocketError = data.error || 'Failed to add docket subscription';
+      }
+    } catch (error) {
+      lookupAddDocketError = 'Network error occurred. Please try again.';
+    } finally {
+      isLookupAddingDocket = false;
+    }
+  }
+  // ====================================================================
+  // END: User Subscription Lookup Functions
+  // ====================================================================
+
   /**
    * Load all monitoring data
    */
@@ -428,9 +589,347 @@
       </div>
     </div>
   </div>
+
+  <!-- User Subscription Lookup Section -->
+  <div class="card-base card-padding-md mt-6">
+    <h3 class="text-lg font-semibold text-primary mb-4">User Subscription Lookup</h3>
+    
+    <div class="lookup-container">
+      {#if showLookupForm}
+        <!-- Email Entry Form -->
+        <div class="email-card-content">
+          <div class="email-icon">📧</div>
+          <h2>Access User Subscriptions</h2>
+          <p>Enter a user's email address to view and manage their active docket monitoring subscriptions.</p>
+          
+          <form on:submit|preventDefault={loadLookupSubscriptions} class="email-form">
+            <div class="form-group">
+              <label for="lookup-email" class="form-label">Email Address</label>
+              <input 
+                type="email" 
+                id="lookup-email"
+                bind:value={lookupEmail}
+                class="email-input"
+                placeholder="user.email@example.com"
+                required
+              />
+            </div>
+            
+            <button 
+              type="submit" 
+              class="btn-primary"
+              disabled={isLookupLoading || !lookupEmail}
+            >
+              {#if isLookupLoading}
+                <span class="loading-spinner"></span>
+                Loading Subscriptions...
+              {:else}
+                View Subscriptions
+              {/if}
+            </button>
+          </form>
+          
+          {#if lookupErrorMessage}
+            <div class="error-message">
+              ❌ {lookupErrorMessage}
+            </div>
+          {/if}
+        </div>
+      {:else}
+        <!-- Dashboard View -->
+        <div class="dashboard">
+          <!-- Account Header -->
+          <div class="account-header">
+            <div class="account-info">
+              <div class="account-avatar">
+                {lookupEmail.charAt(0).toUpperCase()}
+              </div>
+              <div class="account-details">
+                <h2>{lookupEmail}</h2>
+                <p>{lookupSubscriptions.length} active subscription{lookupSubscriptions.length !== 1 ? 's' : ''}</p>
+              </div>
+            </div>
+            <button class="btn-secondary" on:click={backToLookupForm}>
+              Switch User
+            </button>
+          </div>
+
+          <!-- Subscriptions List -->
+          <div class="subscriptions-section">
+            <div class="section-header">
+              <h3>Monitored Dockets</h3>
+            </div>
+
+            {#if lookupSubscriptions.length === 0}
+              <div class="empty-state">
+                <h4>No Subscriptions Found</h4>
+                <p>This user does not have any active docket monitoring subscriptions.</p>
+              </div>
+            {:else}
+              <div class="subscriptions-grid">
+                {#each lookupSubscriptions as subscription}
+                  <div class="subscription-card">
+                    <div class="subscription-header">
+                      <div class="docket-info">
+                        <div class="docket-number">Proceeding {subscription.docket_number}</div>
+                        <div class="subscription-date">
+                          Subscribed {formatLookupDate(subscription.created_at)}
+                        </div>
+                      </div>
+                      <div class="frequency-controls">
+                        <FrequencyToggle 
+                          frequency={subscription.frequency || 'daily'}
+                          userTier={lookupUserTier}
+                          email={lookupEmail}
+                          docketNumber={subscription.docket_number}
+                          on:change={(event) => handleLookupFrequencyChange(event, subscription.docket_number)}
+                        />
+                      </div>
+                    </div>
+                    
+                    <div class="subscription-actions">
+                      <button 
+                        class="btn-danger"
+                        on:click={() => lookupUnsubscribe(subscription.docket_number)}
+                        disabled={isLookupUnsubscribing}
+                      >
+                        {#if isLookupUnsubscribing}
+                          Removing...
+                        {:else}
+                          Unsubscribe
+                        {/if}
+                      </button>
+                    </div>
+                  </div>
+                {/each}
+              </div>
+            {/if}
+          </div>
+
+          {#if lookupUnsubscribeStatus}
+            <div class="status-notification" class:success={lookupUnsubscribeStatus.includes('Successfully')}>
+              {lookupUnsubscribeStatus}
+            </div>
+          {/if}
+        </div>
+      {/if}
+    </div>
+  </div>
 </div>
 
 <style>
+  /* Copied and adapted styles from manage/+page.svelte */
+  .lookup-container .email-card-content {
+    padding: 2rem;
+    text-align: center;
+  }
+  .lookup-container .email-icon {
+    width: 60px;
+    height: 60px;
+    background: linear-gradient(135deg, #10b981, #059669);
+    border-radius: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.5rem;
+    margin: 0 auto 1.5rem;
+    box-shadow: 0 10px 20px rgba(16, 185, 129, 0.2);
+  }
+  .lookup-container .email-card-content h2 {
+    font-size: 1.5rem;
+    font-weight: 700;
+    margin-bottom: 0.75rem;
+  }
+  .lookup-container .email-card-content p {
+    margin-bottom: 1.5rem;
+    line-height: 1.6;
+  }
+  .lookup-container .email-form {
+    max-width: 400px;
+    margin: 0 auto;
+  }
+  .lookup-container .form-group {
+    margin-bottom: 1.5rem;
+    text-align: left;
+  }
+  .lookup-container .form-label {
+    display: block;
+    font-weight: 600;
+    margin-bottom: 0.5rem;
+  }
+  .lookup-container .email-input {
+    width: 100%;
+    padding: 0.75rem 1rem;
+    font-size: 1rem;
+    border: 1px solid #d1d5db;
+    border-radius: 8px;
+    outline: none;
+    transition: all 0.2s;
+  }
+  .lookup-container .email-input:focus {
+    border-color: #10b981;
+    box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.1);
+  }
+  .lookup-container .btn-primary {
+    width: 100%;
+    background: linear-gradient(135deg, #10b981, #059669);
+    color: white;
+    border: none;
+    padding: 0.75rem 1.5rem;
+    border-radius: 8px;
+    font-size: 1rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+  }
+  .lookup-container .btn-primary:hover:not(:disabled) {
+    transform: translateY(-1px);
+    box-shadow: 0 8px 20px rgba(16, 185, 129, 0.3);
+  }
+  .lookup-container .btn-primary:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+  }
+  .lookup-container .error-message {
+    background: rgba(239, 68, 68, 0.1);
+    color: #dc2626;
+    border: 1px solid rgba(239, 68, 68, 0.3);
+    padding: 1rem;
+    border-radius: 8px;
+    margin-top: 1rem;
+    font-weight: 600;
+  }
+  .lookup-container .loading-spinner {
+    width: 16px;
+    height: 16px;
+    border: 2px solid rgba(255,255,255,0.3);
+    border-top: 2px solid white;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+  }
+
+  .lookup-container .dashboard {
+    margin-top: 2rem;
+  }
+
+  .lookup-container .account-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: #f9fafb;
+    border-radius: 12px;
+    padding: 1.5rem;
+    margin-bottom: 1.5rem;
+    border: 1px solid #e5e7eb;
+  }
+  .lookup-container .account-info {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+  }
+  .lookup-container .account-avatar {
+    width: 48px;
+    height: 48px;
+    background: linear-gradient(135deg, #10b981, #059669);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-size: 1.25rem;
+    font-weight: 700;
+  }
+  .lookup-container .account-details h2 {
+    font-size: 1.25rem;
+    font-weight: 700;
+    margin: 0 0 0.25rem 0;
+  }
+  .lookup-container .account-details p {
+    margin: 0;
+  }
+  .lookup-container .btn-secondary {
+    background: white;
+    color: #374151;
+    border: 1px solid #d1d5db;
+    padding: 0.5rem 1rem;
+    border-radius: 8px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  .lookup-container .btn-secondary:hover {
+    background: #f3f4f6;
+  }
+  .lookup-container .subscriptions-section {
+    background: #f9fafb;
+    border-radius: 12px;
+    padding: 1.5rem;
+    border: 1px solid #e5e7eb;
+  }
+  .lookup-container .section-header {
+    margin-bottom: 1rem;
+  }
+  .lookup-container .section-header h3 {
+    font-size: 1.25rem;
+    font-weight: 700;
+  }
+  .lookup-container .subscriptions-grid {
+    display: grid;
+    gap: 1rem;
+  }
+  .lookup-container .subscription-card {
+    background: white;
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+    padding: 1rem;
+  }
+  .lookup-container .subscription-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 1rem;
+  }
+  .lookup-container .docket-number {
+    font-size: 1rem;
+    font-weight: 700;
+  }
+  .lookup-container .subscription-date {
+    font-size: 0.875rem;
+  }
+  .lookup-container .subscription-actions {
+    display: flex;
+    justify-content: flex-end;
+    margin-top: 1rem;
+  }
+  .lookup-container .btn-danger {
+    background: #ef4444;
+    color: white;
+    border: none;
+    padding: 0.5rem 1rem;
+    border-radius: 8px;
+    font-size: 0.875rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  .lookup-container .btn-danger:hover:not(:disabled) {
+    background: #dc2626;
+  }
+  .lookup-container .btn-danger:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+  }
+
+  /* Keyframes for spinner should be global, but let's define it here for encapsulation */
+  @keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+  }
+
   .space-y-6 > * + * {
     margin-top: var(--spacing-6);
   }

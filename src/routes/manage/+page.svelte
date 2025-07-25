@@ -269,7 +269,7 @@
 
     {#if showEmailForm}
       <!-- Email Entry Form -->
-      <div class="email-card">
+      <div class="email-card" style="display: none; visibility: hidden;">
         <div class="email-card-content">
           <div class="email-icon">📧</div>
           <h2>Access Your Subscriptions</h2>
@@ -312,7 +312,7 @@
 
       <!-- Magic Link Section -->
       <div class="magic-link-section">
-        <div class="section-divider">
+        <div class="section-divider" style="display: none; visibility: hidden;">
           <span>or</span>
         </div>
         
