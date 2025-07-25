@@ -197,17 +197,11 @@
     
     <h1>F<span class="highlight">CC</span> Docket Intelligence</h1>
     <p class="subtitle">
-      Independent monitoring service for Federal Communications Commission proceedings. 
-      Stay informed with automated alerts and AI-powered analysis of FCC filings.
+      Monitoring service for Federal Communications Commission proceedings. 
+      Stay informed with real-time email alerts and AI-powered summaries and analysis of FCC filings.
     </p>
     
-    <div class="authority">
-      <h3>Professional Monitoring Service</h3>
-      <p>
-        Access real-time FCC filing notifications with enterprise-grade reliability 
-        and advanced security standards.
-      </p>
-    </div>
+
   </div>
 
   <div class="search-card">
@@ -277,68 +271,67 @@
       </div>
     {/if}
     
-    <div class="form-group">
-      <label class="form-label" for="docketSearch">FCC Proceeding Number</label>
-      <div class="form-help">Format: XX-XXX (e.g., 02-6, 21-450)</div>
-      
-      <div class="search-container">
-        <input 
-          type="text" 
-          class="search-input" 
-          placeholder="Enter proceeding number"
-          id="docketSearch"
-          bind:value={docketSearch}
-          on:input={handleSearchInput}
-        />
-        <div class="search-icon">⚡</div>
-        
-        <!-- Suggestions Dropdown -->
-        {#if showSuggestions}
-          <div class="suggestions">
-            {#each mockSuggestions as suggestion}
-              <div class="suggestion-item" on:click={() => selectDocket(suggestion)}>
-                <div class="docket-number">{suggestion.number}</div>
-                <div class="docket-name">{suggestion.name}</div>
+         <div class="form-group">
+       <label class="form-label" for="docketSearch">FCC Proceeding Number</label>
+       <div class="form-help">Format: XX-XXX (e.g., 02-6, 21-450)</div>
+       
+       <div class="search-container">
+         <input 
+           type="text" 
+           class="search-input" 
+           placeholder="Enter proceeding number"
+           id="docketSearch"
+           bind:value={docketSearch}
+           on:input={handleSearchInput}
+         />
+         <div class="search-icon">⚡</div>
+         
+         <!-- Suggestions Dropdown -->
+         {#if showSuggestions}
+           <div class="suggestions">
+             {#each mockSuggestions as suggestion}
+               <div class="suggestion-item" on:click={() => selectDocket(suggestion)}>
+                 <div class="docket-number">{suggestion.number}</div>
+                 <div class="docket-name">{suggestion.name}</div>
+               </div>
+             {/each}
+           </div>
+         {/if}
+         
+         <!-- Preview Card - Absolutely Positioned -->
+         {#if showPreview}
+           <div class="preview-card show">
+             <div class="preview-header">
+               <h3>Proceeding {selectedDocket}</h3>
+               {#if selectedName}
+                 <div class="selected-name">{selectedName}</div>
+               {/if}
+             </div>
+            
+            <div class="benefits">
+              <div class="benefit">
+                <span class="benefit-icon">🔔</span>
+                Real-time filing alerts
               </div>
-            {/each}
+              <div class="benefit">
+                <span class="benefit-icon">📊</span>
+                AI-powered summaries
+              </div>
+              <div class="benefit">
+                <span class="benefit-icon">🔒</span>
+                Enterprise-grade secure delivery
+              </div>
+            </div>
           </div>
         {/if}
-      </div>
-    </div>
-
-    <!-- Preview Card -->
-    {#if showPreview}
-      <div class="preview-card show">
-        <div class="preview-header">
-          <div class="status">✓ DOCKET MONITORING ACTIVATED</div>
-          <h3>Proceeding {selectedDocket}</h3>
-          {#if selectedName}
-            <div class="selected-name">{selectedName}</div>
-          {/if}
-        </div>
-        
-        <div class="benefits">
-          <div class="benefit">
-            <span class="benefit-icon">🔔</span>
-            Real-time filing alerts
-          </div>
-          <div class="benefit">
-            <span class="benefit-icon">📊</span>
-            AI-powered summaries
-          </div>
-          <div class="benefit">
-            <span class="benefit-icon">🔒</span>
-            Enterprise-grade secure delivery
-          </div>
-        </div>
-      </div>
-    {/if}
+       </div>
+     </div>
 
     <!-- Email Section -->
     {#if showEmailSection}
       <div class="email-section show">
         <div class="form-group">
-          <label class="form-label" for="emailInput">Official Email Address</label>
+                     <label class="form-label" for="emailInput">Your Email Address</label>
           <input 
             type="email" 
             class="email-input" 
@@ -390,8 +383,8 @@
 <section class="features-section">
   <div class="features-container">
     <div class="features-header">
-      <h2>Professional <span class="highlight">Intelligence</span> Platform</h2>
-      <p>Trusted by legal professionals, regulatory experts, and enterprise teams to stay ahead of FCC developments that impact their business.</p>
+      <h2>Regulatory <span class="highlight">Intelligence</span> Platform</h2>
+      <p>Designed for legal, regulatory, and public interest professionals to stay ahead of FCC developments that impact the proceedings and programs they work with.</p>
     </div>
 
     <div class="features-grid">
@@ -419,17 +412,17 @@
         </ul>
       </div>
 
-      <div class="feature-card">
-        <div class="feature-icon">🔒</div>
-        <h3>Enterprise Security</h3>
-        <p>Bank-grade security infrastructure ensures your monitoring activities and data remain completely confidential.</p>
-        <ul class="feature-list">
-          <li>End-to-end encryption</li>
-          <li>SOC 2 compliance</li>
-          <li>GDPR compliant</li>
-          <li>Private data handling</li>
-        </ul>
-      </div>
+             <div class="feature-card">
+         <div class="feature-icon">🔒</div>
+         <h3>Enterprise Security</h3>
+         <p>Bank-grade security infrastructure ensures your monitoring activities and data remain completely confidential with industry-leading protection standards.</p>
+         <ul class="feature-list">
+           <li>End-to-end encryption</li>
+           <li>SOC 2 compliance</li>
+           <li>GDPR compliant</li>
+           <li>Private data handling</li>
+         </ul>
+       </div>
     </div>
   </div>
 </section>
@@ -791,19 +784,20 @@
     transition: color 0.2s;
   }
 
-  /* Preview card */
-  .preview-card {
-    background: linear-gradient(135deg, #0f172a, #1e293b);
-    color: white;
-    border-radius: 16px;
-    padding: 2rem;
-    margin-bottom: 2rem;
-    position: relative;
-    overflow: hidden;
-    opacity: 0;
-    transform: translateY(20px);
-    transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
-  }
+     /* Preview card */
+   .preview-card {
+     background: linear-gradient(135deg, #0f172a, #1e293b);
+     color: white;
+     border-radius: 16px;
+     padding: 2rem;
+     margin-bottom: 2rem;
+     position: relative;
+     overflow: hidden;
+     opacity: 0;
+     max-height: 0;
+     transform: translateY(0);
+     transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+   }
 
   .preview-card::before {
     content: '✓ DOCKET MONITORING ACTIVATED';
@@ -820,14 +814,15 @@
     border-radius: 16px 16px 0 0;
   }
 
-  .preview-card.show {
-    opacity: 1;
-    transform: translateY(0);
-  }
+     .preview-card.show {
+     opacity: 1;
+     max-height: 500px;
+     transform: translateY(0);
+   }
 
-  .preview-header {
-    margin: 1rem 0 1.5rem;
-  }
+     .preview-header {
+     margin: 0 0 1.5rem;
+   }
 
   .preview-header h3 {
     font-size: 1.3rem;
