@@ -192,19 +192,17 @@
   /* Mobile responsive */
   @media (max-width: 768px) {
     .container {
-      padding: 0 1rem;
+      padding: 0 0.75rem;
     }
 
     .nav {
-      justify-content: flex-start;
-      gap: 2rem;
+      justify-content: space-between;
     }
 
     .nav-links {
       display: flex;
-      gap: 0.25rem;
+      gap: 0.5rem;
       align-items: center;
-      margin-left: 0;
     }
 
     .nav-link {
