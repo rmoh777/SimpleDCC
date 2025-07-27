@@ -62,7 +62,7 @@
              <span>Contact Support</span>
              <span>System Status</span>
              <span>Privacy Policy</span>
-             <span>Terms of Service</span>
+             <a href="/terms-of-service"><span>Terms of Service</span></a>
            </div>
         </div>
         
@@ -147,6 +147,14 @@
      color: rgba(255, 255, 255, 0.7);
      display: block;
      margin-bottom: 0.5rem;
+   }
+   
+   .footer-section a {
+     text-decoration: none;
+   }
+   
+   .footer-section a:hover span {
+     color: var(--color-primary);
    }
   
   .footer-bottom {
