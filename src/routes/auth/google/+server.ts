@@ -1,5 +1,6 @@
 import { generateCodeVerifier, generateState } from "arctic";
 import { createGoogleClient } from "$lib/server/oauth";
+import { dev } from '$app/environment';
 import type { RequestHandler } from "./$types";
 
 export const GET: RequestHandler = async ({ platform, cookies, url }) => {
@@ -28,17 +29,17 @@ export const GET: RequestHandler = async ({ platform, cookies, url }) => {
     cookies.set("google_oauth_state", state, {
       httpOnly: true,
       maxAge: 60 * 15, // 15 minutes (longer expiry)
-      secure: import.meta.env.PROD, // Only secure in production
+      secure: !dev, // Use SvelteKit environment variable
       path: "/",
-      sameSite: "none"
+      sameSite: "lax"
     });
     
     cookies.set("google_code_verifier", codeVerifier, {
       httpOnly: true,
       maxAge: 60 * 15, // 15 minutes (longer expiry)
-      secure: import.meta.env.PROD, // Only secure in production
+      secure: !dev, // Use SvelteKit environment variable
       path: "/",
-      sameSite: "none"
+      sameSite: "lax"
     });
 
     // Store linking context if this is a linking request
@@ -46,14 +47,14 @@ export const GET: RequestHandler = async ({ platform, cookies, url }) => {
       cookies.set("google_oauth_linking", "true", {
         httpOnly: true,
         maxAge: 60 * 15, // 15 minutes (longer expiry)
-        secure: import.meta.env.PROD, // Only secure in production
+        secure: !dev, // Use SvelteKit environment variable
         path: "/",
-        sameSite: "none"
+        sameSite: "lax"
       });
     }
 
     console.log(`🔗 Google OAuth initiated: ${isLinking ? 'linking' : 'login'} flow`);
-    console.log(`🍪 Setting OAuth cookies with domain: ${url.hostname}, secure: ${import.meta.env.PROD}`);
+    console.log(`🍪 Setting OAuth cookies with domain: ${url.hostname}, secure: ${!dev}`);
 
     // Redirect to Google for authorization
     return new Response(null, {
