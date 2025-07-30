@@ -389,7 +389,7 @@
               <h3>Sign In with Google</h3>
               <p>Quick sign-in with your Google account (if you signed up with a Google email)</p>
               
-              <a href="/auth/google" class="btn-google">
+              <a href="/auth/google" data-sveltekit-reload class="btn-google">
                 <span class="google-icon">
                   <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                     <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
@@ -463,7 +463,7 @@
                   <p>Sign in faster with your Google account</p>
                 </div>
                 <div class="google-account-action">
-                  <a href="/auth/google?link=true" class="btn-link-google">
+                  <a href="/auth/google?link=true" data-sveltekit-reload class="btn-link-google">
                     Link Account
                   </a>
                 </div>
