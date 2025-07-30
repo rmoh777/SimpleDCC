@@ -30,7 +30,7 @@ export const GET: RequestHandler = async ({ platform, cookies, url }) => {
       maxAge: 60 * 15, // 15 minutes (longer expiry)
       secure: import.meta.env.PROD, // Only secure in production
       path: "/",
-      sameSite: "lax"
+      sameSite: "none"
     });
     
     cookies.set("google_code_verifier", codeVerifier, {
@@ -38,7 +38,7 @@ export const GET: RequestHandler = async ({ platform, cookies, url }) => {
       maxAge: 60 * 15, // 15 minutes (longer expiry)
       secure: import.meta.env.PROD, // Only secure in production
       path: "/",
-      sameSite: "lax"
+      sameSite: "none"
     });
 
     // Store linking context if this is a linking request
@@ -48,7 +48,7 @@ export const GET: RequestHandler = async ({ platform, cookies, url }) => {
         maxAge: 60 * 15, // 15 minutes (longer expiry)
         secure: import.meta.env.PROD, // Only secure in production
         path: "/",
-        sameSite: "lax"
+        sameSite: "none"
       });
     }
 
