@@ -129,11 +129,19 @@
     font-size: 1.1rem;
   }
   
-     .footer-section span {
-     color: rgba(255, 255, 255, 0.7);
-     display: block;
-     margin-bottom: 0.5rem;
-   }
+  .footer-section span {
+    color: rgba(255, 255, 255, 0.7);
+    display: block;
+    margin-bottom: 0.5rem;
+  }
+  
+  .footer-section a {
+    text-decoration: none;
+  }
+  
+  .footer-section a:hover span {
+    color: var(--color-primary);
+  }
   
   .footer-bottom {
     border-top: 1px solid #334155;
