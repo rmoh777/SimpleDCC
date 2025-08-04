@@ -38,32 +38,18 @@
             <p class="footer-tagline">Stay ahead of regulatory changes that impact your business.</p>
           </div>
           
-                     <div class="footer-section">
-             <h4>Product</h4>
-             <span>Features</span>
-             <span>Pricing</span>
-             <span>API Access</span>
-             <span>Enterprise</span>
-             <span>Security</span>
-           </div>
-           
-           <div class="footer-section">
-             <h4>Resources</h4>
-             <span>Documentation</span>
-             <span>FCC Guide</span>
-             <span>Best Practices</span>
-             <span>Case Studies</span>
-             <span>Blog</span>
-           </div>
-           
-           <div class="footer-section">
-             <h4>Support</h4>
-             <span>Help Center</span>
-             <span>Contact Support</span>
-             <span>System Status</span>
-             <span>Privacy Policy</span>
-             <a href="/terms-of-service"><span>Terms of Service</span></a>
-           </div>
+          <div class="footer-section">
+            <h4>Product</h4>
+            <a href="/about"><span>About</span></a>
+            <a href="/pricing"><span>Pricing</span></a>
+          </div>
+          
+          <div class="footer-section">
+            <h4>Support</h4>
+            <span>Contact Support</span>
+            <span>Privacy Policy</span>
+            <a href="/terms-of-service"><span>Terms of Service</span></a>
+          </div>
         </div>
         
         <div class="footer-bottom">
@@ -113,7 +99,7 @@
   
   .footer-grid {
     display: grid;
-    grid-template-columns: 2fr 1fr 1fr 1fr;
+    grid-template-columns: 2fr 1fr 1fr;
     gap: 3rem;
     margin-bottom: 3rem;
   }
@@ -143,19 +129,19 @@
     font-size: 1.1rem;
   }
   
-     .footer-section span {
-     color: rgba(255, 255, 255, 0.7);
-     display: block;
-     margin-bottom: 0.5rem;
-   }
-   
-   .footer-section a {
-     text-decoration: none;
-   }
-   
-   .footer-section a:hover span {
-     color: var(--color-primary);
-   }
+  .footer-section span {
+    color: rgba(255, 255, 255, 0.7);
+    display: block;
+    margin-bottom: 0.5rem;
+  }
+  
+  .footer-section a {
+    text-decoration: none;
+  }
+  
+  .footer-section a:hover span {
+    color: var(--color-primary);
+  }
   
   .footer-bottom {
     border-top: 1px solid #334155;
