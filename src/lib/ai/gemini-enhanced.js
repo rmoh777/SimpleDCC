@@ -12,14 +12,14 @@ import { env } from '$env/dynamic/private';
 export async function generateEnhancedSummary(filing, documentTexts = [], passedEnv) {
   try {
     // Use SvelteKit native env with fallback support for backwards compatibility
-    const apiKey = env.GEMINI_API_KEY || passedEnv?.GEMINI_API_KEY || process.env.GEMINI_API_KEY || 'AIzaSyCx_57Ec-9CIPOqQMvMC06YLmVYThIW4_w';
+    const apiKey = env.GEMINI_API_KEY || passedEnv?.GEMINI_API_KEY || process.env.GEMINI_API_KEY;
     
     if (!apiKey) {
       throw new Error('GEMINI_API_KEY not found in environment variables');
     }
     
     const genAI = new GoogleGenerativeAI(apiKey);
-    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash-latest" });
     
     // Build enhanced prompt with document content
     const prompt = buildEnhancedPrompt(filing, documentTexts);
