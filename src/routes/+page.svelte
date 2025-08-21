@@ -335,7 +335,7 @@
           <input 
             type="email" 
             class="email-input" 
-            placeholder="your.email@organization.gov"
+            placeholder="your.email@domain.com"
             id="emailInput"
             bind:value={emailInput}
           />

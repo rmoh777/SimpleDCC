@@ -283,7 +283,7 @@
                 id="email"
                 bind:value={email}
                 class="email-input"
-                placeholder="your.email@organization.gov"
+                placeholder="your.email@domain.com"
                 required
               />
             </div>
@@ -330,7 +330,7 @@
                   id="magic-email"
                   bind:value={magicLinkEmail}
                   class="email-input"
-                  placeholder="your.email@organization.gov"
+                  placeholder="your.email@domain.com"
                   required
                 />
               </div>
