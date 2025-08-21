@@ -5,6 +5,27 @@
     <link rel="icon" href="%sveltekit.assets%/favicon.png" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     %sveltekit.head%
+    
+    <!-- Crisp Chat Integration -->
+    <script type="text/javascript">
+      window.$crisp = [];
+      window.CRISP_WEBSITE_ID = "74e722ad-3b97-44a7-a8e2-435788020596";
+      
+      // Custom configuration for SimpleDCC emerald theme
+      window.$crisp.push(["config", "color:theme", "#10b981"]); // Primary emerald
+      window.$crisp.push(["config", "color:button", "#10b981"]); // Button color
+      window.$crisp.push(["config", "color:header", "#059669"]); // Header darker emerald
+      window.$crisp.push(["config", "position:reverse", false]); // Right side
+      window.$crisp.push(["config", "position:distance", { right: 24, bottom: 24 }]); // Position from edges
+      
+      (function(){
+        d = document;
+        s = d.createElement("script");
+        s.src = "https://client.crisp.chat/l.js";
+        s.async = 1;
+        d.getElementsByTagName("head")[0].appendChild(s);
+      })();
+    </script>
   </head>
   <body data-sveltekit-preload-data="hover">
     <div style="display: contents">%sveltekit.body%</div>
