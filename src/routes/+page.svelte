@@ -198,7 +198,7 @@
     <h1>F<span class="highlight">CC</span> Docket Intelligence</h1>
     <p class="subtitle">
       Monitoring service for Federal Communications Commission proceedings. 
-      Stay informed with real-time email alerts and AI-powered summaries and analysis of FCC filings.
+      Stay informed with real-time email alerts, AI-powered summaries + analysis of FCC filings.
     </p>
     
 
