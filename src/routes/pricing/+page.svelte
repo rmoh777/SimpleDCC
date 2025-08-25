@@ -37,7 +37,6 @@
         <h4 class="features-title">What's included</h4>
         <ul class="features-list">
           <li>1 docket subscription</li>
-          <li>Daily email notifications</li>
           <li>Basic filing metadata</li>
           <li>Document links & access</li>
           <li>Standard support</li>
@@ -68,7 +67,6 @@
         <h4 class="features-title">What's included</h4>
         <ul class="features-list">
           <li>Everything in Free plan</li>
-          <li>+</li>
           <li>Unlimited docket monitoring</li>
           <li>AI-powered summaries</li>
           <li>Instant notifications</li>
