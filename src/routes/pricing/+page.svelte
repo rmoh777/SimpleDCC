@@ -288,11 +288,7 @@
     font-size: 0.9rem;
   }
 
-  .features-list li:nth-child(2)::before {
-    content: '+';
-    color: #6b7280;
-    font-weight: 400;
-  }
+
 
   /* Bottom Section */
   .bottom-section {
