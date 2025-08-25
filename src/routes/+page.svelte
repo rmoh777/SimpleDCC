@@ -201,6 +201,11 @@
       Stay informed with real-time email alerts, AI-powered summaries + analysis of FCC filings.
     </p>
     
+    <div class="hero-cta">
+      <a href="/about" class="btn-learn-more">
+        Learn More
+      </a>
+    </div>
 
   </div>
 
@@ -558,6 +563,36 @@
     color: rgba(255,255,255,0.9);
     margin-bottom: 2rem;
     line-height: 1.6;
+  }
+
+  .hero-cta {
+    display: flex;
+    justify-content: flex-start;
+    margin-bottom: 2rem;
+  }
+
+  .btn-learn-more {
+    display: inline-flex;
+    align-items: center;
+    background: rgba(16, 185, 129, 0.15);
+    backdrop-filter: blur(10px);
+    color: #10b981;
+    text-decoration: none;
+    padding: 0.875rem 1.75rem;
+    border-radius: 12px;
+    font-size: 1rem;
+    font-weight: 600;
+    border: 1px solid rgba(16, 185, 129, 0.3);
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+  }
+
+  .btn-learn-more:hover {
+    background: rgba(16, 185, 129, 0.2);
+    border-color: rgba(16, 185, 129, 0.4);
+    color: #059669;
+    transform: translateY(-2px);
+    box-shadow: 0 8px 25px rgba(16, 185, 129, 0.2);
   }
 
   .hero-content .authority {
@@ -1157,6 +1192,11 @@
     .btn-primary {
       font-size: 1rem;
       padding: 1rem 1.5rem;
+    }
+
+    .btn-learn-more {
+      font-size: 0.9rem;
+      padding: 0.75rem 1.5rem;
     }
 
     .features-section {
